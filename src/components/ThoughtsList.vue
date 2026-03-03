@@ -7,6 +7,10 @@ import ThoughtCardSkeleton from './ThoughtCardSkeleton.vue';
 import EditThoughtModal from './EditThoughtModal.vue';
 import PresentationModeThoughts from './PresentationModeThoughts.vue';
 
+defineProps<{
+	isAdmin?: boolean;
+}>();
+
 const emit = defineEmits<{
 	(e: 'addToThread', thought: Thought): void;
 }>();
@@ -174,7 +178,7 @@ defineExpose({ reload: loadThoughts });
 					{{ group.label }}
 				</h3>
 				<div class="space-y-3">
-					<ThoughtCard v-for="thought in group.thoughts" :key="thought.id" :thought="thought" @delete="handleDelete" @edit="handleEdit" @present="presentingThought = $event" @addToThread="emit('addToThread', $event)" />
+					<ThoughtCard v-for="thought in group.thoughts" :key="thought.id" :thought="thought" :isAdmin="isAdmin" @delete="handleDelete" @edit="handleEdit" @present="presentingThought = $event" @addToThread="emit('addToThread', $event)" />
 				</div>
 			</div>
 
