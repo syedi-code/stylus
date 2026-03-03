@@ -3,6 +3,7 @@ import { ref } from 'vue';
 
 defineProps<{
   currentTab: string;
+  userEmail?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -41,6 +42,7 @@ function selectTab(tab: string) {
       antisocial media
     </h1>
     <div class="h-0.5 w-8 bg-accent mx-auto mt-3 mb-1"></div>
+    <p v-if="userEmail" class="text-xs text-mono-600 mt-1">{{ userEmail }}</p>
 
     <!-- Desktop tabs -->
     <div class="hidden sm:flex justify-center gap-1.5 mt-4 text-xs font-medium tracking-wide uppercase px-4">

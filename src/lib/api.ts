@@ -173,16 +173,21 @@ const apiClient = axios.create({
 	baseURL: import.meta.env.VITE_API_URL || '/api',
 	headers: {
 		'Content-Type': 'application/json',
+		'X-Requested-With': 'XMLHttpRequest',
 	},
+	withCredentials: true,
 });
 
-apiClient.interceptors.request.use((config) => {
-	const apiKey = import.meta.env.VITE_API_KEY;
-	if (apiKey) {
-		config.headers.Authorization = `Bearer ${apiKey}`;
+apiClient.interceptors.response.use(
+	(response) => response,
+	(error) => {
+		if (error.response?.status === 401) {
+			alert('Your session has expired. The page will reload.');
+			window.location.reload();
+		}
+		return Promise.reject(error);
 	}
-	return config;
-});
+);
 
 // ============================================================================
 // Normalization Helpers
