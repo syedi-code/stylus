@@ -141,10 +141,10 @@ const loadAuthorConnection = async () => {
                         <span v-else>{{ book.author }}</span>
                         <br />
                         <template v-if="pdfUrlWithPage">
-                            <a :href="pdfUrlWithPage" target="_blank" @click.stop class="underline hover:text-accent transition-colors">{{ book.title }}</a><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span>
+                            <a :href="pdfUrlWithPage" target="_blank" @click.stop class="italic underline hover:text-accent transition-colors">{{ book.title }}</a><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span>
                         </template>
                         <template v-else>
-                            <span>{{ book.title }}<span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span></span>
+                            <span><span class="italic">{{ book.title }}</span><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span></span>
                         </template>
                     </div>
 
