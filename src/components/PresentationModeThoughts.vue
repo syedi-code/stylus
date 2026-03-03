@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue';
+import { ref, watch, computed } from 'vue';
 import type { Thought } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../composables/usePresentationFontSize';
+import { useTypography } from '../composables/useTypography';
 import PresentationFontControls from './PresentationFontControls.vue';
 
 const props = defineProps<{
@@ -12,14 +13,14 @@ const props = defineProps<{
 
 const emit = defineEmits(['close']);
 
-const contentRef = ref<HTMLElement | null>(null);
-const cardRef = ref<HTMLElement | null>(null);
-const fontSize = ref(18);
 const showFontControls = ref(false);
 
 const VERTICAL_MARGIN = 12;
 
-const { finalFontSize, setFontSize, reset } = usePresentationFontSize('thought', fontSize);
+const contentLength = computed(() => props.thought?.content?.length ?? 0);
+const { baseFontSize, lineHeightClass, typographyClass } = useTypography('thought', 'presentation', contentLength);
+
+const { finalFontSize, setFontSize, reset } = usePresentationFontSize('thought', baseFontSize);
 
 const formattedContent = computed(() => {
     if (!props.thought) return '';
@@ -48,47 +49,8 @@ const formattedTime = computed(() => {
     });
 });
 
-const calculateFontSize = async () => {
-    if (window.innerWidth >= 640) {
-        fontSize.value = 18;
-        return;
-    }
-
-    await nextTick();
-
-    if (!contentRef.value || !cardRef.value) return;
-
-    const availableHeight = window.innerHeight - (VERTICAL_MARGIN * 2) - 48 - 80;
-
-    let min = 12;
-    let max = 18;
-    let optimal = 14;
-
-    fontSize.value = max;
-    await nextTick();
-
-    while (min <= max) {
-        const mid = Math.floor((min + max) / 2);
-        fontSize.value = mid;
-        await nextTick();
-
-        const contentHeight = contentRef.value.scrollHeight;
-
-        if (contentHeight <= availableHeight) {
-            optimal = mid;
-            min = mid + 1;
-        } else {
-            max = mid - 1;
-        }
-    }
-
-    fontSize.value = optimal;
-};
-
-watch(() => props.isOpen, (isOpen) => {
-    if (isOpen) {
-        calculateFontSize();
-    }
+watch(() => props.isOpen, () => {
+    // no-op — font size is now purely reactive via useTypography
 });
 </script>
 
@@ -114,7 +76,7 @@ watch(() => props.isOpen, (isOpen) => {
                 </button>
 
                 <!-- Content card -->
-                <div ref="cardRef" class="w-full max-w-xl bg-mono-900 border border-rose/30 rounded-xl p-6 shadow-2xl overflow-hidden flex flex-col" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                <div class="w-full max-w-xl bg-mono-900 border border-rose/30 rounded-xl p-6 shadow-2xl overflow-hidden flex flex-col" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
 
                     <!-- THOUGHT badge -->
                     <div class="mb-4">
@@ -124,8 +86,8 @@ watch(() => props.isOpen, (isOpen) => {
                     </div>
 
                     <!-- Content -->
-                    <div ref="contentRef" class="flex-1 min-h-0">
-                        <p class="whitespace-pre-wrap leading-relaxed text-mono-100 break-words" :style="{ fontSize: finalFontSize + 'px' }" v-html="formattedContent"></p>
+                    <div class="flex-1 min-h-0">
+                        <p lang="en" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100 wrap-break-word']" :style="{ fontSize: finalFontSize + 'px' }" v-html="formattedContent"></p>
                     </div>
 
                     <!-- Date footer -->
