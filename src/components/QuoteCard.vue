@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, type Quote, type Book, type Author } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
+import { useTypography } from '../composables/useTypography';
 import AuthorPopover from './AuthorPopover.vue';
 
 const props = defineProps<{
@@ -121,6 +122,9 @@ const quoteFontSize = computed(() => {
   if (len < 1200) return 13;
   return 12;
 });
+
+const contentLength = computed(() => props.quote.quote?.length ?? 0);
+const { lineHeightClass, typographyClass } = useTypography('quote', 'card', contentLength);
 </script>
 
 <template>
@@ -179,7 +183,7 @@ const quoteFontSize = computed(() => {
 
     <!-- Content -->
     <div class="mt-1 text-mono-100">
-      <blockquote class="text-mono-100 border-l-4 border-accent pl-4 py-1" :style="{ fontSize: quoteFontSize + 'px' }" v-html="highlightText(quote.quote)"></blockquote>
+      <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-accent pl-4 py-1']" :style="{ fontSize: quoteFontSize + 'px' }" v-html="highlightText(quote.quote)"></blockquote>
       <!-- Book attribution (when linked to book) -->
       <div v-if="book" class="text-mono-400 text-sm mt-3 space-y-0.5">
         <p class="font-medium text-mono-300">— {{ book.author }}</p>
