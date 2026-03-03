@@ -1,0 +1,179 @@
+@import 'tailwindcss';
+
+@theme {
+	/* Fonts */
+	--font-mono: 'Sohne Mono', monospace;
+	--font-display: 'Tiempos Text', serif;
+	--font-body: 'Tiempos Text', serif;
+
+	/* Radius - Smooth rounded corners */
+	--radius-xl: 16px;
+	--radius-lg: 12px;
+	--radius-md: 8px;
+	--radius-sm: 4px;
+
+	/* Colors - Sleek Black/Dark Grey + Sharp Blue */
+	--color-mono-50: #f4f4f5;
+	--color-mono-100: #e4e4e7;
+	--color-mono-200: #d4d4d8;
+	--color-mono-300: #a1a1aa;
+	--color-mono-400: #71717a;
+	--color-mono-500: #52525b;
+	--color-mono-600: #3f3f46;
+	--color-mono-700: #27272a;
+	--color-mono-800: #18181b;
+	--color-mono-900: #09090b;
+	--color-mono-950: #050505; /* Almost Black */
+
+	/* Accent */
+	--color-accent: #2952ff; /* Sharp Electric Blue */
+	--color-accent-bright: #5e84ff; /* Brighter Blue */
+	--color-accent-hover: #1e40af;
+	--color-accent-text: #ffffff;
+
+	/* Gold */
+	--color-gold: #ffc000;
+	--color-gold-text: #000000;
+
+	--color-highlight: #10b981; /* Emerald - fresh contrast to blue/gold */
+	--color-highlight-soft: rgba(16, 185, 129, 0.2); /* Soft emerald glow */
+	--color-highlight-text: #10b981;
+
+	/* Rose - for Thoughts tab */
+	--color-rose: #f43f5e; /* Vibrant rose */
+	--color-rose-bright: #fb7185; /* Brighter rose for hover/active */
+	--color-rose-muted: #be123c; /* Muted rose for backgrounds */
+	--color-rose-soft: rgba(244, 63, 94, 0.2); /* Soft rose glow */
+}
+
+/* Font Face Declarations */
+@font-face {
+	font-family: 'Sohne Mono';
+	src: url('/fonts/SohneMono-Regular.otf') format('opentype');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Sohne Mono';
+	src: url('/fonts/SohneMono-Medium.otf') format('opentype');
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Sohne Mono';
+	src: url('/fonts/SohneMono-Bold.otf') format('opentype');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Lyon Text';
+	src: url('/fonts/LyonText/Lyon Text Regular.otf') format('opentype');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Tiempos Text';
+	src: url('/fonts/Tiempos/TiemposText/TiemposText-Regular.otf')
+		format('opentype');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Tiempos Text';
+	src: url('/fonts/Tiempos/TiemposText/TiemposText-RegularItalic.otf')
+		format('opentype');
+	font-weight: 400;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Tiempos Text';
+	src: url('/fonts/Tiempos/TiemposText/TiemposText-Medium.otf')
+		format('opentype');
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Tiempos Text';
+	src: url('/fonts/Tiempos/TiemposText/TiemposText-Medium Italic.otf')
+		format('opentype');
+	font-weight: 500;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Tiempos Text';
+	src: url('/fonts/Tiempos/TiemposText/TiemposText-Semibold.otf')
+		format('opentype');
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Tiempos Text';
+	src: url('/fonts/Tiempos/TiemposText/TiemposText-SemiboldItalic.otf')
+		format('opentype');
+	font-weight: 600;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Tiempos Text';
+	src: url('/fonts/Tiempos/TiemposText/TiemposText-Bold.otf')
+		format('opentype');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Tiempos Text';
+	src: url('/fonts/Tiempos/TiemposText/TiemposText-BoldItalic.otf')
+		format('opentype');
+	font-weight: 700;
+	font-style: italic;
+	font-display: swap;
+}
+
+/* Base Styles */
+:root {
+	color-scheme: dark;
+}
+
+body {
+	background-color: var(--color-mono-950);
+	color: var(--color-mono-100);
+	font-family: var(--font-body);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+	display: none;
+}
+
+/* Search Highlight */
+.search-highlight {
+	background: linear-gradient(
+		to bottom,
+		transparent 0%,
+		transparent 60%,
+		var(--color-highlight-soft) 60%,
+		var(--color-highlight-soft) 100%
+	);
+	color: var(--color-highlight-text);
+	font-weight: 600;
+	padding: 0 2px;
+	border-radius: 2px;
+}
