@@ -224,7 +224,7 @@ const highlightText = (text: string | undefined) => {
         <button @click="toggleAuthorPopover" class="underline decoration-mono-600 underline-offset-2 hover:text-accent hover:decoration-accent transition-colors cursor-pointer">{{ connectedAuthor.name }}</button>
         <AuthorPopover v-if="showAuthorPopover" :author="connectedAuthor" @close="showAuthorPopover = false" @viewInLibrary="handleViewInLibrary" />
       </div>
-      <p v-if="note.content" class="whitespace-pre-wrap leading-relaxed text-sm" v-html="highlightText(note.content)"></p>
+      <p v-if="note.content" lang="en" class="typography-prose whitespace-pre-wrap leading-relaxed text-sm" v-html="highlightText(note.content)"></p>
     </div>
 
     <!-- Footer: Tags -->
