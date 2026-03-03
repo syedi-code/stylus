@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, type Note, type Book, type Author } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
+import { useTypography } from '../composables/useTypography';
 
 const props = defineProps<{
   note: Note;
@@ -78,6 +79,9 @@ watch(() => props.note.book_id, () => {
 });
 
 const formattedContent = computed(() => formatMarkdown(props.note.content || ''));
+
+const contentLength = computed(() => props.note.content?.length ?? 0);
+const { baseFontSize, lineHeightClass, typographyClass } = useTypography('note', 'thread', contentLength);
 </script>
 
 <template>
@@ -111,7 +115,7 @@ const formattedContent = computed(() => formatMarkdown(props.note.content || '')
     </div>
 
     <!-- Content -->
-    <p v-if="note.content" class="whitespace-pre-wrap leading-relaxed text-sm text-mono-100" v-html="formattedContent"></p>
+    <p v-if="note.content" lang="en" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedContent"></p>
 
     <!-- Tags -->
     <div v-if="note.tags && note.tags.length" class="flex flex-wrap gap-2 mt-1">

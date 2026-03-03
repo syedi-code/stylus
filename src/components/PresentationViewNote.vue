@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue';
+import { ref, watch, computed } from 'vue';
 import type { Note, Book, Author } from '../lib/api';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../composables/usePresentationFontSize';
+import { useTypography } from '../composables/useTypography';
 import PresentationFontControls from './PresentationFontControls.vue';
 
 const props = withDefaults(defineProps<{
@@ -16,9 +17,6 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits(['close']);
 
-const contentRef = ref<HTMLElement | null>(null);
-const cardRef = ref<HTMLElement | null>(null);
-const fontSize = ref(16);
 const showFontControls = ref(false);
 const book = ref<Book | null>(null);
 const pdfUrl = ref<string | null>(null);
@@ -51,48 +49,13 @@ const pdfUrlWithPage = computed(() => {
 
 const VERTICAL_MARGIN = 12;
 
-const { finalFontSize, setFontSize, reset } = usePresentationFontSize('note', fontSize);
+const contentLength = computed(() => props.note?.content?.length ?? 0);
+const { baseFontSize, lineHeightClass, typographyClass } = useTypography('note', 'presentation', contentLength);
 
-const calculateFontSize = async () => {
-    if (window.innerWidth >= 640) {
-        fontSize.value = 16;
-        return;
-    }
-
-    await nextTick();
-
-    if (!contentRef.value || !cardRef.value) return;
-
-    const availableHeight = window.innerHeight - (VERTICAL_MARGIN * 2) - 48 - 40;
-
-    let min = 10;
-    let max = 14;
-    let optimal = 12;
-
-    fontSize.value = max;
-    await nextTick();
-
-    while (min <= max) {
-        const mid = Math.floor((min + max) / 2);
-        fontSize.value = mid;
-        await nextTick();
-
-        const contentHeight = contentRef.value.scrollHeight;
-
-        if (contentHeight <= availableHeight) {
-            optimal = mid;
-            min = mid + 1;
-        } else {
-            max = mid - 1;
-        }
-    }
-
-    fontSize.value = optimal;
-};
+const { finalFontSize, setFontSize, reset } = usePresentationFontSize('note', baseFontSize);
 
 watch(() => props.isOpen, (isOpen) => {
     if (isOpen) {
-        calculateFontSize();
         loadBook();
         loadAuthorConnection();
     } else {
@@ -189,7 +152,7 @@ const loadAuthorConnection = async () => {
                     <div v-else-if="connectedAuthor" class="mb-3 text-xs text-mono-500 leading-relaxed">
                         <span class="underline decoration-mono-600 underline-offset-2 text-mono-400">{{ connectedAuthor.name }}</span>
                     </div>
-                    <p v-if="note.content" ref="contentRef" class="whitespace-pre-wrap leading-relaxed text-mono-100" :style="{ fontSize: finalFontSize + 'px' }" v-html="formatMarkdown(note.content)"></p>
+                    <p v-if="note.content" lang="en" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: finalFontSize + 'px' }" v-html="formatMarkdown(note.content)"></p>
                 </div>
 
                 <!-- Font size controls -->
