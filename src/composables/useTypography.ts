@@ -7,7 +7,8 @@ export type ViewContext = 'card' | 'thread' | 'presentation';
  * Content-length-aware font sizing and typographic class selection.
  *
  * Quotes get `.typography-quote` (with hanging-punctuation) and tighter
- * leading; Notes and Thoughts share `.typography-prose` and relaxed leading.
+ * leading; Notes and Thoughts share `.typography-prose` and the same tight
+ * leading (`leading-[1.45]`) for visual consistency.
  *
  * Font-size tiers are tuned per entity × view context:
  *   - Card:         Quotes scale 12–18 px; Notes/Thoughts stay fixed 14 px
@@ -21,7 +22,7 @@ export function useTypography(
 ) {
     const baseFontSize = computed(() => getFontSize(entityType, viewContext, contentLength.value));
 
-    const lineHeightClass = entityType === 'quote' ? 'leading-[1.45]' : 'leading-relaxed';
+    const lineHeightClass = 'leading-[1.45]';
 
     const typographyClass = entityType === 'quote' ? 'typography-quote' : 'typography-prose';
 

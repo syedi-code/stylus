@@ -212,10 +212,10 @@ const highlightText = (text: string | undefined) => {
         <span v-else>{{ book.author }}</span>
         <br />
         <template v-if="pdfUrlWithPage">
-          <a :href="pdfUrlWithPage" target="_blank" @click.stop class="underline hover:text-accent transition-colors">{{ book.title }}</a><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span>
+          <a :href="pdfUrlWithPage" target="_blank" @click.stop class="italic underline hover:text-accent transition-colors">{{ book.title }}</a><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span>
         </template>
         <template v-else>
-          <span>{{ book.title }}<span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span></span>
+          <span><span class="italic">{{ book.title }}</span><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span></span>
         </template>
       </div>
       <!-- Author Attribution (no book, connected via connections table) -->
@@ -223,7 +223,7 @@ const highlightText = (text: string | undefined) => {
         <button @click="toggleAuthorPopover" class="underline decoration-mono-600 underline-offset-2 hover:text-accent hover:decoration-accent transition-colors cursor-pointer">{{ connectedAuthor.name }}</button>
         <AuthorPopover v-if="showAuthorPopover" :author="connectedAuthor" @close="showAuthorPopover = false" @viewInLibrary="handleViewInLibrary" />
       </div>
-      <p v-if="note.content" class="typography-prose whitespace-pre-wrap leading-relaxed text-sm" v-html="highlightText(note.content)"></p>
+      <p v-if="note.content" class="typography-prose whitespace-pre-wrap leading-[1.45] text-sm" v-html="highlightText(note.content)"></p>
     </div>
 
     <!-- Footer: Tags -->
