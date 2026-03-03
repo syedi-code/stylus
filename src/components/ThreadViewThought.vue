@@ -31,7 +31,7 @@ const { baseFontSize, lineHeightClass, typographyClass } = useTypography('though
     </div>
 
     <!-- Content -->
-    <p lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 whitespace-pre-wrap wrap-break-word']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedContent"></p>
+    <p :class="[typographyClass, lineHeightClass, 'text-mono-100 whitespace-pre-wrap wrap-break-word']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedContent"></p>
 
     <!-- Mood Display -->
     <div v-if="moodEmoji || (thought.mood_tags && thought.mood_tags.length > 0)" class="flex items-center gap-2 flex-wrap">
