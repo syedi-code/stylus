@@ -115,7 +115,7 @@ const { baseFontSize, lineHeightClass, typographyClass } = useTypography('note',
     </div>
 
     <!-- Content -->
-    <p v-if="note.content" lang="en" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedContent"></p>
+    <p v-if="note.content" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedContent"></p>
 
     <!-- Tags -->
     <div v-if="note.tags && note.tags.length" class="flex flex-wrap gap-2 mt-1">
