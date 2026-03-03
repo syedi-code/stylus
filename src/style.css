@@ -165,7 +165,6 @@ body {
 
 /* Typography — shared fine-typesetting classes */
 .typography-prose {
-	hyphens: auto;
 	text-wrap: pretty;
 	font-kerning: normal;
 	font-variant-ligatures: common-ligatures;
