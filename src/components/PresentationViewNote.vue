@@ -152,7 +152,7 @@ const loadAuthorConnection = async () => {
                     <div v-else-if="connectedAuthor" class="mb-3 text-xs text-mono-500 leading-relaxed">
                         <span class="underline decoration-mono-600 underline-offset-2 text-mono-400">{{ connectedAuthor.name }}</span>
                     </div>
-                    <p v-if="note.content" lang="en" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: finalFontSize + 'px' }" v-html="formatMarkdown(note.content)"></p>
+                    <p v-if="note.content" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: finalFontSize + 'px' }" v-html="formatMarkdown(note.content)"></p>
                 </div>
 
                 <!-- Font size controls -->
