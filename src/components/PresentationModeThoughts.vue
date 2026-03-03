@@ -87,7 +87,7 @@ watch(() => props.isOpen, () => {
 
                     <!-- Content -->
                     <div class="flex-1 min-h-0">
-                        <p lang="en" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100 wrap-break-word']" :style="{ fontSize: finalFontSize + 'px' }" v-html="formattedContent"></p>
+                        <p :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100 wrap-break-word']" :style="{ fontSize: finalFontSize + 'px' }" v-html="formattedContent"></p>
                     </div>
 
                     <!-- Date footer -->
