@@ -1,0 +1,18 @@
+# Cloudflare Pages configuration
+name = "antisocial-media"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-08-24"
+
+# Environment variables for the frontend are set in Cloudflare Pages dashboard
+# or via: wrangler pages secret put VITE_API_URL --project=antisocial-media
+
+# =============================================================================
+# Staging Environment
+# =============================================================================
+# Deploy with: wrangler pages deploy dist --project-name=antisocial-media-staging
+#
+# Create the Pages project first:
+#   wrangler pages project create antisocial-media-staging
+
+[env.staging]
+name = "antisocial-media-staging"

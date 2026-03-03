@@ -1,0 +1,17 @@
+# Cloudflare Pages config (example)
+# Copy to wrangler.toml and fill in placeholders.
+
+name = "<PROJECT_NAME>"
+pages_build_output_dir = "dist"
+compatibility_date = "<YYYY-MM-DD>"
+
+# Required env vars (set in Pages dashboard or via wrangler pages secret put):
+#   VITE_API_URL - Worker URL (e.g., https://journal.<subdomain>.workers.dev)
+#   VITE_API_KEY - API key matching worker's API_KEY secret
+
+# Staging environment (optional)
+# Create: wrangler pages project create antisocial-media-staging
+# Deploy: wrangler pages deploy dist --project-name=antisocial-media-staging
+#
+[env.staging]
+name = "antisocial-media-staging"
