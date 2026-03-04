@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { fetchNotes, fetchBooks, updateNote, deleteNote, fetchQuotes, updateQuote, deleteQuote, createThought, type Note, type Quote, type Book, type Thought } from './lib/api';
+import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';
 import NoteCard from './components/NoteCard.vue';
 import NoteCardSkeleton from './components/NoteCardSkeleton.vue';
@@ -29,6 +30,8 @@ import EditThoughtModal from './components/EditThoughtModal.vue';
 import ConfirmModal from './components/ConfirmModal.vue';
 import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
 
+const { isAdmin, user: authUser, init: initAuth } = useAuth();
+
 const notesPagination = usePagination<Note, { search?: string }>({
   fetchFn: (params) => fetchNotes({ ...params }),
   pageSize: 30,
@@ -47,6 +50,7 @@ const checkMobile = () => {
 };
 
 onMounted(() => {
+  initAuth();
   checkMobile();
   window.addEventListener('resize', checkMobile);
   // Load initial data based on default tab
@@ -558,7 +562,7 @@ watch([threadsSearch], () => {
 <template>
   <div class="min-h-screen bg-mono-950 text-mono-100 selection:bg-accent selection:text-white">
 
-    <AppHeader v-model:currentTab="currentTab" />
+    <AppHeader v-model:currentTab="currentTab" :userEmail="authUser?.email ?? null" />
 
     <main class="w-full">
       <div class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20">
@@ -566,13 +570,13 @@ watch([threadsSearch], () => {
         <!-- Notes Tab -->
         <transition name="fade" mode="out-in">
           <div v-if="currentTab === 'notes'" class="space-y-8">
-            <!-- Desktop Capture Form -->
-            <div class="hidden sm:block">
+            <!-- Desktop Capture Form (admin only) -->
+            <div v-if="isAdmin" class="hidden sm:block">
               <CaptureForm @saved="loadNotes" />
             </div>
 
             <!-- Divider -->
-            <div class="hidden sm:block border-t border-accent/20"></div>
+            <div v-if="isAdmin" class="hidden sm:block border-t border-accent/20"></div>
 
             <FilterBar v-model:search="search" v-model:showVersionBadge="showVersionBadgeInPresentation" v-model:bookFilter="bookFilter" :books="filterBooks" />
 
@@ -597,7 +601,7 @@ watch([threadsSearch], () => {
 
               <!-- List -->
               <div v-else class="space-y-3">
-                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @togglePosted="handleToggleNotePosted" @convertToThought="handleConvertToThought" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" />
+                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" :isAdmin="isAdmin" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @togglePosted="handleToggleNotePosted" @convertToThought="handleConvertToThought" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" />
 
                 <!-- Scroll sentinel for infinite scroll -->
                 <div ref="notesScrollSentinel" class="h-1"></div>
@@ -614,13 +618,13 @@ watch([threadsSearch], () => {
         <!-- Quotes Tab -->
         <transition name="fade" mode="out-in">
           <div v-if="currentTab === 'quotes'" class="space-y-8">
-            <!-- Desktop Quote Capture Form -->
-            <div class="hidden sm:block">
+            <!-- Desktop Quote Capture Form (admin only) -->
+            <div v-if="isAdmin" class="hidden sm:block">
               <QuoteCaptureForm @saved="loadQuotes" />
             </div>
 
             <!-- Divider -->
-            <div class="hidden sm:block border-t border-accent/20"></div>
+            <div v-if="isAdmin" class="hidden sm:block border-t border-accent/20"></div>
 
             <!-- Search bar for quotes -->
             <div class="mb-6">
@@ -649,7 +653,7 @@ watch([threadsSearch], () => {
 
               <!-- Quotes List -->
               <div v-else class="space-y-4">
-                <QuoteCard v-for="quote in filteredQuotes" :key="quote.id" :quote="quote" :searchQuery="quotesSearch" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @togglePosted="handleToggleQuotePosted" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
+                <QuoteCard v-for="quote in filteredQuotes" :key="quote.id" :quote="quote" :searchQuery="quotesSearch" :isAdmin="isAdmin" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @togglePosted="handleToggleQuotePosted" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
               </div>
             </div>
           </div>
@@ -657,22 +661,22 @@ watch([threadsSearch], () => {
 
         <!-- Library Tab -->
         <transition name="fade" mode="out-in">
-          <AuthorManager v-if="currentTab === 'library'" ref="authorManagerRef" @edit="handleEditAuthor" @editBook="handleEditBook" @add="handleAddAuthor" @addBook="handleAddBook" />
+          <AuthorManager v-if="currentTab === 'library'" ref="authorManagerRef" :isAdmin="isAdmin" @edit="handleEditAuthor" @editBook="handleEditBook" @add="handleAddAuthor" @addBook="handleAddBook" />
         </transition>
 
         <!-- Thoughts Tab -->
         <transition name="fade" mode="out-in">
           <div v-if="currentTab === 'thoughts'" class="space-y-8">
-            <!-- Desktop Capture Form -->
-            <div class="hidden sm:block">
+            <!-- Desktop Capture Form (admin only) -->
+            <div v-if="isAdmin" class="hidden sm:block">
               <ThoughtCapture @saved="thoughtsListRef?.reload()" />
             </div>
 
             <!-- Divider -->
-            <div class="hidden sm:block border-t border-rose/20"></div>
+            <div v-if="isAdmin" class="hidden sm:block border-t border-rose/20"></div>
 
             <!-- Thoughts List -->
-            <ThoughtsList ref="thoughtsListRef" @addToThread="handleAddThoughtToThread" />
+            <ThoughtsList ref="thoughtsListRef" :isAdmin="isAdmin" @addToThread="handleAddThoughtToThread" />
           </div>
         </transition>
 
@@ -682,7 +686,7 @@ watch([threadsSearch], () => {
             <!-- Header -->
             <div class="flex items-center justify-center gap-4">
               <h2 class="text-lg font-semibold tracking-tight text-white">threads</h2>
-              <button @click="showNewThreadForm = true" class="px-3 py-1.5 text-xs font-semibold tracking-tight text-purple-300 border border-purple-500/30 hover:bg-purple-500/10 rounded-lg transition-colors cursor-pointer">
+              <button v-if="isAdmin" @click="showNewThreadForm = true" class="px-3 py-1.5 text-xs font-semibold tracking-tight text-purple-300 border border-purple-500/30 hover:bg-purple-500/10 rounded-lg transition-colors cursor-pointer">
                 + new thread
               </button>
             </div>
@@ -716,9 +720,9 @@ watch([threadsSearch], () => {
 
                 <!-- Header Row -->
                 <div class="flex items-center px-4 py-4 cursor-pointer" @click="toggleThread(thread.id)">
-                  <!-- Left zone: delete button (appears on hover) -->
+                  <!-- Left zone: delete button (appears on hover, admin only) -->
                   <div class="w-7 shrink-0">
-                    <button @click.stop="handleDeleteThread(thread)" class="p-1 rounded-md text-mono-700 hover:text-red-500 cursor-pointer transition-colors" title="Delete Thread">
+                    <button v-if="isAdmin" @click.stop="handleDeleteThread(thread)" class="p-1 rounded-md text-mono-700 hover:text-red-500 cursor-pointer transition-colors" title="Delete Thread">
                       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 6h18" />
                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
@@ -744,7 +748,7 @@ watch([threadsSearch], () => {
                 <!-- Expandable content -->
                 <div v-if="expandedThreads.has(thread.id)">
                   <div class="pt-3 pb-8">
-                    <ThreadDetail :ref="(el: any) => { if (el) threadDetailRefs.set(thread.id, el); else threadDetailRefs.delete(thread.id); }" :threadId="thread.id" :showHeader="false" @presentItem="handleThreadPresentItem" @editItem="(type: string, entity: any) => handleThreadEditItem(thread.id, type, entity)" />
+                    <ThreadDetail :ref="(el: any) => { if (el) threadDetailRefs.set(thread.id, el); else threadDetailRefs.delete(thread.id); }" :threadId="thread.id" :showHeader="false" :isAdmin="isAdmin" @presentItem="handleThreadPresentItem" @editItem="(type: string, entity: any) => handleThreadEditItem(thread.id, type, entity)" />
                   </div>
                 </div>
 
@@ -816,7 +820,7 @@ watch([threadsSearch], () => {
 
     <!-- Floating Action Button for mobile -->
     <!-- Blue FAB for notes tab -->
-    <button v-if="isMobile && currentTab === 'notes'" @click="mobileNoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Note">
+    <button v-if="isAdmin && isMobile && currentTab === 'notes'" @click="mobileNoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Note">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 5v14" />
         <path d="M5 12h14" />
@@ -824,7 +828,7 @@ watch([threadsSearch], () => {
     </button>
 
     <!-- Blue FAB for quotes tab -->
-    <button v-if="isMobile && currentTab === 'quotes'" @click="mobileQuoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Quote">
+    <button v-if="isAdmin && isMobile && currentTab === 'quotes'" @click="mobileQuoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Quote">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 5v14" />
         <path d="M5 12h14" />
@@ -832,7 +836,7 @@ watch([threadsSearch], () => {
     </button>
 
     <!-- Rose FAB for thoughts tab -->
-    <button v-if="isMobile && currentTab === 'thoughts'" @click="mobileThoughtOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-rose active:bg-rose-bright rounded-full shadow-lg shadow-rose/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Thought">
+    <button v-if="isAdmin && isMobile && currentTab === 'thoughts'" @click="mobileThoughtOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-rose active:bg-rose-bright rounded-full shadow-lg shadow-rose/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Thought">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 5v14" />
         <path d="M5 12h14" />
