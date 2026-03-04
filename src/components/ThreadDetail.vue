@@ -27,6 +27,7 @@ import ConfirmModal from './ConfirmModal.vue';
 const props = defineProps<{
   threadId: string;
   showHeader?: boolean;
+  isAdmin?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -455,7 +456,7 @@ defineExpose({ loadThread });
         <div v-if="editingName" class="max-w-md mx-auto">
           <input v-model="editName" class="thread-name-input w-full text-sm sm:text-base font-semibold bg-transparent border-b border-mono-700 px-0 py-1 text-white text-center focus:outline-none placeholder-mono-600 tracking-tight" placeholder="Thread name..." @keydown.enter="saveName" @keydown.escape="editingName = false" @blur="saveName" />
         </div>
-        <h2 v-else @click="startEditName" class="text-sm sm:text-base font-semibold text-white cursor-pointer hover:text-purple-300 transition-colors tracking-tight underline underline-offset-4 decoration-purple-500/40" title="Click to edit">
+        <h2 v-else @click="props.isAdmin && startEditName()" class="text-sm sm:text-base font-semibold text-white tracking-tight" :class="props.isAdmin ? 'cursor-pointer hover:text-purple-300 transition-colors underline underline-offset-4 decoration-purple-500/40' : ''" :title="props.isAdmin ? 'Click to edit' : undefined">
           {{ thread.name.toLowerCase() }}
         </h2>
       </div>
@@ -465,7 +466,7 @@ defineExpose({ loadThread });
         <div v-if="editingDesc" class="max-w-sm mx-auto mt-1">
           <input v-model="editDesc" class="thread-desc-input w-full bg-transparent border-b border-mono-700 text-mono-300 text-sm text-center focus:outline-none focus:border-purple-500 placeholder-mono-600 py-1" placeholder="Add a description..." @keydown.enter="saveDesc" @keydown.escape="editingDesc = false" @blur="saveDesc" />
         </div>
-        <p v-else-if="thread.description" @click="startEditDesc" class="mt-1 text-sm text-mono-400 cursor-pointer hover:text-mono-200 transition-colors text-center" title="Click to edit">
+        <p v-else-if="thread.description" @click="props.isAdmin && startEditDesc()" class="mt-1 text-sm text-mono-400 text-center" :class="props.isAdmin ? 'cursor-pointer hover:text-mono-200 transition-colors' : ''" :title="props.isAdmin ? 'Click to edit' : undefined">
           {{ thread.description }}
         </p>
 
@@ -489,7 +490,7 @@ defineExpose({ loadThread });
               <!-- Item with controls -->
               <div class="relative group/item">
                 <!-- Drag handle + Present + Remove -->
-                <div class="absolute -top-2 -right-2 z-20 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity">
+                <div v-if="props.isAdmin" class="absolute -top-2 -right-2 z-20 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity">
                   <div class="p-1.5 bg-mono-800 border border-mono-700 rounded-lg cursor-grab active:cursor-grabbing text-mono-500 hover:text-mono-300 shadow-lg touch-none" title="Drag to reorder" @touchstart="onHandleTouchStart(index, $event)" @touchmove="onHandleTouchMove" @touchend="onHandleTouchEnd" @touchcancel="onHandleTouchCancel">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                       <circle cx="9" cy="6" r="1.5" />
