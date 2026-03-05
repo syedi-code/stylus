@@ -18,8 +18,12 @@ export function useAuth() {
 	async function init() {
 		try {
 			const baseURL = import.meta.env.VITE_API_URL || '/api';
+			const apiKey = import.meta.env.VITE_API_KEY;
 			const response = await axios.get<{ user: AuthUser }>(`${baseURL}/me`, {
-				headers: { 'X-Requested-With': 'XMLHttpRequest' },
+				headers: {
+					'X-Requested-With': 'XMLHttpRequest',
+					...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+				},
 			});
 			user.value = response.data.user;
 		} catch {
@@ -29,5 +33,16 @@ export function useAuth() {
 		}
 	}
 
-	return { user, isAdmin, loading, init };
+	function logout() {
+		user.value = null;
+		const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+		if (isLocalDev) {
+			window.location.reload();
+		} else {
+			const teamDomain = window.location.origin;
+			window.location.href = `${teamDomain}/cdn-cgi/access/logout`;
+		}
+	}
+
+	return { user, isAdmin, loading, init, logout };
 }
