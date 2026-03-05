@@ -20,16 +20,10 @@ export function useAuth() {
 			const baseURL = import.meta.env.VITE_API_URL || '/api';
 			const response = await axios.get<{ user: AuthUser }>(`${baseURL}/me`, {
 				headers: { 'X-Requested-With': 'XMLHttpRequest' },
-				withCredentials: true,
 			});
 			user.value = response.data.user;
 		} catch {
-			// Redirect to worker domain to trigger CF Access login
-			const baseURL = import.meta.env.VITE_API_URL || '/api';
-			const workerOrigin = baseURL.replace(/\/api$/, '');
-			const loginUrl = `${workerOrigin}/auth/login?redirect=${encodeURIComponent(window.location.href)}`;
-			window.location.href = loginUrl;
-			return;
+			user.value = null;
 		} finally {
 			loading.value = false;
 		}
