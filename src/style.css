@@ -163,6 +163,25 @@ body {
 	display: none;
 }
 
+/* Typography — shared fine-typesetting classes */
+.typography-prose {
+	text-wrap: pretty;
+	font-kerning: normal;
+	font-variant-ligatures: common-ligatures;
+	font-variant-numeric: oldstyle-nums;
+	-webkit-font-smoothing: antialiased;
+}
+
+.typography-quote {
+	hyphens: auto;
+	hanging-punctuation: first last;
+	text-wrap: pretty;
+	font-kerning: normal;
+	font-variant-ligatures: common-ligatures;
+	font-variant-numeric: oldstyle-nums;
+	-webkit-font-smoothing: antialiased;
+}
+
 /* Search Highlight */
 .search-highlight {
 	background: linear-gradient(

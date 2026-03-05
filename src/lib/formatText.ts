@@ -23,16 +23,16 @@ export const smartPunctuation = (text: string): string => {
 	result = result.replace(/\.\.\./g, '\u2026');
 
 	// Double quotes: "..." → \u201C...\u201D
-	// Opening: after start-of-string, whitespace, or punctuation
-	result = result.replace(/(^|[\s(\[{\u2014\u2013])"(\S)/g, '$1\u201C$2');
+	// Opening: after start-of-string, whitespace, or opening punctuation
+	result = result.replace(/(^|[\s(\[{\u2014\u2013])"/gm, '$1\u201C');
 	// Closing: everything else
 	result = result.replace(/"/g, '\u201D');
 
 	// Single quotes / apostrophes:
 	// Apostrophe in contractions (don't, it's, etc.) — must come first
 	result = result.replace(/([a-zA-Z])'([a-zA-Z])/g, '$1\u2019$2');
-	// Opening single quote: after start-of-string, whitespace, or punctuation
-	result = result.replace(/(^|[\s(\[{\u2014\u2013])'(\S)/g, '$1\u2018$2');
+	// Opening single quote: after start-of-string, whitespace, or opening punctuation
+	result = result.replace(/(^|[\s(\[{\u2014\u2013])'/gm, '$1\u2018');
 	// Closing single quote: everything else
 	result = result.replace(/'/g, '\u2019');
 

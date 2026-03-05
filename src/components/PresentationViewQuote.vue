@@ -4,6 +4,7 @@ import type { Quote, Book } from '../lib/api';
 import { fetchBookById, getSignedFileUrl } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../composables/usePresentationFontSize';
+import { useTypography } from '../composables/useTypography';
 import PresentationFontControls from './PresentationFontControls.vue';
 
 const props = withDefaults(defineProps<{
@@ -19,15 +20,8 @@ const showFontControls = ref(false);
 
 const VERTICAL_MARGIN = 12;
 
-const baseFontSize = computed(() => {
-    const len = props.quote?.quote?.length ?? 0;
-    if (len < 80) return 22;
-    if (len < 200) return 20;
-    if (len < 400) return 18;
-    if (len < 700) return 16;
-    if (len < 1200) return 14;
-    return 12;
-});
+const contentLength = computed(() => props.quote?.quote?.length ?? 0);
+const { baseFontSize, lineHeightClass, typographyClass } = useTypography('quote', 'presentation', contentLength);
 
 const { finalFontSize, setFontSize, reset } = usePresentationFontSize('quote', baseFontSize);
 
@@ -104,7 +98,7 @@ watch(() => props.isOpen, (isOpen) => {
 
                     <!-- Quote content -->
                     <div>
-                        <blockquote lang="en" class="blockquote-typography text-mono-100 border-l-4 border-accent pl-6 py-2 leading-[1.45] text-left sm:text-justify" :style="{ fontSize: finalFontSize + 'px' }" v-html="formatMarkdown(quote.quote || '')"></blockquote>
+                        <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-accent pl-6 py-2 text-left']" :style="{ fontSize: finalFontSize + 'px' }" v-html="formatMarkdown(quote.quote || '')"></blockquote>
                     </div>
 
                     <!-- Attribution -->
@@ -149,13 +143,4 @@ watch(() => props.isOpen, (isOpen) => {
     opacity: 0;
 }
 
-.blockquote-typography {
-    hyphens: auto;
-    hanging-punctuation: first last;
-    text-wrap: pretty;
-    font-kerning: normal;
-    font-variant-ligatures: common-ligatures;
-    font-variant-numeric: oldstyle-nums;
-    -webkit-font-smoothing: antialiased;
-}
 </style>

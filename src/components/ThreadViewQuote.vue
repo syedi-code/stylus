@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, type Quote, type Book, type Author } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
+import { useTypography } from '../composables/useTypography';
 
 const props = defineProps<{
   quote: Quote;
@@ -79,20 +80,14 @@ watch(() => props.quote.book_id, () => {
 
 const formattedQuote = computed(() => formatMarkdown(props.quote.quote || ''));
 
-const quoteFontSize = computed(() => {
-  const len = props.quote.quote?.length ?? 0;
-  if (len < 80) return 'text-xl sm:text-2xl';
-  if (len < 200) return 'text-lg sm:text-xl';
-  if (len < 400) return 'text-base sm:text-lg';
-  if (len < 700) return 'text-sm sm:text-base';
-  return 'text-sm';
-});
+const contentLength = computed(() => props.quote.quote?.length ?? 0);
+const { baseFontSize, lineHeightClass, typographyClass } = useTypography('quote', 'thread', contentLength);
 </script>
 
 <template>
   <div class="flex flex-col gap-1.5 p-3 sm:p-4 border border-accent/20 bg-mono-900 rounded-lg">
     <!-- Content -->
-    <blockquote :class="[quoteFontSize, 'text-mono-100 border-l-4 border-accent pl-4 sm:pr-2 py-2 leading-relaxed']" v-html="formattedQuote"></blockquote>
+    <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-accent pl-4 sm:pr-2 py-2']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedQuote"></blockquote>
 
     <!-- Book attribution -->
     <div v-if="book" class="text-mono-400 text-xs space-y-0.5">
