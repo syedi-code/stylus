@@ -3,16 +3,12 @@ name = "antisocial-media"
 pages_build_output_dir = "dist"
 compatibility_date = "2025-08-24"
 
-# Environment variables for the frontend are set in Cloudflare Pages dashboard
-# or via: wrangler pages secret put VITE_API_URL --project=antisocial-media
-
-# =============================================================================
-# Staging Environment
-# =============================================================================
-# Deploy with: wrangler pages deploy dist --project-name=antisocial-media-staging
+# Environment variables:
+#   WORKER_URL - Backend worker URL for the Pages Function proxy
+#     Production: https://api.ibrahimsyed.io  (or antisocial-worker.iysyed01.workers.dev)
+#     Staging:    https://antisocial-worker-staging.iysyed01.workers.dev
 #
-# Create the Pages project first:
-#   wrangler pages project create antisocial-media-staging
-
-[env.staging]
-name = "antisocial-media-staging"
+# Set via: wrangler pages secret put WORKER_URL --project=antisocial-media
+#
+# For local dev, set VITE_API_URL in .env to bypass the proxy:
+#   VITE_API_URL=http://localhost:8787/api
