@@ -170,11 +170,14 @@ export interface ThreadItem {
 // API Client
 // ============================================================================
 
+const apiKey = import.meta.env.VITE_API_KEY;
+
 const apiClient = axios.create({
 	baseURL: import.meta.env.VITE_API_URL || '/api',
 	headers: {
 		'Content-Type': 'application/json',
 		'X-Requested-With': 'XMLHttpRequest',
+		...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
 	},
 	withCredentials: true,
 });
