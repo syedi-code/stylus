@@ -184,7 +184,6 @@ apiClient.interceptors.response.use(
 	(error) => {
 		if (error.response?.status === 401) {
 			// Only reload if user was previously authenticated (session expired)
-			// Initial login redirect is handled by auth.ts init()
 			const { user } = useAuth();
 			if (user.value) {
 				user.value = null;
