@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuth } from './auth';
 
 // ============================================================================
 // Shared Types
@@ -182,8 +183,13 @@ apiClient.interceptors.response.use(
 	(response) => response,
 	(error) => {
 		if (error.response?.status === 401) {
-			alert('Your session has expired. The page will reload.');
-			window.location.reload();
+			// Only reload if user was previously authenticated (session expired)
+			// Initial login redirect is handled by auth.ts init()
+			const { user } = useAuth();
+			if (user.value) {
+				user.value = null;
+				window.location.reload();
+			}
 		}
 		return Promise.reject(error);
 	}
