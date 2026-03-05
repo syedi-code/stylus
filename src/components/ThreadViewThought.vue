@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { Thought } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
+import { useTypography } from '../composables/useTypography';
 
 const props = defineProps<{
   thought: Thought;
@@ -15,6 +16,9 @@ const moodEmoji = computed(() => {
 });
 
 const formattedContent = computed(() => formatMarkdown(props.thought.content));
+
+const contentLength = computed(() => props.thought.content?.length ?? 0);
+const { baseFontSize, lineHeightClass, typographyClass } = useTypography('thought', 'thread', contentLength);
 </script>
 
 <template>
@@ -27,7 +31,7 @@ const formattedContent = computed(() => formatMarkdown(props.thought.content));
     </div>
 
     <!-- Content -->
-    <p class="text-mono-100 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word" v-html="formattedContent"></p>
+    <p :class="[typographyClass, lineHeightClass, 'text-mono-100 whitespace-pre-wrap wrap-break-word']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedContent"></p>
 
     <!-- Mood Display -->
     <div v-if="moodEmoji || (thought.mood_tags && thought.mood_tags.length > 0)" class="flex items-center gap-2 flex-wrap">
