@@ -24,7 +24,12 @@ export function useAuth() {
 			});
 			user.value = response.data.user;
 		} catch {
-			user.value = null;
+			// Redirect to worker domain to trigger CF Access login
+			const baseURL = import.meta.env.VITE_API_URL || '/api';
+			const workerOrigin = baseURL.replace(/\/api$/, '');
+			const loginUrl = `${workerOrigin}/auth/login?redirect=${encodeURIComponent(window.location.href)}`;
+			window.location.href = loginUrl;
+			return;
 		} finally {
 			loading.value = false;
 		}
