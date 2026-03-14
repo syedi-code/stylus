@@ -30,7 +30,7 @@ import EditThoughtModal from './components/EditThoughtModal.vue';
 import ConfirmModal from './components/ConfirmModal.vue';
 import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
 
-const { isAdmin, user: authUser, init: initAuth } = useAuth();
+const { isAdmin, user: authUser, init: initAuth, logout } = useAuth();
 
 const notesPagination = usePagination<Note, { search?: string }>({
   fetchFn: (params) => fetchNotes({ ...params }),
@@ -562,7 +562,7 @@ watch([threadsSearch], () => {
 <template>
   <div class="min-h-screen bg-mono-950 text-mono-100 selection:bg-accent selection:text-white">
 
-    <AppHeader v-model:currentTab="currentTab" :userEmail="authUser?.email ?? null" />
+    <AppHeader v-model:currentTab="currentTab" :userEmail="authUser?.email ?? null" @logout="logout" />
 
     <main class="w-full">
       <div class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20">
