@@ -186,11 +186,11 @@ apiClient.interceptors.response.use(
 	(response) => response,
 	(error) => {
 		if (error.response?.status === 401) {
-			// Only reload if user was previously authenticated (session expired)
 			const { user } = useAuth();
 			if (user.value) {
 				user.value = null;
-				window.location.reload();
+				// Don't reload — let the UI react to the null user state
+				// Reloading causes an infinite loop if the auth cookie isn't forwarded
 			}
 		}
 		return Promise.reject(error);
