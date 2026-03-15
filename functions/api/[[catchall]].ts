@@ -22,7 +22,18 @@ export const onRequest: PagesFunction<ProxyEnv> = async (context) => {
 
 	// Forward request headers, adding the CF Access JWT for the worker's auth middleware
 	const headers = new Headers(context.request.headers);
-	const cfAccessJwt = context.request.headers.get('Cf-Access-Jwt-Assertion');
+
+	// The CF Access JWT may arrive as a header (initial page load) or as a cookie
+	// (subsequent XHR requests). Check both sources.
+	let cfAccessJwt = context.request.headers.get('Cf-Access-Jwt-Assertion');
+	if (!cfAccessJwt) {
+		// Extract from CF_Authorization cookie (set by CF Access on the Pages domain)
+		const cookies = context.request.headers.get('cookie') || '';
+		const match = cookies.match(/CF_Authorization=([^;]+)/);
+		if (match) {
+			cfAccessJwt = match[1];
+		}
+	}
 	if (cfAccessJwt) {
 		headers.set('cf-access-jwt-assertion', cfAccessJwt);
 	}
