@@ -1,5 +1,4 @@
 import { ref, computed } from 'vue';
-import axios from 'axios';
 
 interface AuthUser {
 	id: string;
@@ -17,14 +16,9 @@ export function useAuth() {
 
 	async function init() {
 		try {
-			const baseURL = import.meta.env.VITE_API_URL || '/api';
-			const apiKey = import.meta.env.VITE_API_KEY;
-			const response = await axios.get<{ user: AuthUser }>(`${baseURL}/me`, {
-				headers: {
-					'X-Requested-With': 'XMLHttpRequest',
-					...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-				},
-			});
+			// Import apiClient lazily to avoid circular dependency (api.ts imports useAuth)
+			const { apiClient } = await import('./api');
+			const response = await apiClient.get<{ user: AuthUser }>('/me');
 			user.value = response.data.user;
 		} catch {
 			user.value = null;
@@ -35,7 +29,9 @@ export function useAuth() {
 
 	function logout() {
 		user.value = null;
-		const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+		const isLocalDev =
+			window.location.hostname === 'localhost' ||
+			window.location.hostname === '127.0.0.1';
 		if (isLocalDev) {
 			window.location.reload();
 		} else {

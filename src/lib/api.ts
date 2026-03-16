@@ -172,7 +172,7 @@ export interface ThreadItem {
 
 const apiKey = import.meta.env.VITE_API_KEY;
 
-const apiClient = axios.create({
+export const apiClient = axios.create({
 	baseURL: import.meta.env.VITE_API_URL || '/api',
 	headers: {
 		'Content-Type': 'application/json',
@@ -186,11 +186,12 @@ apiClient.interceptors.response.use(
 	(response) => response,
 	(error) => {
 		if (error.response?.status === 401) {
-			const { user } = useAuth();
+			const { user, logout } = useAuth();
 			if (user.value) {
-				user.value = null;
-				// Don't reload — let the UI react to the null user state
-				// Reloading causes an infinite loop if the auth cookie isn't forwarded
+				// Session expired — redirect to CF Access to re-authenticate.
+				// Do NOT silently clear user state; that creates a broken UI where
+				// data is visible but controls (logout, capture forms) disappear.
+				logout();
 			}
 		}
 		return Promise.reject(error);
