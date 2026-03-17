@@ -13,6 +13,7 @@ compatibility_date = "2025-08-24"
 #
 # Create the Pages project first:
 #   wrangler pages project create antisocial-media-staging
-
-[env.staging]
-name = "antisocial-media-staging"
+#
+# Note: Pages only supports "preview" and "production" named environments.
+# For staging, use a separate Pages project (antisocial-media-staging) instead
+# of an [env.staging] block.
