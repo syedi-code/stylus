@@ -14,6 +14,7 @@ const MAX_AUTH_FAILURES = 2;
 const user = ref<AuthUser | null>(null);
 const loading = ref(true);
 const authError = ref<string | null>(null);
+const initializing = ref(true);
 
 export function useAuth() {
 	const isAdmin = computed(() => user.value?.role === 'admin');
@@ -69,6 +70,7 @@ export function useAuth() {
 			sessionStorage.setItem(AUTH_FAILURE_KEY, String(failureCount + 1));
 		} finally {
 			loading.value = false;
+			initializing.value = false;
 		}
 	}
 
@@ -87,7 +89,15 @@ export function useAuth() {
 		}
 	}
 
-	return { user, isAdmin, loading, authError, init, logout };
+	return { user, isAdmin, loading, initializing, authError, init, logout };
+}
+
+/**
+ * Returns true while the initial auth handshake (POST /session) is in progress.
+ * The API interceptor uses this to avoid redirecting on transient 401s during startup.
+ */
+export function isAuthInitializing(): boolean {
+	return initializing.value;
 }
 
 /**

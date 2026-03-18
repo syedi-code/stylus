@@ -185,7 +185,18 @@ apiClient.interceptors.response.use(
 		if (error.response?.status === 401) {
 			const code = error.response?.data?.code;
 			if (code === 'SESSION_EXPIRED' || code === 'SESSION_MISSING') {
-				const { setSessionExpired } = await import('./auth');
+				const { setSessionExpired, isAuthInitializing } =
+					await import('./auth');
+
+				// Don't redirect during initial auth handshake — the session
+				// cookie may not be set yet (race on first page load).
+				if (isAuthInitializing()) {
+					console.warn(
+						`[API] Suppressed 401 redirect during auth init (${code})`
+					);
+					return Promise.reject(error);
+				}
+
 				setSessionExpired(
 					'Your session has expired. Please log in again.'
 				);
