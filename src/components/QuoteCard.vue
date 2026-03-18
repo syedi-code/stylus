@@ -8,6 +8,7 @@ import AuthorPopover from './AuthorPopover.vue';
 const props = defineProps<{
   quote: Quote;
   searchQuery?: string;
+  isAdmin?: boolean;
 }>();
 
 const emit = defineEmits<{

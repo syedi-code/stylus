@@ -5,6 +5,7 @@ import { formatMarkdown } from '../lib/formatText';
 
 const props = defineProps<{
 	thought: Thought;
+	isAdmin?: boolean;
 }>();
 
 const emit = defineEmits(['delete', 'edit', 'present', 'addToThread']);

@@ -3,10 +3,12 @@ import { ref } from 'vue';
 
 defineProps<{
   currentTab: string;
+  userEmail?: string | null;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:currentTab', value: string): void;
+  (e: 'logout'): void;
 }>();
 
 const menuOpen = ref(false);
@@ -41,6 +43,10 @@ function selectTab(tab: string) {
       antisocial media
     </h1>
     <div class="h-0.5 w-8 bg-accent mx-auto mt-3 mb-1"></div>
+    <div v-if="userEmail" class="flex items-center justify-center gap-2 mt-6">
+      <p class="text-xs text-mono-600">{{ userEmail }}</p>
+      <button @click="$emit('logout')" class="text-xs text-mono-600 hover:text-mono-400 transition-colors cursor-pointer">log out</button>
+    </div>
 
     <!-- Desktop tabs -->
     <div class="hidden sm:flex justify-center gap-1.5 mt-4 text-xs font-medium tracking-wide uppercase px-4">

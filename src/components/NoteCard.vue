@@ -8,6 +8,7 @@ import SkeletonBlock from './SkeletonBlock.vue';
 const props = defineProps<{
   note: Note;
   searchQuery?: string;
+  isAdmin?: boolean;
 }>();
 
 const emit = defineEmits<{
