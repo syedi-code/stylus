@@ -57,6 +57,20 @@ export const onRequest: PagesFunction<ProxyEnv> = async (context) => {
 	responseHeaders.delete('access-control-allow-headers');
 	responseHeaders.delete('access-control-allow-credentials');
 
+	// Explicitly re-set Set-Cookie headers to avoid header flattening.
+	// new Headers() can merge multiple Set-Cookie into one combined value,
+	// which iOS WebKit rejects — causing cookies to silently not be set on mobile.
+	const setCookies = response.headers.getSetCookie();
+	if (setCookies.length > 0) {
+		responseHeaders.delete('set-cookie');
+		for (const cookie of setCookies) {
+			responseHeaders.append('set-cookie', cookie);
+		}
+		console.log(
+			`[proxy] Forwarding ${setCookies.length} Set-Cookie header(s) for ${context.request.method} ${new URL(context.request.url).pathname}`
+		);
+	}
+
 	return new Response(response.body, {
 		status: response.status,
 		statusText: response.statusText,
