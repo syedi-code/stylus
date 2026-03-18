@@ -5,7 +5,7 @@ interface AuthUser {
 	email: string;
 	name: string | null;
 	idp_type: string | null;
-	role: 'admin' | 'viewer';
+	role: 'admin' | 'member';
 }
 
 const AUTH_FAILURE_KEY = 'auth_failure_count';
