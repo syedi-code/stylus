@@ -178,18 +178,30 @@ export const apiClient = axios.create({
 	withCredentials: true,
 });
 
-// Log 401 errors with structured details to aid debugging.
-// Does NOT auto-redirect or auto-logout (that caused infinite loops).
+// 401 interceptor: detect session expiry and redirect to login
 apiClient.interceptors.response.use(
 	(response) => response,
-	(error) => {
+	async (error) => {
 		if (error.response?.status === 401) {
+			const code = error.response?.data?.code;
+			if (code === 'SESSION_EXPIRED' || code === 'SESSION_MISSING') {
+				const { setSessionExpired } = await import('./auth');
+				setSessionExpired(
+					'Your session has expired. Please log in again.'
+				);
+				return Promise.reject(error);
+			}
+
+			// Non-session 401 — log for debugging
 			const { url, method } = error.config ?? {};
-			const { code, hint } = error.response?.data ?? {};
-			console.error(`[API] 401 Unauthorized — ${method?.toUpperCase()} ${url}`, {
-				code: code ?? 'UNKNOWN',
-				hint: hint ?? 'Check auth state',
-			});
+			const { hint } = error.response?.data ?? {};
+			console.error(
+				`[API] 401 Unauthorized — ${method?.toUpperCase()} ${url}`,
+				{
+					code: code ?? 'UNKNOWN',
+					hint: hint ?? 'Check auth state',
+				}
+			);
 		}
 		return Promise.reject(error);
 	}
