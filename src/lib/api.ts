@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { useAuth } from './auth';
 
 // ============================================================================
 // Shared Types
@@ -170,29 +169,27 @@ export interface ThreadItem {
 // API Client
 // ============================================================================
 
-const apiKey = import.meta.env.VITE_API_KEY;
-
 export const apiClient = axios.create({
 	baseURL: import.meta.env.VITE_API_URL || '/api',
 	headers: {
 		'Content-Type': 'application/json',
 		'X-Requested-With': 'XMLHttpRequest',
-		...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
 	},
 	withCredentials: true,
 });
 
+// Log 401 errors with structured details to aid debugging.
+// Does NOT auto-redirect or auto-logout (that caused infinite loops).
 apiClient.interceptors.response.use(
 	(response) => response,
 	(error) => {
 		if (error.response?.status === 401) {
-			const { user, logout } = useAuth();
-			if (user.value) {
-				// Session expired — redirect to CF Access to re-authenticate.
-				// Do NOT silently clear user state; that creates a broken UI where
-				// data is visible but controls (logout, capture forms) disappear.
-				logout();
-			}
+			const { url, method } = error.config ?? {};
+			const { code, hint } = error.response?.data ?? {};
+			console.error(`[API] 401 Unauthorized — ${method?.toUpperCase()} ${url}`, {
+				code: code ?? 'UNKNOWN',
+				hint: hint ?? 'Check auth state',
+			});
 		}
 		return Promise.reject(error);
 	}
