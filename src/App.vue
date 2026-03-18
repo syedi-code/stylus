@@ -49,10 +49,14 @@ const checkMobile = () => {
   isMobile.value = window.innerWidth < 640;
 };
 
-onMounted(() => {
-  initAuth();
+onMounted(async () => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
+
+  // Resolve auth BEFORE loading data — the first /api/me call warms the
+  // Worker's JWKS cache so subsequent data requests don't get 401s.
+  await initAuth();
+
   // Load initial data based on default tab
   if (currentTab.value === 'notes') loadNotes();
   if (currentTab.value === 'quotes') loadQuotes();
