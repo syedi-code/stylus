@@ -2,6 +2,10 @@
 import { ref, computed, onMounted } from 'vue';
 import { fetchAuthors, fetchBooks, deleteAuthor, getSignedFileUrl, type Author, type Book } from '../lib/api';
 
+defineProps<{
+  isAdmin?: boolean;
+}>();
+
 const emit = defineEmits<{
   (e: 'edit', author: Author): void;
   (e: 'editBook', book: Book): void;
@@ -95,7 +99,7 @@ defineExpose({ loadAuthors });
     <!-- Header -->
     <div class="flex items-center justify-center gap-4 mb-6">
       <h2 class="text-lg font-semibold tracking-tight text-white">library</h2>
-      <div class="flex items-center gap-2">
+      <div v-if="isAdmin" class="flex items-center gap-2">
         <button @click="emit('addBook')" class="px-3 py-1.5 text-xs font-semibold tracking-tight text-accent border border-accent/30 hover:bg-accent/10 rounded-lg transition-colors cursor-pointer">
           + book
         </button>
@@ -133,7 +137,7 @@ defineExpose({ loadAuthors });
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
       <p class="text-sm uppercase tracking-wide mb-4">{{ search ? 'No authors match your search.' : 'No authors yet.' }}</p>
-      <button v-if="!search" @click="emit('add')" class="px-4 py-2 bg-accent hover:bg-accent-bright text-white text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer">
+      <button v-if="!search && isAdmin" @click="emit('add')" class="px-4 py-2 bg-accent hover:bg-accent-bright text-white text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer">
         Add your first author
       </button>
     </div>
@@ -151,8 +155,8 @@ defineExpose({ loadAuthors });
             <p v-if="author.bio" class="text-sm text-mono-400 truncate">{{ author.bio }}</p>
           </div>
 
-          <!-- Actions -->
-          <div class="flex items-center gap-2 shrink-0">
+          <!-- Actions (admin only) -->
+          <div v-if="isAdmin" class="flex items-center gap-2 shrink-0">
             <button @click="emit('edit', author)" class="p-1.5 bg-mono-800 hover:bg-mono-700 text-mono-400 hover:text-white rounded transition-colors cursor-pointer" title="Edit">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
@@ -188,7 +192,7 @@ defineExpose({ loadAuthors });
                   <line x1="10" x2="21" y1="14" y2="3" />
                 </svg>
               </button>
-              <button @click="emit('editBook', book)" class="p-1.5 hover:bg-mono-700 text-mono-500 hover:text-white rounded transition-colors cursor-pointer" title="Edit book">
+              <button v-if="isAdmin" @click="emit('editBook', book)" class="p-1.5 hover:bg-mono-700 text-mono-500 hover:text-white rounded transition-colors cursor-pointer" title="Edit book">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                   <path d="m15 5 4 4" />

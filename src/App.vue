@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { fetchNotes, fetchBooks, updateNote, deleteNote, fetchQuotes, updateQuote, deleteQuote, createThought, type Note, type Quote, type Book, type Thought } from './lib/api';
+import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';
 import NoteCard from './components/NoteCard.vue';
 import NoteCardSkeleton from './components/NoteCardSkeleton.vue';
@@ -29,6 +30,8 @@ import EditThoughtModal from './components/EditThoughtModal.vue';
 import ConfirmModal from './components/ConfirmModal.vue';
 import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
 
+const { isAdmin, user: authUser, init: initAuth, logout } = useAuth();
+
 const notesPagination = usePagination<Note, { search?: string }>({
   fetchFn: (params) => fetchNotes({ ...params }),
   pageSize: 30,
@@ -46,9 +49,14 @@ const checkMobile = () => {
   isMobile.value = window.innerWidth < 640;
 };
 
-onMounted(() => {
+onMounted(async () => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
+
+  // Resolve auth BEFORE loading data — the first /api/me call warms the
+  // Worker's JWKS cache so subsequent data requests don't get 401s.
+  await initAuth();
+
   // Load initial data based on default tab
   if (currentTab.value === 'notes') loadNotes();
   if (currentTab.value === 'quotes') loadQuotes();
@@ -558,7 +566,7 @@ watch([threadsSearch], () => {
 <template>
   <div class="min-h-screen bg-mono-950 text-mono-100 selection:bg-accent selection:text-white">
 
-    <AppHeader v-model:currentTab="currentTab" />
+    <AppHeader v-model:currentTab="currentTab" :userEmail="authUser?.email ?? null" @logout="logout" />
 
     <main class="w-full">
       <div class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20">
@@ -597,7 +605,7 @@ watch([threadsSearch], () => {
 
               <!-- List -->
               <div v-else class="space-y-3">
-                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @togglePosted="handleToggleNotePosted" @convertToThought="handleConvertToThought" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" />
+                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" :isAdmin="isAdmin" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @togglePosted="handleToggleNotePosted" @convertToThought="handleConvertToThought" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" />
 
                 <!-- Scroll sentinel for infinite scroll -->
                 <div ref="notesScrollSentinel" class="h-1"></div>
@@ -649,7 +657,7 @@ watch([threadsSearch], () => {
 
               <!-- Quotes List -->
               <div v-else class="space-y-4">
-                <QuoteCard v-for="quote in filteredQuotes" :key="quote.id" :quote="quote" :searchQuery="quotesSearch" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @togglePosted="handleToggleQuotePosted" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
+                <QuoteCard v-for="quote in filteredQuotes" :key="quote.id" :quote="quote" :searchQuery="quotesSearch" :isAdmin="isAdmin" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @togglePosted="handleToggleQuotePosted" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
               </div>
             </div>
           </div>
@@ -657,7 +665,7 @@ watch([threadsSearch], () => {
 
         <!-- Library Tab -->
         <transition name="fade" mode="out-in">
-          <AuthorManager v-if="currentTab === 'library'" ref="authorManagerRef" @edit="handleEditAuthor" @editBook="handleEditBook" @add="handleAddAuthor" @addBook="handleAddBook" />
+          <AuthorManager v-if="currentTab === 'library'" ref="authorManagerRef" :isAdmin="isAdmin" @edit="handleEditAuthor" @editBook="handleEditBook" @add="handleAddAuthor" @addBook="handleAddBook" />
         </transition>
 
         <!-- Thoughts Tab -->
@@ -672,7 +680,7 @@ watch([threadsSearch], () => {
             <div class="hidden sm:block border-t border-rose/20"></div>
 
             <!-- Thoughts List -->
-            <ThoughtsList ref="thoughtsListRef" @addToThread="handleAddThoughtToThread" />
+            <ThoughtsList ref="thoughtsListRef" :isAdmin="isAdmin" @addToThread="handleAddThoughtToThread" />
           </div>
         </transition>
 
@@ -716,7 +724,7 @@ watch([threadsSearch], () => {
 
                 <!-- Header Row -->
                 <div class="flex items-center px-4 py-4 cursor-pointer" @click="toggleThread(thread.id)">
-                  <!-- Left zone: delete button (appears on hover) -->
+                  <!-- Left zone: delete button (appears on hover, admin only) -->
                   <div class="w-7 shrink-0">
                     <button @click.stop="handleDeleteThread(thread)" class="p-1 rounded-md text-mono-700 hover:text-red-500 cursor-pointer transition-colors" title="Delete Thread">
                       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -744,7 +752,7 @@ watch([threadsSearch], () => {
                 <!-- Expandable content -->
                 <div v-if="expandedThreads.has(thread.id)">
                   <div class="pt-3 pb-8">
-                    <ThreadDetail :ref="(el: any) => { if (el) threadDetailRefs.set(thread.id, el); else threadDetailRefs.delete(thread.id); }" :threadId="thread.id" :showHeader="false" @presentItem="handleThreadPresentItem" @editItem="(type: string, entity: any) => handleThreadEditItem(thread.id, type, entity)" />
+                    <ThreadDetail :ref="(el: any) => { if (el) threadDetailRefs.set(thread.id, el); else threadDetailRefs.delete(thread.id); }" :threadId="thread.id" :showHeader="false" :isAdmin="isAdmin" @presentItem="handleThreadPresentItem" @editItem="(type: string, entity: any) => handleThreadEditItem(thread.id, type, entity)" />
                   </div>
                 </div>
 

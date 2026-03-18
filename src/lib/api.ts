@@ -169,20 +169,43 @@ export interface ThreadItem {
 // API Client
 // ============================================================================
 
-const apiClient = axios.create({
+export const apiClient = axios.create({
 	baseURL: import.meta.env.VITE_API_URL || '/api',
 	headers: {
 		'Content-Type': 'application/json',
+		'X-Requested-With': 'XMLHttpRequest',
 	},
+	withCredentials: true,
 });
 
-apiClient.interceptors.request.use((config) => {
-	const apiKey = import.meta.env.VITE_API_KEY;
-	if (apiKey) {
-		config.headers.Authorization = `Bearer ${apiKey}`;
+// 401 interceptor: detect session expiry and redirect to login
+apiClient.interceptors.response.use(
+	(response) => response,
+	async (error) => {
+		if (error.response?.status === 401) {
+			const code = error.response?.data?.code;
+			if (code === 'SESSION_EXPIRED' || code === 'SESSION_MISSING') {
+				const { setSessionExpired } = await import('./auth');
+				setSessionExpired(
+					'Your session has expired. Please log in again.'
+				);
+				return Promise.reject(error);
+			}
+
+			// Non-session 401 — log for debugging
+			const { url, method } = error.config ?? {};
+			const { hint } = error.response?.data ?? {};
+			console.error(
+				`[API] 401 Unauthorized — ${method?.toUpperCase()} ${url}`,
+				{
+					code: code ?? 'UNKNOWN',
+					hint: hint ?? 'Check auth state',
+				}
+			);
+		}
+		return Promise.reject(error);
 	}
-	return config;
-});
+);
 
 // ============================================================================
 // Normalization Helpers
