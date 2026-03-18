@@ -157,7 +157,7 @@ const { lineHeightClass, typographyClass } = useTypography('quote', 'card', cont
               <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
             </svg>
           </button>
-          <button v-if="props.isAdmin" @click.stop="emit('edit', quote)" class="p-1.5 bg-accent active:bg-accent-bright sm:hover:bg-accent-bright text-white rounded cursor-pointer transition-all active:scale-95" title="Edit Quote">
+          <button @click.stop="emit('edit', quote)" class="p-1.5 bg-accent active:bg-accent-bright sm:hover:bg-accent-bright text-white rounded cursor-pointer transition-all active:scale-95" title="Edit Quote">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
               <path d="m15 5 4 4" />
@@ -169,7 +169,7 @@ const { lineHeightClass, typographyClass } = useTypography('quote', 'card', cont
               <path d="M12 8v8" /><path d="M8 12h8" />
             </svg>
           </button>
-          <button v-if="props.isAdmin" @click.stop="emit('delete', quote)" class="flex p-1.5 text-mono-500 hover:text-red-400 hover:bg-red-500/10 rounded cursor-pointer transition-all active:scale-95" title="Delete Quote">
+          <button @click.stop="emit('delete', quote)" class="flex p-1.5 text-mono-500 hover:text-red-400 hover:bg-red-500/10 rounded cursor-pointer transition-all active:scale-95" title="Delete Quote">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 6h18" />
               <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
