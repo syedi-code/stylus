@@ -66,12 +66,17 @@ const loadBook = async () => {
     }
     try {
         book.value = await fetchBookById(bookId);
-        if (book.value?.pdf_url) {
-            pdfUrl.value = await getSignedFileUrl(book.value.pdf_url);
-        }
     } catch {
         book.value = null;
         pdfUrl.value = null;
+        return;
+    }
+    if (book.value?.pdf_url) {
+        try {
+            pdfUrl.value = await getSignedFileUrl(book.value.pdf_url);
+        } catch {
+            pdfUrl.value = null;
+        }
     }
 };
 
