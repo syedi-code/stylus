@@ -574,13 +574,13 @@ watch([threadsSearch], () => {
         <!-- Notes Tab -->
         <transition name="fade" mode="out-in">
           <div v-if="currentTab === 'notes'" class="space-y-8">
-            <!-- Desktop Capture Form (admin only) -->
-            <div v-if="isAdmin" class="hidden sm:block">
+            <!-- Desktop Capture Form -->
+            <div class="hidden sm:block">
               <CaptureForm @saved="loadNotes" />
             </div>
 
             <!-- Divider -->
-            <div v-if="isAdmin" class="hidden sm:block border-t border-accent/20"></div>
+            <div class="hidden sm:block border-t border-accent/20"></div>
 
             <FilterBar v-model:search="search" v-model:showVersionBadge="showVersionBadgeInPresentation" v-model:bookFilter="bookFilter" :books="filterBooks" />
 
@@ -622,13 +622,13 @@ watch([threadsSearch], () => {
         <!-- Quotes Tab -->
         <transition name="fade" mode="out-in">
           <div v-if="currentTab === 'quotes'" class="space-y-8">
-            <!-- Desktop Quote Capture Form (admin only) -->
-            <div v-if="isAdmin" class="hidden sm:block">
+            <!-- Desktop Quote Capture Form -->
+            <div class="hidden sm:block">
               <QuoteCaptureForm @saved="loadQuotes" />
             </div>
 
             <!-- Divider -->
-            <div v-if="isAdmin" class="hidden sm:block border-t border-accent/20"></div>
+            <div class="hidden sm:block border-t border-accent/20"></div>
 
             <!-- Search bar for quotes -->
             <div class="mb-6">
@@ -671,13 +671,13 @@ watch([threadsSearch], () => {
         <!-- Thoughts Tab -->
         <transition name="fade" mode="out-in">
           <div v-if="currentTab === 'thoughts'" class="space-y-8">
-            <!-- Desktop Capture Form (admin only) -->
-            <div v-if="isAdmin" class="hidden sm:block">
+            <!-- Desktop Capture Form -->
+            <div class="hidden sm:block">
               <ThoughtCapture @saved="thoughtsListRef?.reload()" />
             </div>
 
             <!-- Divider -->
-            <div v-if="isAdmin" class="hidden sm:block border-t border-rose/20"></div>
+            <div class="hidden sm:block border-t border-rose/20"></div>
 
             <!-- Thoughts List -->
             <ThoughtsList ref="thoughtsListRef" :isAdmin="isAdmin" @addToThread="handleAddThoughtToThread" />
@@ -690,7 +690,7 @@ watch([threadsSearch], () => {
             <!-- Header -->
             <div class="flex items-center justify-center gap-4">
               <h2 class="text-lg font-semibold tracking-tight text-white">threads</h2>
-              <button v-if="isAdmin" @click="showNewThreadForm = true" class="px-3 py-1.5 text-xs font-semibold tracking-tight text-purple-300 border border-purple-500/30 hover:bg-purple-500/10 rounded-lg transition-colors cursor-pointer">
+              <button @click="showNewThreadForm = true" class="px-3 py-1.5 text-xs font-semibold tracking-tight text-purple-300 border border-purple-500/30 hover:bg-purple-500/10 rounded-lg transition-colors cursor-pointer">
                 + new thread
               </button>
             </div>
@@ -726,7 +726,7 @@ watch([threadsSearch], () => {
                 <div class="flex items-center px-4 py-4 cursor-pointer" @click="toggleThread(thread.id)">
                   <!-- Left zone: delete button (appears on hover, admin only) -->
                   <div class="w-7 shrink-0">
-                    <button v-if="isAdmin" @click.stop="handleDeleteThread(thread)" class="p-1 rounded-md text-mono-700 hover:text-red-500 cursor-pointer transition-colors" title="Delete Thread">
+                    <button @click.stop="handleDeleteThread(thread)" class="p-1 rounded-md text-mono-700 hover:text-red-500 cursor-pointer transition-colors" title="Delete Thread">
                       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 6h18" />
                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
@@ -824,7 +824,7 @@ watch([threadsSearch], () => {
 
     <!-- Floating Action Button for mobile -->
     <!-- Blue FAB for notes tab -->
-    <button v-if="isAdmin && isMobile && currentTab === 'notes'" @click="mobileNoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Note">
+    <button v-if="isMobile && currentTab === 'notes'" @click="mobileNoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Note">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 5v14" />
         <path d="M5 12h14" />
@@ -832,7 +832,7 @@ watch([threadsSearch], () => {
     </button>
 
     <!-- Blue FAB for quotes tab -->
-    <button v-if="isAdmin && isMobile && currentTab === 'quotes'" @click="mobileQuoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Quote">
+    <button v-if="isMobile && currentTab === 'quotes'" @click="mobileQuoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Quote">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 5v14" />
         <path d="M5 12h14" />
@@ -840,7 +840,7 @@ watch([threadsSearch], () => {
     </button>
 
     <!-- Rose FAB for thoughts tab -->
-    <button v-if="isAdmin && isMobile && currentTab === 'thoughts'" @click="mobileThoughtOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-rose active:bg-rose-bright rounded-full shadow-lg shadow-rose/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Thought">
+    <button v-if="isMobile && currentTab === 'thoughts'" @click="mobileThoughtOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-rose active:bg-rose-bright rounded-full shadow-lg shadow-rose/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Thought">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 5v14" />
         <path d="M5 12h14" />
