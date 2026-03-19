@@ -81,7 +81,8 @@ const loadBook = async () => {
     }
     if (book.value?.pdf_url) {
         try {
-            pdfUrl.value = await getSignedFileUrl(book.value.pdf_url);
+            const path = book.value.pdf_url.replace('/files/', '');
+            pdfUrl.value = await getSignedFileUrl(path);
         } catch {
             pdfUrl.value = null;
         }
