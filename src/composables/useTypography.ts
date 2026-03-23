@@ -26,7 +26,7 @@ export function useTypography(
 		getFontSize(entityType, viewContext, contentLength.value)
 	);
 
-	const lineHeightClass = 'leading-[1.45]';
+	const lineHeightClass = 'leading-[1.40]';
 
 	/**
 	 * Computed line-height that tightens as font size grows.
@@ -111,7 +111,9 @@ function getProseSize(view: ViewContext, len: number): number {
 			return 11;
 
 		case 'presentation':
-			// Same base as card view — Notes & Thoughts are utilitarian
-			return 14;
+			if (len < 200) return 16;
+			if (len < 500) return 15;
+			if (len < 1000) return 14;
+			return 13;
 	}
 }
