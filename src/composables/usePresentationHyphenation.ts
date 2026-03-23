@@ -1,32 +1,39 @@
-import { ref } from 'vue';
+import { ref, type Ref } from 'vue';
 
-const STORAGE_KEY = 'presentation-hyphenation-quote';
+const BASE_KEY = 'presentation-hyphenation';
+const instances = new Map<string, Ref<boolean>>();
 
-function loadState(): boolean {
+function loadState(key: string, defaultValue: boolean): boolean {
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
+		const raw = localStorage.getItem(key);
 		if (raw !== null) return raw === 'true';
 	} catch {
 		// localStorage unavailable
 	}
-	return true; // default: hyphenation on
+	return defaultValue;
 }
 
-function saveState(enabled: boolean): void {
+function saveState(key: string, enabled: boolean): void {
 	try {
-		localStorage.setItem(STORAGE_KEY, String(enabled));
+		localStorage.setItem(key, String(enabled));
 	} catch {
 		// localStorage unavailable
 	}
 }
 
-// Shared singleton so all consumers stay in sync
-const hyphenation = ref(loadState());
+export function usePresentationHyphenation(entity: string = 'quote') {
+	const storageKey = `${BASE_KEY}-${entity}`;
+	// Quotes default to hyphenation on; everything else defaults to off
+	const defaultValue = entity === 'quote';
 
-export function usePresentationHyphenation() {
+	if (!instances.has(storageKey)) {
+		instances.set(storageKey, ref(loadState(storageKey, defaultValue)));
+	}
+	const hyphenation = instances.get(storageKey)!;
+
 	function toggle() {
 		hyphenation.value = !hyphenation.value;
-		saveState(hyphenation.value);
+		saveState(storageKey, hyphenation.value);
 	}
 
 	return {

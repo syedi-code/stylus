@@ -1,32 +1,39 @@
-import { ref } from 'vue';
+import { ref, type Ref } from 'vue';
 
-const STORAGE_KEY = 'presentation-justify-quote';
+const BASE_KEY = 'presentation-justify';
+const instances = new Map<string, Ref<boolean>>();
 
-function loadState(): boolean {
+function loadState(key: string, defaultValue: boolean): boolean {
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
+		const raw = localStorage.getItem(key);
 		if (raw !== null) return raw === 'true';
 	} catch {
 		// localStorage unavailable
 	}
-	return false; // default: left-aligned
+	return defaultValue;
 }
 
-function saveState(enabled: boolean): void {
+function saveState(key: string, enabled: boolean): void {
 	try {
-		localStorage.setItem(STORAGE_KEY, String(enabled));
+		localStorage.setItem(key, String(enabled));
 	} catch {
 		// localStorage unavailable
 	}
 }
 
-// Shared singleton so all consumers stay in sync
-const justified = ref(loadState());
+export function usePresentationJustify(entity: string = 'quote') {
+	const storageKey = `${BASE_KEY}-${entity}`;
+	// Quotes default to justified; everything else defaults to left-aligned
+	const defaultValue = entity === 'quote';
 
-export function usePresentationJustify() {
+	if (!instances.has(storageKey)) {
+		instances.set(storageKey, ref(loadState(storageKey, defaultValue)));
+	}
+	const justified = instances.get(storageKey)!;
+
 	function toggle() {
 		justified.value = !justified.value;
-		saveState(justified.value);
+		saveState(storageKey, justified.value);
 	}
 
 	return {

@@ -62,8 +62,8 @@ const lineHeight = computed(() => {
     return +(1.35 - t * 0.15).toFixed(2);
 });
 
-const { justified, toggle: toggleJustify } = usePresentationJustify();
-const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation();
+const { justified, toggle: toggleJustify } = usePresentationJustify('note');
+const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('note');
 
 watch(() => props.isOpen, (isOpen) => {
     if (isOpen) {
