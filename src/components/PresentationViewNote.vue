@@ -5,6 +5,8 @@ import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById } fr
 import { formatMarkdown } from '../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../composables/usePresentationFontSize';
 import { useTypography } from '../composables/useTypography';
+import { usePresentationJustify } from '../composables/usePresentationJustify';
+import { usePresentationHyphenation } from '../composables/usePresentationHyphenation';
 import PresentationFontControls from './PresentationFontControls.vue';
 
 const props = withDefaults(defineProps<{
@@ -50,9 +52,18 @@ const pdfUrlWithPage = computed(() => {
 const VERTICAL_MARGIN = 12;
 
 const contentLength = computed(() => props.note?.content?.length ?? 0);
-const { baseFontSize, lineHeightClass, typographyClass } = useTypography('note', 'presentation', contentLength);
+const { baseFontSize, typographyClass } = useTypography('note', 'presentation', contentLength);
 
 const { finalFontSize, setFontSize, reset } = usePresentationFontSize('note', baseFontSize);
+
+// Dynamic line-height: tightens as font size grows (12px → 1.35, 24px → 1.20)
+const lineHeight = computed(() => {
+    const t = Math.min(1, Math.max(0, (finalFontSize.value - 12) / 12));
+    return +(1.35 - t * 0.15).toFixed(2);
+});
+
+const { justified, toggle: toggleJustify } = usePresentationJustify('note');
+const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('note');
 
 watch(() => props.isOpen, (isOpen) => {
     if (isOpen) {
@@ -121,14 +132,36 @@ const loadAuthorConnection = async () => {
                     </svg>
                 </button>
 
-                <!-- Font size toggle button -->
-                <button @click.stop="showFontControls = !showFontControls" class="absolute top-3 left-3 z-10 p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showFontControls ? 'text-accent' : ''" aria-label="Toggle font size controls">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 7V4h16v3" />
-                        <path d="M9 20h6" />
-                        <path d="M12 4v16" />
-                    </svg>
-                </button>
+                <!-- Top-left controls -->
+                <div class="absolute top-3 left-3 z-10 flex items-center gap-1">
+                    <!-- Font size toggle button -->
+                    <button @click.stop="showFontControls = !showFontControls" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showFontControls ? 'text-accent' : ''" aria-label="Toggle font size controls">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 7V4h16v3" />
+                            <path d="M9 20h6" />
+                            <path d="M12 4v16" />
+                        </svg>
+                    </button>
+
+                    <!-- Justify toggle button -->
+                    <button @click.stop="toggleJustify()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="justified ? 'text-accent' : ''" :aria-label="justified ? 'Disable justified text' : 'Enable justified text'">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18" />
+                            <path d="M3 12h18" />
+                            <path d="M3 18h18" />
+                        </svg>
+                    </button>
+
+                    <!-- Hyphenation toggle button -->
+                    <button @click.stop="toggleHyphenation()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="hyphenation ? 'text-accent' : ''" :aria-label="hyphenation ? 'Disable hyphenation' : 'Enable hyphenation'">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18" />
+                            <path d="M3 12h8" />
+                            <path d="M12 12h1.5" />
+                            <path d="M3 18h18" />
+                        </svg>
+                    </button>
+                </div>
 
                 <div ref="cardRef" class="w-full max-w-xl bg-mono-900 border border-accent/20 rounded-xl p-6 shadow-2xl overflow-hidden" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
                     <!-- Type badge -->
@@ -158,7 +191,7 @@ const loadAuthorConnection = async () => {
                     <div v-else-if="connectedAuthor" class="mb-3 text-xs text-mono-500 leading-relaxed">
                         <span class="underline decoration-mono-600 underline-offset-2 text-mono-400">{{ connectedAuthor.name }}</span>
                     </div>
-                    <p v-if="note.content" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: finalFontSize + 'px' }" v-html="formatMarkdown(note.content)"></p>
+                    <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(note.content)"></p>
                 </div>
 
                 <!-- Font size controls -->

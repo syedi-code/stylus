@@ -49,10 +49,7 @@ export const formatMarkdown = (text: string): string => {
 	result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
 	// *italic* → <em>italic</em>
-	result = result.replace(
-		/\*([^*]+)\*/g,
-		'<em style="padding-right:0.12em">$1</em>'
-	);
+	result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 
 	// `code` → <code>code</code>
 	result = result.replace(
