@@ -30,8 +30,8 @@ const lineHeight = computed(() => {
     return +(1.35 - t * 0.15).toFixed(2);
 });
 
-const { justified, toggle: toggleJustify } = usePresentationJustify();
-const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation();
+const { justified, toggle: toggleJustify } = usePresentationJustify('thought');
+const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('thought');
 
 const formattedContent = computed(() => {
     if (!props.thought) return '';
