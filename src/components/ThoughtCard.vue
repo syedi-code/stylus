@@ -58,7 +58,7 @@ const handleCopy = async () => {
 <template>
 	<div class="group relative bg-mono-900 border border-rose/20 hover:border-rose/40 rounded-xl p-4 transition-all duration-200 hover:shadow-lg hover:shadow-rose/10 cursor-pointer" @click="emit('present', thought)">
 		<!-- Content -->
-		<p class="typography-prose text-mono-100 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word" v-html="formattedContent"></p>
+		<p class="typography-prose text-mono-100 text-sm leading-[1.25] whitespace-pre-wrap wrap-break-word" v-html="formattedContent"></p>
 
 		<!-- Mood Display -->
 		<div v-if="moodEmoji || (thought.mood_tags && thought.mood_tags.length > 0)" class="flex items-center gap-2 mt-3 flex-wrap">
