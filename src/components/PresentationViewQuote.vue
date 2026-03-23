@@ -138,7 +138,7 @@ watch(() => props.isOpen, (isOpen) => {
 
                     <!-- Quote content (scrollable) -->
                     <div class="bg-mono-950/60 rounded-lg pl-2 pr-4 pt-4 pb-0 sm:pl-3 sm:pr-5 sm:pt-5 sm:pb-0 min-h-0 overflow-y-auto scrollbar-hide flex-1">
-                        <blockquote lang="en" :class="[typographyClass, 'text-mono-100 border-l-4 border-accent pl-4 py-2']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(quote.quote || '')"></blockquote>
+                        <blockquote lang="en" :class="[typographyClass, 'text-mono-100 border-l-4 border-accent pl-4 py-2 whitespace-pre-wrap']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(quote.quote || '')"></blockquote>
                     </div>
 
                     <!-- Attribution (always visible, right-aligned) -->
