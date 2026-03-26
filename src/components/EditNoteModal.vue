@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
+import { MAX_LENGTHS } from '@antisocial/core';
 import { createNote, createConnectionApi, fetchConnections, type Note } from '../lib/api';
 import SourceSelector from './SourceSelector.vue';
 import type { SourceAttribution } from './SourceSelector.vue';
@@ -142,14 +143,14 @@ const charCount = computed(() => content.value.length);
         <!-- Content -->
         <div class="flex-1 p-4 overflow-y-auto">
           <div class="relative h-full flex flex-col gap-4">
-            <textarea ref="textareaRef" v-model="content" class="w-full flex-1 min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="Edit your note..." :disabled="loading"></textarea>
+            <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full flex-1 min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="Edit your note..." :disabled="loading"></textarea>
             <SourceSelector ref="sourceSelectorRef" entityType="note" :initial="initialAttribution" @update="currentAttribution = $event" />
           </div>
         </div>
 
         <!-- Footer -->
         <div class="px-4 py-3 border-t border-mono-800 shrink-0 pb-safe">
-          <div class="text-xs text-mono-600 text-right">{{ charCount }} characters</div>
+          <div class="text-xs text-mono-600 text-right">{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</div>
         </div>
       </div>
     </Transition>
@@ -166,8 +167,8 @@ const charCount = computed(() => content.value.length);
       <h3 class="text-base font-semibold text-white uppercase tracking-wide">Edit Note</h3>
 
       <div class="relative">
-        <textarea ref="textareaRef" v-model="content" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-50 max-h-100 text-mono-100 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none text-sm leading-relaxed" placeholder="Edit your note..." @keydown.ctrl.enter="save"></textarea>
-        <div class="absolute bottom-3 right-3 text-xs text-mono-600">{{ charCount }}</div>
+        <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-50 max-h-100 text-mono-100 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none text-sm leading-relaxed" placeholder="Edit your note..." @keydown.ctrl.enter="save"></textarea>
+        <div class="absolute bottom-3 right-3 text-xs text-mono-600">{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</div>
       </div>
 
       <!-- Source Selector -->
