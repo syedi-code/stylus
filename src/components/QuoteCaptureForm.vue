@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted, computed } from 'vue';
+import { MAX_LENGTHS } from '@antisocial/core';
 import { createQuote, createConnectionApi } from '../lib/api';
 import { useDraft } from '../composables/useDraft';
 import SourceSelector from './SourceSelector.vue';
@@ -15,6 +16,8 @@ const sourceSelectorRef = ref<InstanceType<typeof SourceSelector> | null>(null);
 
 // Current attribution from SourceSelector
 const currentAttribution = ref<SourceAttribution>({ mode: 'none' });
+
+const charCount = computed(() => quote.value.length);
 
 // Derive creator / work from attribution for the quote row
 const effectiveCreator = computed(() => {
@@ -126,14 +129,14 @@ const submit = async () => {
 
         <!-- Textarea Wrapper -->
         <div class="relative group">
-          <textarea ref="textareaRef" v-model="quote" @input="autoGrow" placeholder="QUOTE..." class="relative w-full bg-mono-900 border border-mono-800 rounded-lg p-4 min-h-30 text-white italic focus:outline-none focus:border-accent transition-all duration-500 ease-out resize-none text-sm leading-relaxed placeholder:text-mono-600 block shadow-xl z-10 origin-center" :class="[
+          <textarea ref="textareaRef" v-model="quote" @input="autoGrow" :maxlength="MAX_LENGTHS.CONTENT" placeholder="QUOTE..." class="relative w-full bg-mono-900 border border-mono-800 rounded-lg p-4 min-h-30 text-white italic focus:outline-none focus:border-accent transition-all duration-500 ease-out resize-none text-sm leading-relaxed placeholder:text-mono-600 block shadow-xl z-10 origin-center" :class="[
             sent ? 'bg-accent! border-accent-bright! text-white! shadow-[0_0_40px_rgba(41,82,255,0.3)] scale-[0.98] placeholder:text-transparent' : ''
           ]" @keydown.enter.ctrl="submit"></textarea>
         </div>
 
         <!-- Footer -->
         <div class="flex justify-between items-center text-xs text-mono-600 uppercase tracking-wider pl-1 z-10 select-none">
-          <span>{{ quote.length > 0 ? 'Draft saved' : 'Web Capture' }}</span>
+          <span>{{ quote.length > 0 ? `${charCount} / ${MAX_LENGTHS.CONTENT}` : 'Web Capture' }}</span>
           <span class="hidden sm:inline">Ctrl+Enter</span>
         </div>
 
