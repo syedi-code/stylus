@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, computed, onUnmounted } from 'vue';
+import { MAX_LENGTHS } from '@antisocial/core';
 import { createNote, createConnectionApi } from '../lib/api';
 import SourceSelector from './SourceSelector.vue';
 import type { SourceAttribution } from './SourceSelector.vue';
@@ -125,14 +126,14 @@ const handleClose = () => {
                 <!-- Content -->
                 <div class="flex-1 p-4 overflow-y-auto">
                     <div class="relative h-full">
-                        <textarea ref="textareaRef" v-model="draft" class="w-full h-full min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="What's on your mind..." :disabled="loading"></textarea>
+                        <textarea ref="textareaRef" v-model="draft" :maxlength="MAX_LENGTHS.CONTENT" class="w-full h-full min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="What's on your mind..." :disabled="loading"></textarea>
                     </div>
                 </div>
 
                 <!-- Footer -->
                 <div class="px-4 py-3 border-t border-mono-800 shrink-0 pb-safe">
                     <div class="flex items-center justify-end">
-                        <span class="text-xs text-mono-600">{{ charCount }} characters</span>
+                        <span class="text-xs text-mono-600">{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</span>
                     </div>
                 </div>
             </div>

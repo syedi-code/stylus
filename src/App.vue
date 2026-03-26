@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
+import { MAX_LENGTHS } from '@antisocial/core';
 import { fetchNotes, fetchBooks, updateNote, deleteNote, fetchQuotes, updateQuote, deleteQuote, createThought, type Note, type Quote, type Book, type Thought } from './lib/api';
 import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';
@@ -802,11 +803,11 @@ watch([threadsSearch], () => {
               <h3 class="text-base font-semibold tracking-tight text-white">new thread</h3>
               <div class="flex flex-col gap-1.5">
                 <label class="text-xs text-mono-400 tracking-wide">name <span class="text-purple-400">*</span></label>
-                <input v-model="newThreadName" type="text" class="w-full bg-mono-950 border border-mono-800 rounded-lg px-4 py-2.5 text-mono-100 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm placeholder-mono-600" placeholder="Thread name" @keydown.enter="handleCreateNewThread" />
+                <input v-model="newThreadName" type="text" :maxlength="MAX_LENGTHS.TITLE" class="w-full bg-mono-950 border border-mono-800 rounded-lg px-4 py-2.5 text-mono-100 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm placeholder-mono-600" placeholder="Thread name" @keydown.enter="handleCreateNewThread" />
               </div>
               <div class="flex flex-col gap-1.5">
                 <label class="text-xs text-mono-400 tracking-wide">description</label>
-                <input v-model="newThreadDesc" type="text" class="w-full bg-mono-950 border border-mono-800 rounded-lg px-4 py-2.5 text-mono-100 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm placeholder-mono-600" placeholder="Optional description" @keydown.enter="handleCreateNewThread" />
+                <input v-model="newThreadDesc" type="text" :maxlength="MAX_LENGTHS.CONTENT" class="w-full bg-mono-950 border border-mono-800 rounded-lg px-4 py-2.5 text-mono-100 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm placeholder-mono-600" placeholder="Optional description" @keydown.enter="handleCreateNewThread" />
               </div>
               <div class="flex items-center gap-3 pt-1">
                 <button @click="handleCreateNewThread" :disabled="!newThreadName.trim()" class="flex-1 py-2.5 text-sm font-semibold tracking-tight text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
