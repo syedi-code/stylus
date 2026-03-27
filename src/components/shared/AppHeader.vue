@@ -40,7 +40,7 @@ function selectTab(tab: string) {
         <polygon points="11,36 25,12 39,36" fill="currentColor" clip-path="url(#leftCrack)" />
         <polygon points="11,36 25,12 39,36" fill="currentColor" clip-path="url(#rightCrack)" />
       </svg>
-      antisocial media
+      antisocial eating
     </h1>
     <div class="h-0.5 w-8 bg-accent mx-auto mt-3 mb-1"></div>
     <div v-if="userEmail" class="flex items-center justify-center gap-2 mt-6">
