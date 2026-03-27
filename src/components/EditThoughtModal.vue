@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
+import { MAX_LENGTHS } from '@antisocial/core';
 import { updateThought, type Thought, type ThoughtInput } from '../lib/api';
 import { useMoodAutocomplete } from '../composables/useMoodAutocomplete';
 
@@ -206,7 +207,7 @@ const charCount = computed(() => content.value.length);
                 <!-- Content -->
                 <div class="flex-1 p-4 overflow-y-auto">
                     <div class="relative h-full flex flex-col gap-4">
-                        <textarea ref="textareaRef" v-model="content" class="w-full flex-1 min-h-40 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="What's on your mind?" :disabled="loading"></textarea>
+                        <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full flex-1 min-h-40 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="What's on your mind?" :disabled="loading"></textarea>
 
                         <!-- Mood Score Slider -->
                         <div class="flex items-center gap-3">
@@ -245,7 +246,7 @@ const charCount = computed(() => content.value.length);
 
                 <!-- Footer -->
                 <div class="px-4 py-3 border-t border-mono-800 shrink-0 pb-safe">
-                    <div class="text-xs text-mono-600 text-right">{{ charCount }} characters</div>
+                    <div class="text-xs text-mono-600 text-right">{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</div>
                 </div>
             </div>
         </Transition>
@@ -262,8 +263,8 @@ const charCount = computed(() => content.value.length);
             <h3 class="text-base font-semibold text-white uppercase tracking-wide">Edit Thought</h3>
 
             <div class="relative">
-                <textarea ref="textareaRef" v-model="content" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-40 max-h-80 text-mono-100 focus:outline-none focus:border-rose focus:ring-1 focus:ring-rose resize-none text-sm leading-relaxed" placeholder="What's on your mind?" @keydown.ctrl.enter="save"></textarea>
-                <div class="absolute bottom-3 right-3 text-xs text-mono-600">{{ charCount }}</div>
+                <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-40 max-h-80 text-mono-100 focus:outline-none focus:border-rose focus:ring-1 focus:ring-rose resize-none text-sm leading-relaxed" placeholder="What's on your mind?" @keydown.ctrl.enter="save"></textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-mono-600">{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</div>
             </div>
 
             <!-- Mood Score Slider -->
