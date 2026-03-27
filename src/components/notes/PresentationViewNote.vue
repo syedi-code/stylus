@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import type { Note, Book, Author, Thread } from '../lib/api';
-import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity } from '../lib/api';
-import { formatMarkdown } from '../lib/formatText';
-import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../composables/usePresentationFontSize';
-import { useTypography } from '../composables/useTypography';
-import { usePresentationJustify } from '../composables/usePresentationJustify';
-import { usePresentationHyphenation } from '../composables/usePresentationHyphenation';
+import type { Note, Book, Author, Thread } from '../../lib/api';
+import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity } from '../../lib/api';
+import { formatMarkdown } from '../../lib/formatText';
+import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../../composables/usePresentationFontSize';
+import { useTypography } from '../../composables/useTypography';
+import { usePresentationJustify } from '../../composables/usePresentationJustify';
+import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
 
 const props = withDefaults(defineProps<{

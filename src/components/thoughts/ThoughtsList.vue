@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { fetchThoughts, deleteThought, type Thought } from '../lib/api';
-import { usePagination } from '../composables/usePagination';
+import { fetchThoughts, deleteThought, type Thought } from '../../lib/api';
+import { usePagination } from '../../composables/usePagination';
 import ThoughtCard from './ThoughtCard.vue';
 import ThoughtCardSkeleton from './ThoughtCardSkeleton.vue';
 import EditThoughtModal from './EditThoughtModal.vue';

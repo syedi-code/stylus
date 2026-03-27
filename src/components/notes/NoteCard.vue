@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue';
-import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity, type Note, type Book, type Author, type Thread } from '../lib/api';
-import { formatMarkdown } from '../lib/formatText';
+import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity, type Note, type Book, type Author, type Thread } from '../../lib/api';
+import { formatMarkdown } from '../../lib/formatText';
 import AuthorPopover from '../library/AuthorPopover.vue';
 import SkeletonBlock from '../shared/SkeletonBlock.vue';
 
@@ -153,16 +153,16 @@ const highlightText = (text: string | undefined) => {
 
     <!-- Header: Type & Date -->
     <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <span class="bg-accent text-accent-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
+      <div class="flex items-center gap-2 min-w-0 flex-1 mr-2">
+        <span class="bg-accent text-accent-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider shrink-0">
           note
         </span>
-        <span v-if="note.version && note.version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
+        <span v-if="note.version && note.version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider shrink-0">
           v{{ note.version }}
         </span>
-        <button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread">
-          <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
-          <span class="text-[11.5px] font-medium text-purple-400/45 group-hover/thread:text-purple-400 transition-colors max-w-[180px] truncate">{{ latestThread.name }}</span>
+        <button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread min-w-0">
+          <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors shrink-0">in</span>
+          <span class="text-[11.5px] font-medium text-purple-400/45 group-hover/thread:text-purple-400 transition-colors truncate">{{ latestThread.name }}</span>
         </button>
       </div>
 

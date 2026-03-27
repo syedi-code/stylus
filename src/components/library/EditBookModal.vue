@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { createBook, updateBook, uploadPdf, type Book, type BookInput, type Author } from '../lib/api';
+import { createBook, updateBook, uploadPdf, type Book, type BookInput, type Author } from '../../lib/api';
 import AuthorSelector from './AuthorSelector.vue';
 
 const props = defineProps<{

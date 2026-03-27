@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { fetchAuthors, fetchBooks, deleteAuthor, getSignedFileUrl, type Author, type Book } from '../lib/api';
+import { fetchAuthors, fetchBooks, deleteAuthor, getSignedFileUrl, type Author, type Book } from '../../lib/api';
 
 defineProps<{
   isAdmin?: boolean;

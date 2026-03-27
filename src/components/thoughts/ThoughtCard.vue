@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { fetchThreadsForEntity, type Thought, type Thread } from '../lib/api';
-import { formatMarkdown } from '../lib/formatText';
+import { fetchThreadsForEntity, type Thought, type Thread } from '../../lib/api';
+import { formatMarkdown } from '../../lib/formatText';
 
 const props = defineProps<{
 	thought: Thought;

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { Thought } from '../lib/api';
-import { formatMarkdown } from '../lib/formatText';
-import { useTypography } from '../composables/useTypography';
+import type { Thought } from '../../lib/api';
+import { formatMarkdown } from '../../lib/formatText';
+import { useTypography } from '../../composables/useTypography';
 
 const props = defineProps<{
   thought: Thought;

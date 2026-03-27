@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted, computed } from 'vue';
-import { createThought } from '../lib/api';
-import { useThoughtDraft } from '../composables/useThoughtDraft';
-import { useMoodAutocomplete } from '../composables/useMoodAutocomplete';
+import { createThought } from '../../lib/api';
+import { useThoughtDraft } from '../../composables/useThoughtDraft';
+import { useMoodAutocomplete } from '../../composables/useMoodAutocomplete';
 
 const emit = defineEmits(['saved']);
 

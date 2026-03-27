@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
-import { fetchBooksByAuthorId, getSignedFileUrl, type Author, type Book } from '../lib/api';
+import { fetchBooksByAuthorId, getSignedFileUrl, type Author, type Book } from '../../lib/api';
 
 const props = defineProps<{
   author: Author;

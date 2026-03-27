@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { fetchBooks, deleteBook, getSignedFileUrl, type Book } from '../lib/api';
+import { fetchBooks, deleteBook, getSignedFileUrl, type Book } from '../../lib/api';
 
 const emit = defineEmits<{
   (e: 'edit', book: Book): void;

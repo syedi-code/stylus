@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue';
-import type { Book, ConnectionInput, EntityType } from '../lib/api';
+import type { Book, ConnectionInput, EntityType } from '../../lib/api';
 import BookSelector from './BookSelector.vue';
 import AuthorSelector from './AuthorSelector.vue';
 

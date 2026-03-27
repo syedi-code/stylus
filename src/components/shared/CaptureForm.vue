@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted, computed } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { createNote, createConnectionApi } from '../lib/api';
-import { useDraft } from '../composables/useDraft';
+import { createNote, createConnectionApi } from '../../lib/api';
+import { useDraft } from '../../composables/useDraft';
 import SourceSelector from '../library/SourceSelector.vue';
 import type { SourceAttribution } from '../library/SourceSelector.vue';
 
