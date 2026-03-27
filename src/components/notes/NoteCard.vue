@@ -162,7 +162,7 @@ const highlightText = (text: string | undefined) => {
         </span>
         <button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread min-w-0">
           <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors shrink-0">in</span>
-          <span class="text-[11.5px] font-medium text-purple-400/45 group-hover/thread:text-purple-400 transition-colors truncate">{{ latestThread.name }}</span>
+          <span class="text-[11.5px] font-medium text-thread-muted group-hover/thread:text-thread transition-colors truncate">{{ latestThread.name }}</span>
         </button>
       </div>
 
