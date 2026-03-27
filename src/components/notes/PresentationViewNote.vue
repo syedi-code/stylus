@@ -210,6 +210,12 @@ const loadAuthorConnection = async () => {
                     <div v-else-if="connectedAuthor" class="mb-3 text-xs text-mono-500 leading-relaxed">
                         <span class="underline decoration-mono-600 underline-offset-2 text-mono-400">{{ connectedAuthor.name }}</span>
                     </div>
+
+                    <!-- Free-text Attribution (no book, no author connection) -->
+                    <div v-else-if="note.creator || note.work" class="mb-3 text-xs text-mono-500 leading-relaxed">
+                        <p v-if="note.creator" class="font-medium text-mono-400">— {{ note.creator }}</p>
+                        <p v-if="note.work" class="italic">{{ note.work }}</p>
+                    </div>
                     <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(note.content)"></p>
                 </div>
 
