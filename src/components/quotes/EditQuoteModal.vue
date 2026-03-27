@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { createQuote, createConnectionApi, fetchConnections, type Quote } from '../lib/api';
-import SourceSelector from './SourceSelector.vue';
-import type { SourceAttribution } from './SourceSelector.vue';
+import SourceSelector from '../library/SourceSelector.vue';
+import type { SourceAttribution } from '../library/SourceSelector.vue';
 
 const props = defineProps<{
   quote: Quote | null;

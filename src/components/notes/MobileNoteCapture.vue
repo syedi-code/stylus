@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, computed, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { createQuote, createConnectionApi } from '../lib/api';
-import SourceSelector from './SourceSelector.vue';
-import type { SourceAttribution } from './SourceSelector.vue';
+import { createNote, createConnectionApi } from '../lib/api';
+import SourceSelector from '../library/SourceSelector.vue';
+import type { SourceAttribution } from '../library/SourceSelector.vue';
 
 const props = defineProps<{
     isOpen: boolean;
@@ -20,28 +20,6 @@ const currentAttribution = ref<SourceAttribution>({ mode: 'none' });
 
 // Character count
 const charCount = computed(() => draft.value.length);
-
-// Derive creator / work from attribution
-const effectiveCreator = computed(() => {
-  const attr = currentAttribution.value;
-  if (attr.mode === 'book' && attr.book) return attr.book.author;
-  if (attr.mode === 'other') return attr.creator;
-  return undefined;
-});
-
-const effectiveWork = computed(() => {
-  const attr = currentAttribution.value;
-  if (attr.mode === 'book' && attr.book) return attr.book.title;
-  if (attr.mode === 'other') return attr.work;
-  return undefined;
-});
-
-const effectiveKind = computed(() => {
-  const attr = currentAttribution.value;
-  if (attr.mode === 'book') return 'book';
-  if (attr.mode === 'other') return attr.kind;
-  return undefined;
-});
 
 // Focus textarea when opened
 watch(() => props.isOpen, async (isOpen) => {
@@ -66,12 +44,8 @@ const submit = async () => {
 
     try {
         const attr = currentAttribution.value;
-
         const input: any = {
-            quote: draft.value.trim(),
-            creator: effectiveCreator.value || undefined,
-            work: effectiveWork.value || undefined,
-            kind: effectiveKind.value || undefined,
+            content: draft.value.trim(),
             source: 'web',
         };
 
@@ -81,11 +55,11 @@ const submit = async () => {
             if (attr.page) input.page = attr.page;
         }
 
-        const result = await createQuote(input);
+        const result = await createNote(input);
 
         // Create connections for non-book attributions
-        if (sourceSelectorRef.value && result.quote?.id && attr.mode === 'author') {
-            const connections = sourceSelectorRef.value.buildConnections(result.quote.id);
+        if (sourceSelectorRef.value && result.note?.id && attr.mode === 'author') {
+            const connections = sourceSelectorRef.value.buildConnections(result.note.id);
             for (const conn of connections) {
                 await createConnectionApi(conn);
             }
@@ -105,7 +79,7 @@ const submit = async () => {
 
     } catch (e) {
         console.error(e);
-        alert('Failed to save quote.');
+        alert('Failed to save note.');
     } finally {
         loading.value = false;
     }
@@ -132,7 +106,7 @@ const handleClose = () => {
                         </svg>
                     </button>
 
-                    <span class="text-sm font-semibold text-white uppercase tracking-wide">New Quote</span>
+                    <span class="text-sm font-semibold text-white uppercase tracking-wide">New Note</span>
 
                     <button @click="submit" :disabled="loading || !draft.trim()" class="px-4 py-2 text-sm font-bold transition-all disabled:opacity-50 rounded-lg active:scale-95 cursor-pointer" :class="sent ? 'text-emerald-400 bg-emerald-500/20' : 'text-accent bg-accent/20 active:bg-accent/30'">
                         {{ loading ? '...' : sent ? '✓ Saved' : 'Capture' }}
@@ -143,7 +117,7 @@ const handleClose = () => {
                 <div class="px-4 py-3 border-b border-mono-800 shrink-0">
                     <SourceSelector
                         ref="sourceSelectorRef"
-                        entityType="quote"
+                        entityType="note"
                         :compact="true"
                         @update="currentAttribution = $event"
                     />
@@ -152,7 +126,7 @@ const handleClose = () => {
                 <!-- Content -->
                 <div class="flex-1 p-4 overflow-y-auto">
                     <div class="relative h-full">
-                        <textarea ref="textareaRef" v-model="draft" :maxlength="MAX_LENGTHS.CONTENT" class="w-full h-full min-h-50 bg-transparent text-mono-100 italic focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="Enter quote..." :disabled="loading"></textarea>
+                        <textarea ref="textareaRef" v-model="draft" :maxlength="MAX_LENGTHS.CONTENT" class="w-full h-full min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="What's on your mind..." :disabled="loading"></textarea>
                     </div>
                 </div>
 

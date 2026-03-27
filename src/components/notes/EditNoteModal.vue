@@ -2,8 +2,8 @@
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
 import { createNote, createConnectionApi, fetchConnections, type Note } from '../lib/api';
-import SourceSelector from './SourceSelector.vue';
-import type { SourceAttribution } from './SourceSelector.vue';
+import SourceSelector from '../library/SourceSelector.vue';
+import type { SourceAttribution } from '../library/SourceSelector.vue';
 
 const props = defineProps<{
   note: Note | null;
