@@ -147,6 +147,7 @@ export interface Thread {
 	name: string;
 	description?: string;
 	item_count?: number;
+	item_types?: string[];
 	created_at: string;
 	updated_at: string;
 }
