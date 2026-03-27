@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue';
-import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, type Note, type Book, type Author } from '../lib/api';
+import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity, type Note, type Book, type Author, type Thread } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
 import AuthorPopover from './AuthorPopover.vue';
 import SkeletonBlock from './SkeletonBlock.vue';
@@ -20,6 +20,7 @@ const emit = defineEmits<{
   (e: 'delete', note: Note): void;
   (e: 'viewInLibrary', authorId: string): void;
   (e: 'addToThread', note: Note): void;
+  (e: 'navigateToThread', threadId: string): void;
 }>();
 
 // Book data for notes with book_id
@@ -29,6 +30,9 @@ const pdfUrl = ref<string | null>(null);
 // Author connection (when note is linked to author directly, not via book)
 const connectedAuthor = ref<Author | null>(null);
 const showAuthorPopover = ref(false);
+
+// Most recent thread this note belongs to
+const latestThread = ref<Thread | null>(null);
 
 // Loading state for book/author attribution
 const loadingAttribution = ref(false);
@@ -106,7 +110,14 @@ onMounted(async () => {
     loadingAttribution.value = true;
   }
   try {
-    await Promise.all([loadBook(), loadAuthorConnection()]);
+    const [, , threads] = await Promise.all([
+    loadBook(),
+    loadAuthorConnection(),
+    fetchThreadsForEntity('note', props.note.id),
+  ]);
+  if (threads.length) {
+    latestThread.value = threads.sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+  }
   } finally {
     loadingAttribution.value = false;
   }
@@ -149,6 +160,10 @@ const highlightText = (text: string | undefined) => {
         <span v-if="note.version && note.version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
           v{{ note.version }}
         </span>
+        <button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread">
+          <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
+          <span class="text-[11.5px] font-medium text-purple-400/45 group-hover/thread:text-purple-400 transition-colors max-w-[180px] truncate">{{ latestThread.name }}</span>
+        </button>
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3 relative">
