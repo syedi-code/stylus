@@ -27,6 +27,7 @@ import MobileThoughtCapture from './components/thoughts/MobileThoughtCapture.vue
 import ConvertToThoughtModal from './components/thoughts/ConvertToThoughtModal.vue';
 import AddToThreadModal from './components/threads/AddToThreadModal.vue';
 import ThreadDetail from './components/threads/ThreadDetail.vue';
+import ThreadList from './components/threads/ThreadList.vue';
 import EditThoughtModal from './components/thoughts/EditThoughtModal.vue';
 import ConfirmModal from './components/shared/ConfirmModal.vue';
 import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
@@ -687,78 +688,24 @@ watch([threadsSearch], () => {
 
         <!-- Threads Tab -->
         <transition name="fade" mode="out-in">
-          <div v-if="currentTab === 'threads'" class="space-y-6">
-            <!-- Header -->
-            <div class="flex items-center justify-center gap-4">
-              <h2 class="text-lg font-semibold tracking-tight text-white">threads</h2>
-              <button @click="showNewThreadForm = true" class="px-3 py-1.5 text-xs font-semibold tracking-tight text-purple-300 border border-purple-500/30 hover:bg-purple-500/10 rounded-lg transition-colors cursor-pointer">
-                + new thread
-              </button>
-            </div>
-
-            <!-- Search -->
-            <div>
-              <input v-model="threadsSearch" type="text" placeholder="Search threads..." class="w-full px-4 py-2.5 bg-mono-900 border border-mono-800 rounded-lg text-mono-100 placeholder-mono-600 focus:outline-none focus:border-purple-500 transition-colors" />
-            </div>
-
-            <!-- Loading -->
-            <div v-if="threadsLoading" class="py-20 text-center text-mono-600">
-              <div class="inline-block animate-spin h-6 w-6 border-2 border-purple-500 border-t-transparent rounded-full mb-4"></div>
-              <p class="text-xs tracking-widest uppercase">Loading threads...</p>
-            </div>
-
-            <!-- Error -->
-            <div v-else-if="threadsError" class="p-6 border border-red-900 bg-red-950/20 text-center rounded-lg">
-              <p class="text-red-500 font-bold uppercase text-sm mb-4">{{ threadsError }}</p>
-              <button @click="loadThreads" class="px-4 py-2 bg-red-900 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer">Retry</button>
-            </div>
-
-            <!-- Empty -->
-            <div v-else-if="threads.length === 0" class="py-20 text-center text-mono-600 border border-dashed border-mono-800 rounded-lg">
-              <p class="text-sm uppercase tracking-wide">No threads yet.</p>
-              <p class="text-xs text-mono-700 mt-1">Create a thread to organize notes, quotes, thoughts, and books.</p>
-            </div>
-
-            <!-- Thread Accordion List -->
-            <div v-else class="divide-y divide-mono-800/30">
-              <div v-for="thread in threads" :key="thread.id" class="group/thread">
-
-                <!-- Header Row -->
-                <div class="flex items-center px-4 py-4 cursor-pointer" @click="toggleThread(thread.id)">
-                  <!-- Left zone: delete button (appears on hover, admin only) -->
-                  <div class="w-7 shrink-0">
-                    <button @click.stop="handleDeleteThread(thread)" class="p-1 rounded-md text-mono-700 hover:text-red-500 cursor-pointer transition-colors" title="Delete Thread">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 6h18" />
-                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <!-- Center: name + item count + chevron -->
-                  <div class="flex-1 flex items-center justify-center gap-2">
-                    <span class="text-sm font-semibold tracking-tight lowercase transition-colors" :class="expandedThreads.has(thread.id) ? 'text-purple-300' : 'text-mono-300 group-hover/thread:text-purple-300'">
-                      {{ thread.name.toLowerCase() }}
-                    </span>
-                    <svg class="w-3.5 h-3.5 shrink-0 transition-transform duration-300" :class="expandedThreads.has(thread.id) ? 'rotate-180 text-purple-400/60' : 'text-mono-600'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </div>
-
-                  <!-- Right spacer (mirrors left zone to keep center truly centered) -->
-                  <div class="w-7 shrink-0"></div>
-                </div>
-
-                <!-- Expandable content -->
-                <div v-if="expandedThreads.has(thread.id)">
-                  <div class="pt-3 pb-8">
-                    <ThreadDetail :ref="(el: any) => { if (el) threadDetailRefs.set(thread.id, el); else threadDetailRefs.delete(thread.id); }" :threadId="thread.id" :showHeader="false" :isAdmin="isAdmin" @presentItem="handleThreadPresentItem" @editItem="(type: string, entity: any) => handleThreadEditItem(thread.id, type, entity)" />
-                  </div>
-                </div>
-
-              </div>
-            </div>
+          <div v-if="currentTab === 'threads'">
+            <ThreadList
+              :threads="threads"
+              :loading="threadsLoading"
+              :error="threadsError"
+              :search="threadsSearch"
+              :expandedThreads="expandedThreads"
+              :isAdmin="isAdmin"
+              :threadDetailRefs="threadDetailRefs"
+              @update:search="threadsSearch = $event"
+              @toggleThread="toggleThread"
+              @deleteThread="handleDeleteThread"
+              @renamedThread="(id: string, name: string) => { const t = threads.find(t => t.id === id); if (t) t.name = name; }"
+              @newThread="showNewThreadForm = true"
+              @retry="loadThreads"
+              @presentItem="handleThreadPresentItem"
+              @editItem="(threadId: string, type: string, entity: any) => handleThreadEditItem(threadId, type, entity)"
+            />
           </div>
         </transition>
       </div>
