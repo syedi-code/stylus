@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { type Thought } from '../lib/api';
+import { computed, ref, onMounted } from 'vue';
+import { fetchThreadsForEntity, type Thought, type Thread } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
 
 const props = defineProps<{
@@ -8,7 +8,26 @@ const props = defineProps<{
 	isAdmin?: boolean;
 }>();
 
-const emit = defineEmits(['delete', 'edit', 'present', 'addToThread']);
+const emit = defineEmits<{
+	(e: 'delete', id: string): void;
+	(e: 'edit', thought: Thought): void;
+	(e: 'present', thought: Thought): void;
+	(e: 'addToThread', thought: Thought): void;
+	(e: 'navigateToThread', threadId: string): void;
+}>();
+
+const latestThread = ref<Thread | null>(null);
+
+onMounted(async () => {
+	try {
+		const threads = await fetchThreadsForEntity('thought', props.thought.id);
+		if (threads.length) {
+			latestThread.value = threads.sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+		}
+	} catch {
+		// threads may not exist
+	}
+});
 
 // Emoji mapping for mood score
 const moodEmojis = ['😢', '😔', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩', '🥳'];
@@ -57,6 +76,11 @@ const handleCopy = async () => {
 
 <template>
 	<div class="group relative bg-mono-900 border border-rose/20 hover:border-rose/40 rounded-xl p-4 transition-all duration-200 hover:shadow-lg hover:shadow-rose/10 cursor-pointer" @click="emit('present', thought)">
+		<!-- Thread link (top-left, only when in a thread) -->
+		<button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread self-start mb-4">
+			<span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
+			<span class="text-[11.5px] font-medium text-purple-400/45 group-hover/thread:text-purple-400 transition-colors max-w-[240px] truncate">{{ latestThread.name }}</span>
+		</button>
 		<!-- Content -->
 		<p class="typography-prose text-mono-100 text-sm leading-[1.25] whitespace-pre-wrap wrap-break-word" v-html="formattedContent"></p>
 
