@@ -44,6 +44,10 @@
 	--color-rose-bright: #fb7185; /* Brighter rose for hover/active */
 	--color-rose-muted: #be123c; /* Muted rose for backgrounds */
 	--color-rose-soft: rgba(244, 63, 94, 0.2); /* Soft rose glow */
+
+	/* Thread - warm lavender-pink */
+	--color-thread: #c9a0ff;
+	--color-thread-muted: rgba(201, 160, 255, 0.75);
 }
 
 /* Font Face Declarations */

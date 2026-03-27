@@ -134,7 +134,7 @@ watch(() => props.isOpen, async (isOpen) => {
                         </span>
                         <button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread">
                             <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
-                            <span class="text-[11.5px] font-medium text-purple-400/45 group-hover/thread:text-purple-400 transition-colors max-w-[240px] truncate">{{ latestThread.name }}</span>
+                            <span class="text-[11.5px] font-medium text-thread-muted group-hover/thread:text-thread transition-colors max-w-[240px] truncate">{{ latestThread.name }}</span>
                         </button>
                     </div>
 
