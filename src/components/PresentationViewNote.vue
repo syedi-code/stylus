@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import type { Note, Book, Author } from '../lib/api';
-import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById } from '../lib/api';
+import type { Note, Book, Author, Thread } from '../lib/api';
+import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../composables/usePresentationFontSize';
 import { useTypography } from '../composables/useTypography';
@@ -17,12 +17,16 @@ const props = withDefaults(defineProps<{
     showVersionBadge: false
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits<{
+    (e: 'close'): void;
+    (e: 'navigateToThread', threadId: string): void;
+}>();
 
 const showFontControls = ref(false);
 const book = ref<Book | null>(null);
 const pdfUrl = ref<string | null>(null);
 const connectedAuthor = ref<Author | null>(null);
+const latestThread = ref<Thread | null>(null);
 
 const parsePrintPage = (pageStr: string | undefined): number | null => {
     if (!pageStr) return null;
@@ -65,14 +69,25 @@ const lineHeight = computed(() => {
 const { justified, toggle: toggleJustify } = usePresentationJustify('note');
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('note');
 
-watch(() => props.isOpen, (isOpen) => {
+watch(() => props.isOpen, async (isOpen) => {
     if (isOpen) {
         loadBook();
         loadAuthorConnection();
+        if (props.note) {
+            try {
+                const threads = await fetchThreadsForEntity('note', props.note.id);
+                latestThread.value = threads.length
+                    ? threads.sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]
+                    : null;
+            } catch {
+                latestThread.value = null;
+            }
+        }
     } else {
         book.value = null;
         pdfUrl.value = null;
         connectedAuthor.value = null;
+        latestThread.value = null;
     }
 });
 
@@ -172,6 +187,10 @@ const loadAuthorConnection = async () => {
                         <span v-if="showVersionBadge && note.version && note.version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
                             v{{ note.version }}
                         </span>
+                        <button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread">
+                            <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
+                            <span class="text-[11.5px] font-medium text-purple-400/45 group-hover/thread:text-purple-400 transition-colors max-w-[240px] truncate">{{ latestThread.name }}</span>
+                        </button>
                     </div>
 
                     <!-- Book Attribution -->

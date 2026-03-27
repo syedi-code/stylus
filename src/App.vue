@@ -606,7 +606,7 @@ watch([threadsSearch], () => {
 
               <!-- List -->
               <div v-else class="space-y-3">
-                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" :isAdmin="isAdmin" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @togglePosted="handleToggleNotePosted" @convertToThought="handleConvertToThought" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" />
+                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" :isAdmin="isAdmin" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @togglePosted="handleToggleNotePosted" @convertToThought="handleConvertToThought" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" @navigateToThread="handleNavigateToThread" />
 
                 <!-- Scroll sentinel for infinite scroll -->
                 <div ref="notesScrollSentinel" class="h-1"></div>
@@ -681,7 +681,7 @@ watch([threadsSearch], () => {
             <div class="hidden sm:block border-t border-rose/20"></div>
 
             <!-- Thoughts List -->
-            <ThoughtsList ref="thoughtsListRef" :isAdmin="isAdmin" @addToThread="handleAddThoughtToThread" />
+            <ThoughtsList ref="thoughtsListRef" :isAdmin="isAdmin" @addToThread="handleAddThoughtToThread" @navigateToThread="handleNavigateToThread" />
           </div>
         </transition>
 
@@ -775,11 +775,11 @@ watch([threadsSearch], () => {
 
       <ConvertToThoughtModal :isOpen="!!convertingNote" :note="convertingNote" :loading="convertLoading" @close="convertingNote = null" @confirm="confirmConvertToThought" />
 
-      <PresentationViewNote :isOpen="!!presentingNote" :note="presentingNote" :showVersionBadge="showVersionBadgeInPresentation" @close="presentingNote = null" />
+      <PresentationViewNote :isOpen="!!presentingNote" :note="presentingNote" :showVersionBadge="showVersionBadgeInPresentation" @close="presentingNote = null" @navigateToThread="(id) => { presentingNote = null; handleNavigateToThread(id); }" />
 
       <PresentationViewQuote :isOpen="!!presentingQuote" :quote="presentingQuote" @close="presentingQuote = null" />
 
-      <PresentationModeThoughts :isOpen="!!presentingThought" :thought="presentingThought" @close="presentingThought = null" />
+      <PresentationModeThoughts :isOpen="!!presentingThought" :thought="presentingThought" @close="presentingThought = null" @navigateToThread="(id) => { presentingThought = null; handleNavigateToThread(id); }" />
 
       <AddToThreadModal :isOpen="threadModalOpen" :entityType="threadModalEntityType" :entityId="threadModalEntityId" @close="threadModalOpen = false" @updated="threadModalOpen = false" @navigateToThread="handleNavigateToThread" />
 
