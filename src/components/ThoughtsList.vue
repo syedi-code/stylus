@@ -13,6 +13,7 @@ defineProps<{
 
 const emit = defineEmits<{
 	(e: 'addToThread', thought: Thought): void;
+	(e: 'navigateToThread', threadId: string): void;
 }>();
 
 const pagination = usePagination<Thought>({

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import type { Thought } from '../lib/api';
+import type { Thought, Thread } from '../lib/api';
+import { fetchThreadsForEntity } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../composables/usePresentationFontSize';
 import { useTypography } from '../composables/useTypography';
@@ -13,9 +14,13 @@ const props = defineProps<{
     isOpen: boolean;
 }>();
 
-const emit = defineEmits(['close']);
+const emit = defineEmits<{
+    (e: 'close'): void;
+    (e: 'navigateToThread', threadId: string): void;
+}>();
 
 const showFontControls = ref(false);
+const latestThread = ref<Thread | null>(null);
 
 const VERTICAL_MARGIN = 12;
 
@@ -60,8 +65,19 @@ const formattedTime = computed(() => {
     });
 });
 
-watch(() => props.isOpen, () => {
-    // no-op — font size is now purely reactive via useTypography
+watch(() => props.isOpen, async (isOpen) => {
+    if (isOpen && props.thought) {
+        try {
+            const threads = await fetchThreadsForEntity('thought', props.thought.id);
+            latestThread.value = threads.length
+                ? threads.sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]
+                : null;
+        } catch {
+            latestThread.value = null;
+        }
+    } else {
+        latestThread.value = null;
+    }
 });
 </script>
 
@@ -112,10 +128,14 @@ watch(() => props.isOpen, () => {
                 <div class="w-full max-w-xl bg-mono-900 border border-rose/30 rounded-xl p-6 shadow-2xl overflow-hidden flex flex-col" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
 
                     <!-- THOUGHT badge -->
-                    <div class="mb-4">
+                    <div class="mb-4 flex items-center gap-2">
                         <span class="bg-rose text-white px-2 pb-0.5 pt-1 text-xs font-bold uppercase tracking-wider rounded-sm">
                             Thought
                         </span>
+                        <button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread">
+                            <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
+                            <span class="text-[11.5px] font-medium text-purple-400/45 group-hover/thread:text-purple-400 transition-colors max-w-[240px] truncate">{{ latestThread.name }}</span>
+                        </button>
                     </div>
 
                     <!-- Content -->
