@@ -7,7 +7,7 @@ import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP }
 import { useTypography } from '../composables/useTypography';
 import { usePresentationJustify } from '../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../composables/usePresentationHyphenation';
-import PresentationFontControls from './PresentationFontControls.vue';
+import PresentationFontControls from '../shared/PresentationFontControls.vue';
 
 const props = withDefaults(defineProps<{
     note: Note | null;

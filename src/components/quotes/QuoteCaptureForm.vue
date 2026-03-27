@@ -3,8 +3,8 @@ import { ref, nextTick, watch, onMounted, computed } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
 import { createQuote, createConnectionApi } from '../lib/api';
 import { useDraft } from '../composables/useDraft';
-import SourceSelector from './SourceSelector.vue';
-import type { SourceAttribution } from './SourceSelector.vue';
+import SourceSelector from '../library/SourceSelector.vue';
+import type { SourceAttribution } from '../library/SourceSelector.vue';
 
 const emit = defineEmits(['saved']);
 

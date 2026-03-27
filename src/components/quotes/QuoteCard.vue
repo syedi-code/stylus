@@ -3,7 +3,7 @@ import { computed, ref, onMounted, watch } from 'vue';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, type Quote, type Book, type Author } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
 import { useTypography } from '../composables/useTypography';
-import AuthorPopover from './AuthorPopover.vue';
+import AuthorPopover from '../library/AuthorPopover.vue';
 
 const props = defineProps<{
   quote: Quote;

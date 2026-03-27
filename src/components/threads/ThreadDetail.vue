@@ -19,10 +19,10 @@ import {
   type Author,
   type EntityType,
 } from '../lib/api';
-import ThreadViewNote from './ThreadViewNote.vue';
-import ThreadViewQuote from './ThreadViewQuote.vue';
-import ThreadViewThought from './ThreadViewThought.vue';
-import ConfirmModal from './ConfirmModal.vue';
+import ThreadViewNote from '../notes/ThreadViewNote.vue';
+import ThreadViewQuote from '../quotes/ThreadViewQuote.vue';
+import ThreadViewThought from '../thoughts/ThreadViewThought.vue';
+import ConfirmModal from '../shared/ConfirmModal.vue';
 
 const props = defineProps<{
   threadId: string;

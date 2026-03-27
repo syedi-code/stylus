@@ -2,8 +2,8 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity, type Note, type Book, type Author, type Thread } from '../lib/api';
 import { formatMarkdown } from '../lib/formatText';
-import AuthorPopover from './AuthorPopover.vue';
-import SkeletonBlock from './SkeletonBlock.vue';
+import AuthorPopover from '../library/AuthorPopover.vue';
+import SkeletonBlock from '../shared/SkeletonBlock.vue';
 
 const props = defineProps<{
   note: Note;
