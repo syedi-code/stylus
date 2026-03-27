@@ -116,7 +116,7 @@ const { baseFontSize, lineHeightClass, typographyClass } = useTypography('note',
 
     <!-- Free-text Attribution (no book, no author connection) -->
     <div v-else-if="note.creator || note.work" class="text-xs text-mono-500 leading-relaxed">
-      <p v-if="note.creator" class="font-medium text-mono-400">— {{ note.creator }}</p>
+      <p v-if="note.creator" class="font-medium text-mono-400">{{ note.creator }}</p>
       <p v-if="note.work" class="italic">{{ note.work }}</p>
     </div>
 
