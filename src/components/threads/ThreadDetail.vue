@@ -461,7 +461,7 @@ defineExpose({ loadThread });
         </h2>
       </div>
 
-      <div class="thread-chamber p-4 sm:p-6">
+      <div>
 
         <div v-if="editingDesc" class="max-w-sm mx-auto mt-1">
           <input v-model="editDesc" class="thread-desc-input w-full bg-transparent border-b border-mono-700 text-mono-300 text-sm text-center focus:outline-none focus:border-purple-500 placeholder-mono-600 py-1" placeholder="Add a description..." @keydown.enter="saveDesc" @keydown.escape="editingDesc = false" @blur="saveDesc" />
@@ -552,15 +552,6 @@ defineExpose({ loadThread });
 </template>
 
 <style scoped>
-.thread-chamber {
-  background: #0d0b14;
-  border-radius: 20px;
-  box-shadow:
-    0 0 0 1.5px rgba(167, 139, 250, 0.28),
-    inset 0 1px 0 rgba(167, 139, 250, 0.07),
-    0 24px 60px rgba(0, 0, 0, 0.6);
-}
-
 .thread-item-row {
   user-select: none;
   -webkit-user-select: none;
