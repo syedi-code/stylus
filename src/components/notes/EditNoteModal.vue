@@ -45,6 +45,13 @@ watch(() => props.note, async (newNote) => {
         bookId: newNote.book_id,
         page: newNote.page || undefined,
       };
+    } else if (newNote.creator || newNote.work) {
+      initialAttribution.value = {
+        mode: 'other',
+        creator: newNote.creator || undefined,
+        work: newNote.work || undefined,
+        kind: newNote.kind || undefined,
+      };
     } else {
       // Check for author connection
       try {
@@ -99,6 +106,10 @@ const save = async () => {
     if (attr.mode === 'book' && attr.bookId) {
       input.book_id = attr.bookId;
       if (attr.page) input.page = attr.page;
+    } else if (attr.mode === 'other') {
+      if (attr.creator) input.creator = attr.creator;
+      if (attr.work) input.work = attr.work;
+      if (attr.kind) input.kind = attr.kind;
     }
 
     const result = await createNote(input);

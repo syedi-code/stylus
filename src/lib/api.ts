@@ -7,6 +7,9 @@ import axios from 'axios';
 export interface Note {
 	id: string;
 	content: string;
+	creator?: string;
+	work?: string;
+	kind?: string;
 	book_id?: string;
 	page?: string;
 	posted: boolean;
@@ -22,6 +25,9 @@ export interface Note {
 
 export interface NoteInput {
 	content: string;
+	creator?: string;
+	work?: string;
+	kind?: string;
 	book_id?: string;
 	page?: string;
 	posted?: boolean;

@@ -53,6 +53,10 @@ const submit = async () => {
         if (attr.mode === 'book' && attr.bookId) {
             input.book_id = attr.bookId;
             if (attr.page) input.page = attr.page;
+        } else if (attr.mode === 'other') {
+            if (attr.creator) input.creator = attr.creator;
+            if (attr.work) input.work = attr.work;
+            if (attr.kind) input.kind = attr.kind;
         }
 
         const result = await createNote(input);
