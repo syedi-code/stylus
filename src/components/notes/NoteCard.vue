@@ -241,7 +241,7 @@ const highlightText = (text: string | undefined) => {
       </div>
       <!-- Free-text Attribution (no book, no author connection) -->
       <div v-else-if="note.creator || note.work" class="mb-2 text-xs text-mono-500 leading-relaxed">
-        <p v-if="note.creator" class="font-medium text-mono-400">— {{ note.creator }}</p>
+        <p v-if="note.creator" class="font-medium text-mono-400">{{ note.creator }}</p>
         <p v-if="note.work" class="italic">{{ note.work }}</p>
       </div>
       <p v-if="note.content" class="typography-prose whitespace-pre-wrap leading-[1.25] text-sm" v-html="highlightText(note.content)"></p>
