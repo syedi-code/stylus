@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { fetchBooks, type Book } from '../lib/api';
+import { fetchBooks, type Book } from '../../lib/api';
 
 const props = defineProps<{
   modelValue: string | null;

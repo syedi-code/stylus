@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { Quote, Book } from '../lib/api';
-import { fetchBookById, getSignedFileUrl } from '../lib/api';
-import { formatMarkdown } from '../lib/formatText';
-import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../composables/usePresentationFontSize';
-import { useTypography } from '../composables/useTypography';
-import { usePresentationJustify } from '../composables/usePresentationJustify';
-import { usePresentationHyphenation } from '../composables/usePresentationHyphenation';
+import type { Quote, Book } from '../../lib/api';
+import { fetchBookById, getSignedFileUrl } from '../../lib/api';
+import { formatMarkdown } from '../../lib/formatText';
+import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../../composables/usePresentationFontSize';
+import { useTypography } from '../../composables/useTypography';
+import { usePresentationJustify } from '../../composables/usePresentationJustify';
+import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
 
 const props = withDefaults(defineProps<{

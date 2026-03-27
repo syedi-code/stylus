@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, computed, onUnmounted } from 'vue';
-import { createThought } from '../lib/api';
-import { useMoodAutocomplete } from '../composables/useMoodAutocomplete';
+import { createThought } from '../../lib/api';
+import { useMoodAutocomplete } from '../../composables/useMoodAutocomplete';
 
 const props = defineProps<{
 	isOpen: boolean;

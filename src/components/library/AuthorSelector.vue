@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import { fetchAuthors, createAuthor, type Author } from '../lib/api';
+import { fetchAuthors, createAuthor, type Author } from '../../lib/api';
 
 const props = withDefaults(defineProps<{
   autoOpen?: boolean;

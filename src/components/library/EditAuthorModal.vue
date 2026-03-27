@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { createAuthor, updateAuthor, type Author, type AuthorInput } from '../lib/api';
+import { createAuthor, updateAuthor, type Author, type AuthorInput } from '../../lib/api';
 
 const props = defineProps<{
   author: Author | null;

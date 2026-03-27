@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import type { Note } from '../lib/api';
+import type { Note } from '../../lib/api';
 
 const props = defineProps<{
   note: Note | null;

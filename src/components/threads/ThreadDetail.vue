@@ -18,7 +18,7 @@ import {
   type Book,
   type Author,
   type EntityType,
-} from '../lib/api';
+} from '../../lib/api';
 import ThreadViewNote from '../notes/ThreadViewNote.vue';
 import ThreadViewQuote from '../quotes/ThreadViewQuote.vue';
 import ThreadViewThought from '../thoughts/ThreadViewThought.vue';

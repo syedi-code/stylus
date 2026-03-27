@@ -7,7 +7,7 @@ import {
   deleteThought,
   updateThoughtPosition,
   type Thought,
-} from '../lib/api';
+} from '../../lib/api';
 
 // ============================================================================
 // State

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import type { Book } from '../lib/api';
+import type { Book } from '../../lib/api';
 
 const props = defineProps<{
   search: string;

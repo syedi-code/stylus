@@ -8,7 +8,7 @@ import {
   removeThreadItemApi,
   createThreadApi,
   type Thread,
-} from '../lib/api';
+} from '../../lib/api';
 
 const props = defineProps<{
   entityType: string;
@@ -63,7 +63,7 @@ async function toggleThread(thread: Thread) {
   try {
     if (entityThreadIds.value.has(thread.id)) {
       // Need to find the item ID — fetch thread items to find it
-      const { fetchThread } = await import('../lib/api');
+      const { fetchThread } = await import('../../lib/api');
       const { items } = await fetchThread(thread.id);
       const item = items.find(
         (i) => i.entity_type === props.entityType && i.entity_id === props.entityId
