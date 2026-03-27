@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { MAX_LENGTHS } from '@antisocial/core';
 import {
   fetchThoughts,
   createThought,
@@ -258,8 +259,8 @@ onUnmounted(() => {
 // Character count
 const charCount = computed(() => composerContent.value.length);
 const charCountClass = computed(() => {
-  if (charCount.value > 900) return 'text-red-500';
-  if (charCount.value > 700) return 'text-gold';
+  if (charCount.value > MAX_LENGTHS.CONTENT * 0.95) return 'text-red-500';
+  if (charCount.value > MAX_LENGTHS.CONTENT * 0.8) return 'text-gold';
   return 'text-mono-600';
 });
 </script>
@@ -361,9 +362,9 @@ const charCountClass = computed(() => {
     <!-- Floating Composer -->
     <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-30">
       <form @submit.prevent="handleSubmit" class="bg-mono-900/95 backdrop-blur-sm border border-mono-700 rounded-2xl p-4 shadow-2xl shadow-black/50">
-        <textarea v-model="composerContent" placeholder="Capture a thought..." rows="2" class="w-full bg-transparent text-mono-100 placeholder-mono-600 resize-none focus:outline-none text-sm" @keydown.meta.enter="handleSubmit" @keydown.ctrl.enter="handleSubmit"></textarea>
+        <textarea v-model="composerContent" placeholder="Capture a thought..." rows="2" :maxlength="MAX_LENGTHS.CONTENT" class="w-full bg-transparent text-mono-100 placeholder-mono-600 resize-none focus:outline-none text-sm" @keydown.meta.enter="handleSubmit" @keydown.ctrl.enter="handleSubmit"></textarea>
         <div class="flex justify-between items-center mt-2 pt-2 border-t border-mono-800">
-          <span :class="['text-xs tabular-nums', charCountClass]">{{ charCount }}</span>
+          <span :class="['text-xs tabular-nums', charCountClass]">{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</span>
           <button type="submit" :disabled="!composerContent.trim() || composerSubmitting" class="px-4 py-1.5 bg-accent hover:bg-accent-bright disabled:bg-mono-800 disabled:text-mono-600 text-white text-xs font-bold uppercase tracking-wide rounded-lg transition-all cursor-pointer disabled:cursor-not-allowed">
             {{ composerSubmitting ? '...' : '⏎ Add' }}
           </button>

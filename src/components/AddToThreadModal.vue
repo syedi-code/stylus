@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { MAX_LENGTHS } from '@antisocial/core';
 import {
   fetchThreads,
   fetchThreadsForEntity,
@@ -189,6 +190,7 @@ function close() {
                     v-model="newThreadName"
                     type="text"
                     placeholder="Thread name"
+                    :maxlength="MAX_LENGTHS.TITLE"
                     class="w-full px-3 py-2 bg-mono-800 border border-mono-700 rounded-lg text-white placeholder-mono-600 focus:outline-none focus:border-accent text-sm"
                     @keydown.enter="handleCreateThread"
                   />
@@ -196,6 +198,7 @@ function close() {
                     v-model="newThreadDesc"
                     type="text"
                     placeholder="Description (optional)"
+                    :maxlength="MAX_LENGTHS.CONTENT"
                     class="w-full px-3 py-2 bg-mono-800 border border-mono-700 rounded-lg text-white placeholder-mono-600 focus:outline-none focus:border-accent text-sm"
                     @keydown.enter="handleCreateThread"
                   />
