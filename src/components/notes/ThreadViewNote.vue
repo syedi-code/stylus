@@ -114,6 +114,12 @@ const { baseFontSize, lineHeightClass, typographyClass } = useTypography('note',
       <span class="underline decoration-mono-600 underline-offset-2 text-mono-400">{{ connectedAuthor.name }}</span>
     </div>
 
+    <!-- Free-text Attribution (no book, no author connection) -->
+    <div v-else-if="note.creator || note.work" class="text-xs text-mono-500 leading-relaxed">
+      <p v-if="note.creator" class="font-medium text-mono-400">{{ note.creator }}</p>
+      <p v-if="note.work" class="italic">{{ note.work }}</p>
+    </div>
+
     <!-- Content -->
     <p v-if="note.content" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedContent"></p>
 
