@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
-import { createEssay, updateEssay as updateEssayApi, type Essay, type EssayInput } from '../../lib/api';
+import { createEssay, type Essay, type EssayInput } from '../../lib/api';
 import { bookHue, bookGradient } from '../../composables/useBookHue';
 import EssayLibraryBrowser, { type SelectedBookRef } from './EssayLibraryBrowser.vue';
 
