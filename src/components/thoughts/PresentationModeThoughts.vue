@@ -125,7 +125,7 @@ watch(() => props.isOpen, async (isOpen) => {
                 </div>
 
                 <!-- Content card -->
-                <div class="w-full max-w-xl bg-mono-900 border border-rose/30 rounded-xl p-6 shadow-2xl overflow-hidden flex flex-col" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                <div class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-4" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
 
                     <!-- THOUGHT badge -->
                     <div class="mb-4 flex items-center gap-2">
@@ -144,7 +144,7 @@ watch(() => props.isOpen, async (isOpen) => {
                     </div>
 
                     <!-- Date footer -->
-                    <div class="mt-4 pt-3 border-t border-mono-800 text-xs text-mono-500">
+                    <div class="mt-4 pt-3 text-xs text-mono-500">
                         {{ formattedDate }} · {{ formattedTime }}
                     </div>
                 </div>
