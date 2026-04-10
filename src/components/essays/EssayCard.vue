@@ -2,6 +2,7 @@
 import { computed, ref, onMounted } from 'vue';
 import { bookGradient } from '../../composables/useBookHue';
 import { fetchThreadsForEntity, type Essay, type Thread } from '../../lib/api';
+import { formatMarkdown } from '../../lib/formatText';
 import EssayReferenceChips from './EssayReferenceChips.vue';
 
 const props = defineProps<{
@@ -113,7 +114,7 @@ const formattedDate = computed(() => {
 
     <!-- Essay body — tight article typography per mockup -->
     <div class="mt-1">
-      <p class="typography-prose whitespace-pre-wrap leading-[1.25] text-sm text-mono-100">{{ essay.content }}</p>
+      <p class="typography-prose whitespace-pre-wrap leading-[1.25] text-sm text-mono-100" v-html="formatMarkdown(essay.content)"></p>
     </div>
 
     <!-- Reference chips -->
