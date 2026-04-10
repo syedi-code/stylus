@@ -319,7 +319,10 @@ function normalizeEssay(raw: any): Essay {
 				? JSON.parse(raw.tags)
 				: raw.tags
 			: [],
-		references: raw.references || [],
+		references: (raw.references || []).map((r: any) => ({
+			...r,
+			page: r.page ?? undefined,
+		})),
 	};
 }
 
@@ -492,7 +495,10 @@ export async function fetchEssayById(id: string): Promise<Essay> {
 export async function createEssay(
 	input: EssayInput
 ): Promise<{ ok: boolean; essay: Essay }> {
-	const response = await apiClient.post('/essays', serializeEssayInput(input));
+	const response = await apiClient.post(
+		'/essays',
+		serializeEssayInput(input)
+	);
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
@@ -522,9 +528,7 @@ export async function deleteEssay(id: string): Promise<{ ok: boolean }> {
 	return response.data;
 }
 
-export async function fetchEssayVersions(
-	id: string
-): Promise<Essay[]> {
+export async function fetchEssayVersions(id: string): Promise<Essay[]> {
 	const response = await apiClient.get<{
 		versions: any[];
 		error?: string;
