@@ -1,6 +1,6 @@
 import { ref, computed, watch, type Ref, type ComputedRef } from 'vue';
 
-type ContentType = 'note' | 'quote' | 'thought';
+type ContentType = 'note' | 'quote' | 'thought' | 'essay';
 
 export const FONT_SIZE_MIN = 12;
 export const FONT_SIZE_MAX = 24;

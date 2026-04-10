@@ -48,6 +48,12 @@
 	/* Thread - warm lavender-pink */
 	--color-thread: #c9a0ff;
 	--color-thread-muted: rgba(201, 160, 255, 0.75);
+
+	/* Essay - warm amber */
+	--color-essay: #e8a040;
+	--color-essay-bright: #f0b860;
+	--color-essay-muted: rgba(232, 160, 64, 0.15);
+	--color-essay-text: #000000;
 }
 
 /* Font Face Declarations */
