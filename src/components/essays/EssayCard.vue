@@ -63,10 +63,6 @@ const formattedDate = computed(() => {
         <span class="bg-essay text-essay-text px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] leading-[1.5] shrink-0">
           essay
         </span>
-        <!-- Version badge — gold bg, black text -->
-        <span v-if="essay.version && essay.version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] leading-[1.5] shrink-0">
-          v{{ essay.version }}
-        </span>
         <!-- Thread link — purple accent -->
         <button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread min-w-0">
           <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors shrink-0">in</span>
