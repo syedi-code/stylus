@@ -91,7 +91,7 @@ const handleSubmit = async () => {
   try {
     const references = selectedRefs.value.map((r, i) => ({
       book_id: r.book_id,
-      page: r.page,
+      page: r.page || undefined,
       position: i,
     }));
 
@@ -114,8 +114,8 @@ const handleSubmit = async () => {
     }
     emit('saved');
     emit('close');
-  } catch (err) {
-    console.error('Failed to save essay:', err);
+  } catch (err: any) {
+    console.error('Failed to save essay:', err?.response?.data ?? err);
   } finally {
     submitting.value = false;
   }
