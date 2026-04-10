@@ -595,6 +595,7 @@ const handleEssaySaved = async () => {
   editingEssay.value = null;
   showNewEssayModal.value = false;
   await essaysPagination.loadInitial();
+  await reloadEditingThread();
 };
 
 const handleNavigateToThread = (_threadId: string) => {
