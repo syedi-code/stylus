@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue';
 import type { Essay, Thread } from '../../lib/api';
 import { fetchThreadsForEntity } from '../../lib/api';
+import { formatMarkdown } from '../../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../../composables/usePresentationFontSize';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
@@ -112,7 +113,7 @@ watch(() => props.isOpen, async (isOpen) => {
               textAlign: justified ? 'justify' : 'left',
               hyphens: hyphenation ? 'auto' : 'none',
             }"
-          >{{ essay.content }}</div>
+          v-html="formatMarkdown(essay.content)"></div>
 
           <!-- Reference chips (only if references exist) -->
           <div v-if="essay.references.length" class="mt-5">
