@@ -17,6 +17,7 @@ const tabs = [
   { key: 'notes', label: 'notes', color: 'accent' },
   { key: 'thoughts', label: 'thoughts', color: 'rose' },
   { key: 'quotes', label: 'quotes', color: 'accent' },
+  { key: 'essays', label: 'essays', color: 'essay' },
   { key: 'library', label: 'library', color: 'accent' },
   { key: 'threads', label: 'threads', color: 'purple' },
 ] as const;
@@ -54,9 +55,11 @@ function selectTab(tab: string) {
         'bg-accent text-white border-accent': currentTab === tab.key && tab.color === 'accent',
         'bg-rose text-white border-rose': currentTab === tab.key && tab.color === 'rose',
         'bg-purple-600 text-white border-purple-600': currentTab === tab.key && tab.color === 'purple',
+        'bg-essay text-black border-essay': currentTab === tab.key && tab.color === 'essay',
         'text-mono-500 hover:text-white': currentTab !== tab.key && tab.color === 'accent',
         'text-mono-500 hover:text-rose-bright': currentTab !== tab.key && tab.color === 'rose',
         'text-mono-500 hover:text-purple-400': currentTab !== tab.key && tab.color === 'purple',
+        'text-mono-500 hover:text-essay-bright': currentTab !== tab.key && tab.color === 'essay',
       }">
         {{ tab.label }}
       </button>
@@ -69,6 +72,7 @@ function selectTab(tab: string) {
           'text-accent': ['notes', 'quotes', 'library', 'fonts'].includes(currentTab),
           'text-rose-bright': currentTab === 'thoughts',
           'text-purple-400': currentTab === 'threads',
+          'text-essay-bright': currentTab === 'essays',
         }">
           {{ currentTab }}
         </span>
@@ -84,6 +88,7 @@ function selectTab(tab: string) {
             'text-accent': currentTab === tab.key && tab.color === 'accent',
             'text-rose-bright': currentTab === tab.key && tab.color === 'rose',
             'text-purple-400': currentTab === tab.key && tab.color === 'purple',
+            'text-essay-bright': currentTab === tab.key && tab.color === 'essay',
             'text-mono-500 active:text-mono-300': currentTab !== tab.key,
           }">
             {{ tab.label }}
