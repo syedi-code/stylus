@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { fetchNotes, fetchBooks, updateNote, deleteNote, fetchQuotes, updateQuote, deleteQuote, createThought, type Note, type Quote, type Book, type Thought } from './lib/api';
+import { fetchNotes, fetchBooks, updateNote, deleteNote, fetchQuotes, updateQuote, deleteQuote, createThought, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
 import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';
 import NoteCard from './components/notes/NoteCard.vue';
@@ -30,6 +30,11 @@ import ThreadDetail from './components/threads/ThreadDetail.vue';
 import ThreadList from './components/threads/ThreadList.vue';
 import EditThoughtModal from './components/thoughts/EditThoughtModal.vue';
 import ConfirmModal from './components/shared/ConfirmModal.vue';
+import EssayCard from './components/essays/EssayCard.vue';
+import EssayCardSkeleton from './components/essays/EssayCardSkeleton.vue';
+import EditEssayModal from './components/essays/EditEssayModal.vue';
+import MobileEssayCapture from './components/essays/MobileEssayCapture.vue';
+import PresentationViewEssay from './components/essays/PresentationViewEssay.vue';
 import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
 
 const { isAdmin, user: authUser, init: initAuth, logout } = useAuth();
@@ -39,6 +44,12 @@ const notesPagination = usePagination<Note, { search?: string }>({
   pageSize: 30,
 });
 const { loading, error } = notesPagination;
+
+const essaysPagination = usePagination<Essay, { search?: string }>({ 
+  fetchFn: (params) => fetchEssays({ ...params }),
+  pageSize: 30,
+});
+
 const currentTab = ref('notes');
 
 // Infinite scroll sentinel
@@ -83,6 +94,7 @@ onUnmounted(() => {
 const mobileNoteOpen = ref(false);
 const mobileQuoteOpen = ref(false);
 const mobileThoughtOpen = ref(false);
+const mobileEssayOpen = ref(false);
 
 // Thoughts tab
 const thoughtsListRef = ref<InstanceType<typeof ThoughtsList> | null>(null);
@@ -129,6 +141,7 @@ const handleThreadPresentItem = (entityType: string, entity: any) => {
   if (entityType === 'note') presentingNote.value = entity;
   else if (entityType === 'quote') presentingQuote.value = entity;
   else if (entityType === 'thought') presentingThought.value = entity;
+  else if (entityType === 'essay') presentingEssay.value = entity;
 };
 
 const handleThreadEditItem = (threadId: string, entityType: string, entity: any) => {
@@ -137,6 +150,7 @@ const handleThreadEditItem = (threadId: string, entityType: string, entity: any)
   if (entityType === 'note') editingNote.value = entity;
   else if (entityType === 'quote') editingQuote.value = entity;
   else if (entityType === 'thought') editingThought.value = entity;
+  else if (entityType === 'essay') editingEssay.value = entity;
 };
 
 const reloadEditingThread = async () => {
@@ -466,6 +480,9 @@ watch(currentTab, (newTab) => {
   if (newTab === 'quotes') {
     loadQuotes();
   }
+  if (newTab === 'essays') {
+    essaysPagination.loadInitial();
+  }
   if (newTab === 'threads') {
     loadThreads();
   }
@@ -538,6 +555,47 @@ const openAddToThread = (entityType: string, entityId: string) => {
 const handleAddNoteToThread = (note: Note) => openAddToThread('note', note.id);
 const handleAddQuoteToThread = (quote: Quote) => openAddToThread('quote', quote.id);
 const handleAddThoughtToThread = (thought: any) => openAddToThread('thought', thought.id);
+const handleAddEssayToThread = (essay: Essay) => openAddToThread('essay', essay.id);
+
+// ============================================================================
+// Essays
+// ============================================================================
+
+const editingEssay = ref<Essay | null>(null);
+const presentingEssay = ref<Essay | null>(null);
+const showNewEssayModal = ref(false);
+
+const handleEditEssay = (essay: Essay) => {
+  editingEssay.value = essay;
+};
+
+const handleCopyEssay = async (essay: Essay) => {
+  if (essay.content) {
+    await navigator.clipboard.writeText(essay.content);
+  }
+};
+
+const handlePresentEssay = (essay: Essay) => {
+  presentingEssay.value = essay;
+};
+
+const handleDeleteEssay = async (essay: Essay) => {
+  if (!confirm('Are you sure you want to delete this essay? This action cannot be undone.')) {
+    return;
+  }
+  try {
+    await deleteEssayApi(essay.id);
+    essaysPagination.removeItem((e) => e.id === essay.id);
+  } catch (err) {
+    console.error('Failed to delete essay:', err);
+  }
+};
+
+const handleEssaySaved = async () => {
+  editingEssay.value = null;
+  showNewEssayModal.value = false;
+  await essaysPagination.loadInitial();
+};
 
 const handleNavigateToThread = (_threadId: string) => {
   threadModalOpen.value = false;
@@ -686,6 +744,56 @@ watch([threadsSearch], () => {
           </div>
         </transition>
 
+        <!-- Essays Tab -->
+        <transition name="fade" mode="out-in">
+          <div v-if="currentTab === 'essays'" class="space-y-4">
+            <!-- New Essay button (desktop only, mobile uses FAB) -->
+            <div class="hidden sm:flex justify-center">
+              <button @click="showNewEssayModal = true" class="px-4 py-1.5 bg-essay hover:bg-essay-bright text-black text-xs font-semibold rounded-md transition-colors cursor-pointer">
+                New Essay
+              </button>
+            </div>
+
+            <!-- Skeleton Loading -->
+            <div v-if="essaysPagination.loading.value" class="space-y-3">
+              <EssayCardSkeleton v-for="i in 4" :key="i" />
+            </div>
+
+            <!-- Error -->
+            <div v-else-if="essaysPagination.error.value" class="p-6 border border-red-900 bg-red-950/20 text-center">
+              <p class="text-red-500 font-bold uppercase text-sm mb-4">{{ essaysPagination.error.value }}</p>
+              <button @click="essaysPagination.loadInitial()" class="px-4 py-2 bg-red-900 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer">
+                Retry Connection
+              </button>
+            </div>
+
+            <!-- Empty state (per mockup 03 empty state) -->
+            <div v-else-if="essaysPagination.items.value.length === 0" class="py-20 flex flex-col items-center gap-2.5 text-center border border-dashed border-mono-700 rounded-lg">
+              <div class="w-10 h-10 rounded-[10px] bg-essay-muted flex items-center justify-center text-essay">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                  <path d="m15 5 4 4" />
+                </svg>
+              </div>
+              <p class="text-[15px] font-medium text-mono-200">No essays yet</p>
+              <p class="text-xs text-mono-500 max-w-xs leading-relaxed">Essays are short reflections that reference one or more books from your library.</p>
+              <button @click="showNewEssayModal = true" class="mt-1 py-[7px] px-4 bg-essay border-none rounded-md font-body text-xs font-semibold text-black cursor-pointer hover:bg-essay-bright transition-colors">
+                Write your first essay
+              </button>
+            </div>
+
+            <!-- Essay List -->
+            <div v-else class="space-y-3">
+              <EssayCard v-for="essay in essaysPagination.items.value" :key="essay.id" :essay="essay" :isAdmin="isAdmin" @edit="handleEditEssay" @copy="handleCopyEssay" @present="handlePresentEssay" @delete="handleDeleteEssay" @addToThread="handleAddEssayToThread" @navigateToThread="handleNavigateToThread" />
+
+              <!-- Loading more spinner -->
+              <div v-if="essaysPagination.loadingMore.value" class="py-6 text-center">
+                <div class="inline-block animate-spin h-5 w-5 border-2 border-essay border-t-transparent rounded-full"></div>
+              </div>
+            </div>
+          </div>
+        </transition>
+
         <!-- Threads Tab -->
         <transition name="fade" mode="out-in">
           <div v-if="currentTab === 'threads'">
@@ -716,6 +824,8 @@ watch([threadsSearch], () => {
 
       <EditThoughtModal :isOpen="!!editingThought" :thought="editingThought" @close="editingThought = null" @saved="handleThreadThoughtSaved" />
 
+      <EditEssayModal :isOpen="showNewEssayModal || !!editingEssay" :essay="editingEssay" @close="showNewEssayModal = false; editingEssay = null" @saved="handleEssaySaved" />
+
       <EditBookModal :isOpen="showBookModal" :book="editingBook" @close="showBookModal = false; editingBook = null" @saved="handleBookSaved" />
 
       <EditAuthorModal :isOpen="showAuthorModal" :author="editingAuthor" @close="showAuthorModal = false; editingAuthor = null" @saved="handleAuthorSaved" />
@@ -727,6 +837,8 @@ watch([threadsSearch], () => {
       <PresentationViewQuote :isOpen="!!presentingQuote" :quote="presentingQuote" @close="presentingQuote = null" />
 
       <PresentationModeThoughts :isOpen="!!presentingThought" :thought="presentingThought" @close="presentingThought = null" @navigateToThread="(id) => { presentingThought = null; handleNavigateToThread(id); }" />
+
+      <PresentationViewEssay :isOpen="!!presentingEssay" :essay="presentingEssay" @close="presentingEssay = null" @navigateToThread="(id) => { presentingEssay = null; handleNavigateToThread(id); }" />
 
       <AddToThreadModal :isOpen="threadModalOpen" :entityType="threadModalEntityType" :entityId="threadModalEntityId" @close="threadModalOpen = false" @updated="threadModalOpen = false" @navigateToThread="handleNavigateToThread" />
 
@@ -740,6 +852,9 @@ watch([threadsSearch], () => {
 
       <!-- Mobile Thought Capture -->
       <MobileThoughtCapture :isOpen="mobileThoughtOpen" @close="mobileThoughtOpen = false" @saved="thoughtsListRef?.reload()" />
+
+      <!-- Mobile Essay Capture -->
+      <MobileEssayCapture :isOpen="mobileEssayOpen" @close="mobileEssayOpen = false" @saved="essaysPagination.loadInitial()" />
 
       <!-- New Thread Modal -->
       <Teleport to="body">
@@ -792,6 +907,14 @@ watch([threadsSearch], () => {
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 5v14" />
         <path d="M5 12h14" />
+      </svg>
+    </button>
+
+    <!-- Amber FAB for essays tab -->
+    <button v-if="isMobile && currentTab === 'essays'" @click="mobileEssayOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-essay active:bg-essay-bright rounded-full shadow-lg shadow-essay/30 flex items-center justify-center text-black transition-all active:scale-95" aria-label="New Essay">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+        <path d="m15 5 4 4" />
       </svg>
     </button>
 

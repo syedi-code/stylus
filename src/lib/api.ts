@@ -70,6 +70,43 @@ export interface QuoteInput {
 	connections?: ConnectionInput[];
 }
 
+// ============================================================================
+// Essay Types
+// ============================================================================
+
+export interface EssayReference {
+	id: string;
+	book_id: string;
+	page?: string;
+	position: number;
+	book_title?: string;
+	book_author?: string;
+}
+
+export interface Essay {
+	id: string;
+	content: string;
+	posted: boolean;
+	tags: string[];
+	replaces?: string;
+	source: string;
+	created_at: string;
+	updated_at: string;
+	references: EssayReference[];
+	// Client-side computed
+	version?: number;
+}
+
+export interface EssayInput {
+	content: string;
+	posted?: boolean;
+	tags?: string[];
+	replaces?: string;
+	source?: string;
+	references: { book_id: string; page?: string; position?: number }[];
+	connections?: ConnectionInput[];
+}
+
 export interface Book {
 	id: string;
 	title: string;
@@ -273,6 +310,29 @@ function serializeQuoteInput(input: QuoteInput): Record<string, unknown> {
 	};
 }
 
+function normalizeEssay(raw: any): Essay {
+	return {
+		...raw,
+		posted: !!raw.posted,
+		tags: raw.tags
+			? typeof raw.tags === 'string'
+				? JSON.parse(raw.tags)
+				: raw.tags
+			: [],
+		references: raw.references || [],
+	};
+}
+
+function serializeEssayInput(input: EssayInput): Record<string, unknown> {
+	const { connections, ...rest } = input;
+	return {
+		...rest,
+		posted: input.posted ? 1 : 0,
+		tags: input.tags ? JSON.stringify(input.tags) : undefined,
+		connections,
+	};
+}
+
 // ============================================================================
 // Notes API
 // ============================================================================
@@ -390,6 +450,89 @@ export async function deleteQuote(id: string): Promise<{ ok: boolean }> {
 		throw new Error(response.data.error);
 	}
 	return response.data;
+}
+
+// ============================================================================
+// Essays API
+// ============================================================================
+
+export async function fetchEssays(
+	params: {
+		limit?: number;
+		offset?: number;
+		search?: string;
+		posted?: number;
+		book_id?: string;
+	} = {}
+): Promise<{ data: Essay[]; hasMore: boolean }> {
+	const response = await apiClient.get<{
+		essays: any[];
+		hasMore?: boolean;
+		error?: string;
+	}>('/essays', { params });
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return {
+		data: (response.data.essays || []).map(normalizeEssay),
+		hasMore: response.data.hasMore ?? false,
+	};
+}
+
+export async function fetchEssayById(id: string): Promise<Essay> {
+	const response = await apiClient.get<{ essay: any; error?: string }>(
+		`/essays/${id}`
+	);
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return normalizeEssay(response.data.essay);
+}
+
+export async function createEssay(
+	input: EssayInput
+): Promise<{ ok: boolean; essay: Essay }> {
+	const response = await apiClient.post('/essays', serializeEssayInput(input));
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return { ok: response.data.ok, essay: normalizeEssay(response.data.essay) };
+}
+
+export async function updateEssay(
+	id: string,
+	updates: Partial<EssayInput>
+): Promise<{ ok: boolean; essay: Essay }> {
+	const serialized: Record<string, unknown> = { ...updates };
+	if (updates.posted !== undefined)
+		serialized.posted = updates.posted ? 1 : 0;
+	if (updates.tags) serialized.tags = JSON.stringify(updates.tags);
+	const response = await apiClient.patch(`/essays/${id}`, serialized);
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return { ok: response.data.ok, essay: normalizeEssay(response.data.essay) };
+}
+
+export async function deleteEssay(id: string): Promise<{ ok: boolean }> {
+	const response = await apiClient.delete(`/essays/${id}`);
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return response.data;
+}
+
+export async function fetchEssayVersions(
+	id: string
+): Promise<Essay[]> {
+	const response = await apiClient.get<{
+		versions: any[];
+		error?: string;
+	}>(`/essays/${id}/versions`);
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return (response.data.versions || []).map(normalizeEssay);
 }
 
 // ============================================================================
