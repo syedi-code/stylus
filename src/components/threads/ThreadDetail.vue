@@ -9,6 +9,7 @@ import {
   fetchQuotes,
   fetchBooks,
   fetchThoughts,
+  fetchEssays,
   fetchBookById,
   getSignedFileUrl,
   fetchConnections,
@@ -22,6 +23,7 @@ import {
 import ThreadViewNote from '../notes/ThreadViewNote.vue';
 import ThreadViewQuote from '../quotes/ThreadViewQuote.vue';
 import ThreadViewThought from '../thoughts/ThreadViewThought.vue';
+import ThreadViewEssay from '../essays/ThreadViewEssay.vue';
 import ConfirmModal from '../shared/ConfirmModal.vue';
 
 const props = defineProps<{
@@ -136,6 +138,18 @@ async function resolveItems(threadItems: ThreadItem[]) {
         for (const t of result.data) {
           if (byType.thought.includes(t.id)) {
             entityMap.set(`thought:${t.id}`, t);
+          }
+        }
+      })
+    );
+  }
+
+  if (byType.essay?.length) {
+    promises.push(
+      fetchEssays({ limit: 5000 }).then((result) => {
+        for (const e of result.data) {
+          if (byType.essay.includes(e.id)) {
+            entityMap.set(`essay:${e.id}`, e);
           }
         }
       })
@@ -501,7 +515,7 @@ defineExpose({ loadThread });
                       <circle cx="15" cy="18" r="1.5" />
                     </svg>
                   </div>
-                  <button v-if="item.entity_type === 'note' || item.entity_type === 'quote' || item.entity_type === 'thought'" @click.stop="emit('presentItem', item.entity_type, getEntity(item))" class="p-1.5 bg-mono-800 border border-mono-700 rounded-lg text-mono-500 hover:text-mono-300 hover:border-mono-600 cursor-pointer transition-colors shadow-lg" title="Present">
+                  <button v-if="item.entity_type === 'note' || item.entity_type === 'quote' || item.entity_type === 'thought' || item.entity_type === 'essay'" @click.stop="emit('presentItem', item.entity_type, getEntity(item))" class="p-1.5 bg-mono-800 border border-mono-700 rounded-lg text-mono-500 hover:text-mono-300 hover:border-mono-600 cursor-pointer transition-colors shadow-lg" title="Present">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="15 3 21 3 21 9" />
                       <polyline points="9 21 3 21 3 15" />
@@ -509,7 +523,7 @@ defineExpose({ loadThread });
                       <line x1="3" y1="21" x2="10" y2="14" />
                     </svg>
                   </button>
-                  <button v-if="item.entity_type === 'note' || item.entity_type === 'quote' || item.entity_type === 'thought'" @click.stop="emit('editItem', item.entity_type, getEntity(item))" class="p-1.5 bg-mono-800 border border-mono-700 rounded-lg text-mono-500 hover:text-mono-300 hover:border-mono-600 cursor-pointer transition-colors shadow-lg" title="Edit">
+                  <button v-if="item.entity_type === 'note' || item.entity_type === 'quote' || item.entity_type === 'thought' || item.entity_type === 'essay'" @click.stop="emit('editItem', item.entity_type, getEntity(item))" class="p-1.5 bg-mono-800 border border-mono-700 rounded-lg text-mono-500 hover:text-mono-300 hover:border-mono-600 cursor-pointer transition-colors shadow-lg" title="Edit">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                       <path d="m15 5 4 4" />
@@ -527,6 +541,7 @@ defineExpose({ loadThread });
                 <ThreadViewNote v-if="item.entity_type === 'note' && getEntity(item)" :note="getEntity(item)" :resolvedBook="getBookForEntity(item)" :resolvedPdfUrl="getPdfUrlForEntity(item)" :resolvedAuthor="getAuthorForEntity(item)" />
                 <ThreadViewQuote v-else-if="item.entity_type === 'quote' && getEntity(item)" :quote="getEntity(item)" :resolvedBook="getBookForEntity(item)" :resolvedPdfUrl="getPdfUrlForEntity(item)" :resolvedAuthor="getAuthorForEntity(item)" />
                 <ThreadViewThought v-else-if="item.entity_type === 'thought' && getEntity(item)" :thought="getEntity(item)" />
+                <ThreadViewEssay v-else-if="item.entity_type === 'essay' && getEntity(item)" :essay="getEntity(item)" />
                 <!-- Book (no BookItem component) -->
                 <div v-else-if="item.entity_type === 'book' && getEntity(item)" class="p-3 sm:p-4 border border-emerald-700/30 bg-mono-900 rounded-lg">
                   <div class="flex items-center gap-2 mb-2">
