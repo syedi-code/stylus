@@ -2,6 +2,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { createEssay, type Essay, type EssayInput } from '../../lib/api';
 import { bookHue, bookGradient } from '../../composables/useBookHue';
+import { useEssayDraft } from '../../composables/useEssayDraft';
 import EssayLibraryBrowser, { type SelectedBookRef } from './EssayLibraryBrowser.vue';
 
 const props = defineProps<{
@@ -21,6 +22,8 @@ const tags = ref<string[]>([]);
 const submitting = ref(false);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
+const { draftContent, draftTags, draftRefs, restore: restoreDraft, clearDraft } = useEssayDraft();
+
 // Edit mode: pre-fill when opening with an existing essay
 const isEditMode = computed(() => !!props.essay);
 
@@ -37,14 +40,21 @@ watch(() => props.isOpen, (open) => {
         page: r.page,
       }));
     } else {
-      content.value = '';
-      tags.value = [];
-      selectedRefs.value = [];
+      // Restore cached draft (or start blank)
+      restoreDraft();
+      content.value = draftContent.value;
+      tags.value = [...draftTags.value];
+      selectedRefs.value = [...draftRefs.value];
       tagInput.value = '';
     }
     nextTick(() => textareaRef.value?.focus());
   }
 });
+
+// Auto-save draft for new essays
+watch(content, (v) => { if (!isEditMode.value) draftContent.value = v; });
+watch(tags, (v) => { if (!isEditMode.value) draftTags.value = [...v]; }, { deep: true });
+watch(selectedRefs, (v) => { if (!isEditMode.value) draftRefs.value = [...v]; }, { deep: true });
 
 const gradient = computed(() => {
   const bookIds = selectedRefs.value.map(r => r.book_id);
@@ -112,6 +122,7 @@ const handleSubmit = async () => {
       };
       await createEssay(input);
     }
+    clearDraft();
     emit('saved');
     emit('close');
   } catch (err: any) {
