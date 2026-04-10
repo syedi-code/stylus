@@ -162,7 +162,7 @@ const handleKeydown = (e: KeyboardEvent) => {
               ref="textareaRef"
               v-model="content"
               placeholder="Begin writing… Ctrl+Enter to publish."
-              class="w-full min-h-[360px] bg-transparent border-none outline-none resize-none font-body text-sm leading-[1.30] text-mono-100 placeholder:text-mono-600"
+              class="w-full min-h-[360px] lg:min-h-[520px] 2xl:min-h-[680px] bg-transparent border-none outline-none resize-none font-body text-sm leading-[1.30] text-mono-100 placeholder:text-mono-600"
               style="text-wrap: pretty; font-kerning: normal; font-variant-ligatures: common-ligatures; font-variant-numeric: oldstyle-nums;"
             ></textarea>
             <span class="font-mono text-[10px] text-right tracking-[0.03em]" :class="charCount > MAX_CHARS ? 'text-red-400' : 'text-mono-600'">{{ charCount }}</span>
