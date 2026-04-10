@@ -178,7 +178,7 @@ const loadAuthorConnection = async () => {
                     </button>
                 </div>
 
-                <div ref="cardRef" class="w-full max-w-xl bg-mono-900 border border-accent/20 rounded-xl p-6 shadow-2xl overflow-hidden" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                <div ref="cardRef" class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-4" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
                     <!-- Type badge -->
                     <div class="mb-4 flex items-center gap-2">
                         <span class="bg-accent text-accent-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
