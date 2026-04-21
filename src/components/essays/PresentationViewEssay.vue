@@ -371,16 +371,24 @@ function openFontControls() {
                 </div>
 
                 <!-- Font controls -->
-                <PresentationFontControls
+                <div
                     v-show="showFontControls"
-                    :font-size="finalFontSize"
-                    :min="FONT_SIZE_MIN"
-                    :max="FONT_SIZE_MAX"
-                    :step="FONT_SIZE_STEP"
-                    color="essay"
-                    @change="(size: number) => { setFontSize(size); poke(); }"
-                    @reset="() => { reset(); poke(); }"
-                />
+                    class="absolute left-0 right-0 bottom-0 z-30 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] pt-3 bg-gradient-to-t from-mono-950 via-mono-950/90 to-transparent"
+                    @click.stop
+                    @touchstart.stop
+                    @touchmove.stop
+                    @touchend.stop
+                >
+                    <PresentationFontControls
+                        :font-size="finalFontSize"
+                        :min="FONT_SIZE_MIN"
+                        :max="FONT_SIZE_MAX"
+                        :step="FONT_SIZE_STEP"
+                        color="essay"
+                        @change="(size: number) => { setFontSize(size); poke(); }"
+                        @reset="() => { reset(); poke(); }"
+                    />
+                </div>
 
                 <!-- Offscreen export frame -->
                 <div
