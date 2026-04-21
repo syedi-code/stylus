@@ -81,6 +81,7 @@ export interface EssayReference {
 	position: number;
 	book_title?: string;
 	book_author?: string;
+	book_originally_published?: string;
 }
 
 export interface Essay {
