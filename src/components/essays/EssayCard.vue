@@ -3,7 +3,6 @@ import { computed, ref, onMounted } from 'vue';
 import { bookGradient } from '../../composables/useBookHue';
 import { fetchThreadsForEntity, type Essay, type Thread } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
-import EssayReferenceChips from './EssayReferenceChips.vue';
 
 const props = defineProps<{
   essay: Essay;
@@ -117,8 +116,29 @@ const formattedDate = computed(() => {
       <p class="typography-prose whitespace-pre-wrap leading-[1.25] text-sm text-mono-100" v-html="formatMarkdown(essay.content)"></p>
     </div>
 
-    <!-- Reference chips -->
-    <EssayReferenceChips v-if="essay.references.length" :references="essay.references" />
+    <!-- References (bibliography style) -->
+    <div v-if="essay.references.length" class="mt-3 pt-3 border-t border-mono-800 flex flex-col gap-2.5">
+      <div class="font-mono text-[10px] uppercase tracking-[0.2em] text-mono-400">
+        References
+      </div>
+      <ol class="flex flex-col gap-2">
+        <li
+          v-for="(ref, i) in essay.references"
+          :key="ref.id"
+          class="grid grid-cols-[2ch_1fr] gap-x-3 text-[12.5px] leading-[1.5] typography-prose"
+        >
+          <span class="font-mono text-[10px] text-mono-600 tabular-nums pt-[2px] text-right">
+            {{ (i + 1).toString() }}
+          </span>
+          <span class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <span class="text-mono-200">{{ ref.book_author }}</span>
+            <span class="italic text-mono-300">{{ ref.book_title }}</span>
+            <span v-if="ref.book_originally_published" class="font-mono text-[10.5px] text-mono-500 tabular-nums">{{ ref.book_originally_published }}</span>
+            <span v-if="ref.page" class="font-mono text-[10.5px] text-mono-500 tabular-nums">p.&nbsp;{{ ref.page }}</span>
+          </span>
+        </li>
+      </ol>
+    </div>
 
     <!-- Tags -->
     <div v-if="essay.tags && essay.tags.length" class="flex flex-wrap gap-2 mt-0.5">
