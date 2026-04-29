@@ -24,7 +24,7 @@ export const smartPunctuation = (text: string): string => {
 
 	// Double quotes: "..." → \u201C...\u201D
 	// Opening: after start-of-string, whitespace, or opening punctuation
-	result = result.replace(/(^|[\s(\[{\u2014\u2013])"/gm, '$1\u201C');
+	result = result.replace(/(^|[\s(\[{\u2014\u2013*_])"/gm, '$1\u201C');
 	// Closing: everything else
 	result = result.replace(/"/g, '\u201D');
 
@@ -32,7 +32,7 @@ export const smartPunctuation = (text: string): string => {
 	// Apostrophe in contractions (don't, it's, etc.) — must come first
 	result = result.replace(/([a-zA-Z])'([a-zA-Z])/g, '$1\u2019$2');
 	// Opening single quote: after start-of-string, whitespace, or opening punctuation
-	result = result.replace(/(^|[\s(\[{\u2014\u2013])'/gm, '$1\u2018');
+	result = result.replace(/(^|[\s(\[{\u2014\u2013*_])'/gm, '$1\u2018');
 	// Closing single quote: everything else
 	result = result.replace(/'/g, '\u2019');
 
@@ -42,14 +42,35 @@ export const smartPunctuation = (text: string): string => {
 	return result;
 };
 
-export const formatMarkdown = (text: string): string => {
+/**
+ * Normalise for matching: lowercase + collapse whitespace runs.
+ * Used to compare italicised spans against known book titles.
+ */
+const normaliseTitle = (s: string): string =>
+	s.toLowerCase().replace(/\s+/g, ' ').trim();
+
+export const formatMarkdown = (text: string, bookTitles?: string[]): string => {
 	let result = escapeHtml(smartPunctuation(text));
 
 	// **bold** → <strong>bold</strong> (process before single asterisks)
 	result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
-	// *italic* → <em>italic</em>
-	result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+	// *italic* → <em>italic</em>. If the italicised text matches one of the
+	// essay's referenced book titles (case-insensitive, whitespace-normalised),
+	// emit it as <em class="book-ref"> so a gold underline can be applied.
+	const titleSet = bookTitles?.length
+		? new Set(bookTitles.map(normaliseTitle))
+		: null;
+	result = result.replace(/\*([^*]+)\*/g, (_match, inner: string) => {
+		// Strip any HTML entities for comparison (we only escaped & < > " ').
+		// For book-title matching, decoding back is unnecessary because the
+		// title set was provided as raw strings and gets escaped consistently.
+		const cls =
+			titleSet && titleSet.has(normaliseTitle(decodeBasicEntities(inner)))
+				? ' class="book-ref"'
+				: '';
+		return `<em${cls}>${inner}</em>`;
+	});
 
 	// `code` → <code>code</code>
 	result = result.replace(
@@ -65,3 +86,11 @@ export const formatMarkdown = (text: string): string => {
 
 	return result;
 };
+
+const decodeBasicEntities = (s: string): string =>
+	s
+		.replace(/&amp;/g, '&')
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&quot;/g, '"')
+		.replace(/&#039;/g, "'");

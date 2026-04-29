@@ -2,12 +2,12 @@
 import { ref, computed, watch } from 'vue';
 import type { Quote, Book } from '../../lib/api';
 import { fetchBookById, getSignedFileUrl } from '../../lib/api';
-import { formatMarkdown } from '../../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../../composables/usePresentationFontSize';
 import { useTypography } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
+import QuoteSlideBody from './QuoteSlideBody.vue';
 
 const props = withDefaults(defineProps<{
     quote: Quote | null;
@@ -26,12 +26,6 @@ const contentLength = computed(() => props.quote?.quote?.length ?? 0);
 const { baseFontSize, typographyClass } = useTypography('quote', 'presentation', contentLength);
 
 const { finalFontSize, setFontSize, reset } = usePresentationFontSize('quote', baseFontSize);
-
-// Line-height that tightens as font size grows: 12px → 1.35, 24px → 1.20
-const lineHeight = computed(() => {
-    const t = Math.min(1, Math.max(0, (finalFontSize.value - 12) / 12));
-    return +(1.35 - t * 0.15).toFixed(2);
-});
 
 const { justified, toggle: toggleJustify } = usePresentationJustify();
 
@@ -133,32 +127,21 @@ watch(() => props.isOpen, (isOpen) => {
                     </button>
                 </div>
 
-                <!-- Content card -->
-                <div ref="cardRef" class="w-full sm:max-w-2xl flex flex-col overflow-y-auto px-6 sm:px-4" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
-
-                    <!-- Quote content (scrollable) -->
-                    <div class="pl-2 pr-4 pt-4 pb-0 sm:pl-3 sm:pr-5 sm:pt-5 sm:pb-0 min-h-0 overflow-y-auto scrollbar-hide flex-1">
-                        <blockquote lang="en" :class="[typographyClass, 'text-mono-100 border-l-4 border-accent pl-4 py-2 whitespace-pre-wrap']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(quote.quote || '')"></blockquote>
-                    </div>
-
-                    <!-- Attribution (always visible, right-aligned) -->
-                    <div class="mt-2 pr-6 sm:pr-10 pb-2 text-mono-400 text-sm flex flex-col gap-0.5 shrink-0 text-right">
-                        <!-- Book-resolved attribution -->
-                        <template v-if="book">
-                            <span class="font-medium text-mono-300">— {{ book.author }}</span>
-                            <span>
-                                <a v-if="pdfUrlWithPage" :href="pdfUrlWithPage" target="_blank" @click.stop class="underline decoration-mono-600 underline-offset-2 hover:text-accent hover:decoration-accent transition-colors italic">{{ book.title }}</a>
-                                <span v-else class="underline decoration-mono-600 underline-offset-2 italic">{{ book.title }}</span>
-                                <span v-if="book.originally_published" class="ml-0.5"> ({{ book.originally_published }})</span>
-                                <span v-if="quote.page">, p. {{ quote.page }}</span>
-                            </span>
-                        </template>
-                        <!-- Free-text fallback -->
-                        <template v-else-if="quote.creator || quote.work">
-                            <span v-if="quote.creator" class="font-medium text-mono-300">— {{ quote.creator }}</span>
-                            <span v-if="quote.work" class="underline decoration-mono-600 underline-offset-2 italic">{{ quote.work }}</span>
-                        </template>
-                    </div>
+                <!-- Content card — shared body component owns the cardless
+                     blockquote + right-aligned em-dash attribution. -->
+                <div ref="cardRef" class="w-full sm:max-w-2xl flex flex-col overflow-y-auto" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                    <QuoteSlideBody
+                        :text="quote.quote || ''"
+                        :creator="book ? book.author : (quote.creator || undefined)"
+                        :work="book ? book.title : (quote.work || undefined)"
+                        :year="book?.originally_published || undefined"
+                        :page="quote.page || undefined"
+                        :pdf-url="pdfUrlWithPage || undefined"
+                        :font-size="finalFontSize"
+                        :justified="justified"
+                        :hyphenation="hyphenation"
+                        :typography-class="typographyClass"
+                    />
                 </div>
 
                 <!-- Font size controls -->
