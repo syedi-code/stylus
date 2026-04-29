@@ -10,7 +10,11 @@ const props = defineProps<{
 }>();
 
 const gradient = computed(() => {
-  return bookGradient(props.essay.references.map(r => r.book_id));
+  return bookGradient(
+    props.essay.references
+      .map((r) => r.book_id)
+      .filter((id): id is string => !!id)
+  );
 });
 </script>
 
