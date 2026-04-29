@@ -134,7 +134,7 @@ watch(() => props.isOpen, (isOpen) => {
                 </div>
 
                 <!-- Content card -->
-                <div ref="cardRef" class="w-full sm:max-w-2xl bg-mono-900 border border-accent/20 rounded-xl p-4 sm:p-8 shadow-2xl flex flex-col" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                <div ref="cardRef" class="w-full sm:max-w-2xl flex flex-col overflow-y-auto px-6 sm:px-4" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
 
                     <!-- Quote content (scrollable) -->
                     <div class="pl-2 pr-4 pt-4 pb-0 sm:pl-3 sm:pr-5 sm:pt-5 sm:pb-0 min-h-0 overflow-y-auto scrollbar-hide flex-1">
@@ -178,5 +178,4 @@ watch(() => props.isOpen, (isOpen) => {
 .presentation-leave-to {
     opacity: 0;
 }
-
 </style>
