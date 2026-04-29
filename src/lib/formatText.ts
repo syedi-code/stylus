@@ -57,5 +57,11 @@ export const formatMarkdown = (text: string): string => {
 		'<code class="bg-mono-800 border border-mono-700 mx-0.5 px-1.5 py-0.5 rounded font-mono text-accent-bright" style="font-size: 0.875em">$1</code>'
 	);
 
+	// {name} → styled author/name span (soft gold tint)
+	result = result.replace(
+		/\{([^}]+)\}/g,
+		'<span class="font-medium" style="color: #e8d0a8">$1</span>'
+	);
+
 	return result;
 };

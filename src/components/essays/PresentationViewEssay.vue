@@ -30,7 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const essayRef = toRef(props, 'essay');
-const { slides, total } = useEssaySlides(essayRef);
+const { slides, total, bodyTotal } = useEssaySlides(essayRef);
 
 const currentIndex = ref(0);
 const latestThread = ref<Thread | null>(null);
@@ -331,16 +331,12 @@ function openFontControls() {
                                 :version="essay.version"
                                 :latest-thread="latestThread"
                                 :current="slide.index"
-                                :total="total"
+                                :total="bodyTotal"
                                 @navigate-to-thread="(id) => emit('navigateToThread', id)"
                             />
                             <EssayEndSlide
                                 v-else-if="slide.kind === 'end' && essay"
                                 :essay="essay"
-                                :latest-thread="latestThread"
-                                :current="slide.index"
-                                :total="total"
-                                @navigate-to-thread="(id) => emit('navigateToThread', id)"
                             />
                         </div>
                     </div>
