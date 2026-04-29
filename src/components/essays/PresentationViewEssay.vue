@@ -15,6 +15,9 @@ import { useSwipeNavigation } from '../../composables/useSwipeNavigation';
 import { useAutoChrome } from '../../composables/useAutoChrome';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
 import EssaySlide from './EssaySlide.vue';
+import EssayHeaderSlide from './EssayHeaderSlide.vue';
+import EssayQuoteSlide from './EssayQuoteSlide.vue';
+import EssayBookCoverSlide from './EssayBookCoverSlide.vue';
 import EssayEndSlide from './EssayEndSlide.vue';
 import EssaySlideProgressBar from './EssaySlideProgressBar.vue';
 import EssaySlideExportFrame from './EssaySlideExportFrame.vue';
@@ -30,7 +33,18 @@ const emit = defineEmits<{
 }>();
 
 const essayRef = toRef(props, 'essay');
-const { slides, total } = useEssaySlides(essayRef);
+const { slides, total, bodyTotal } = useEssaySlides(essayRef);
+
+// Book titles drawn from references (deduped, non-empty), passed to inline
+// markdown formatting so *italicized* titles get gold-underlined when they
+// match a referenced book.
+const bookTitles = computed(() => {
+    const titles = new Set<string>();
+    for (const r of essayRef.value?.references ?? []) {
+        if (r.book_title) titles.add(r.book_title);
+    }
+    return [...titles];
+});
 
 const currentIndex = ref(0);
 const latestThread = ref<Thread | null>(null);
@@ -331,16 +345,29 @@ function openFontControls() {
                                 :version="essay.version"
                                 :latest-thread="latestThread"
                                 :current="slide.index"
-                                :total="total"
+                                :total="bodyTotal"
+                                :book-titles="bookTitles"
                                 @navigate-to-thread="(id) => emit('navigateToThread', id)"
+                            />
+                            <EssayHeaderSlide
+                                v-else-if="slide.kind === 'header'"
+                                :text="slide.text"
+                            />
+                            <EssayQuoteSlide
+                                v-else-if="slide.kind === 'quote'"
+                                :reference="slide.reference"
+                                :preferred-font-size="finalFontSize"
+                                :justified="justified"
+                                :hyphenation="hyphenation"
+                                :book-titles="bookTitles"
+                            />
+                            <EssayBookCoverSlide
+                                v-else-if="slide.kind === 'bookCover'"
+                                :reference="slide.reference"
                             />
                             <EssayEndSlide
                                 v-else-if="slide.kind === 'end' && essay"
                                 :essay="essay"
-                                :latest-thread="latestThread"
-                                :current="slide.index"
-                                :total="total"
-                                @navigate-to-thread="(id) => emit('navigateToThread', id)"
                             />
                         </div>
                     </div>

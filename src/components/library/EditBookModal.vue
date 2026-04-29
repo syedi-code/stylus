@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { createBook, updateBook, uploadPdf, type Book, type BookInput, type Author } from '../../lib/api';
+import { createBook, updateBook, uploadPdf, uploadCover, type Book, type BookInput, type Author } from '../../lib/api';
 import AuthorSelector from './AuthorSelector.vue';
 
 const props = defineProps<{
@@ -17,10 +17,14 @@ const isbn = ref('');
 const originallyPublished = ref('');
 const pdfUrl = ref('');
 const pdfPageOffset = ref(0);
+const coverUrl = ref('');
 const loading = ref(false);
 const uploadingPdf = ref(false);
+const uploadingCover = ref(false);
 const pdfFile = ref<File | null>(null);
+const coverFile = ref<File | null>(null);
 const pdfInputRef = ref<HTMLInputElement | null>(null);
+const coverInputRef = ref<HTMLInputElement | null>(null);
 const authorSelectorRef = ref<InstanceType<typeof AuthorSelector> | null>(null);
 
 const isEditing = ref(false);
@@ -35,6 +39,7 @@ watch(() => props.book, (newBook) => {
     originallyPublished.value = newBook.originally_published || '';
     pdfUrl.value = newBook.pdf_url || '';
     pdfPageOffset.value = newBook.pdf_page_offset || 0;
+    coverUrl.value = newBook.cover_url || '';
   } else {
     isEditing.value = false;
     resetForm();
@@ -56,6 +61,8 @@ const resetForm = () => {
   pdfUrl.value = '';
   pdfPageOffset.value = 0;
   pdfFile.value = null;
+  coverUrl.value = '';
+  coverFile.value = null;
 };
 
 const close = () => {
@@ -85,6 +92,28 @@ const uploadPdfFile = async (): Promise<string | undefined> => {
   }
 };
 
+const handleCoverSelect = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  if (input.files && input.files[0]) {
+    coverFile.value = input.files[0];
+  }
+};
+
+const uploadCoverFile = async (): Promise<string | undefined> => {
+  if (!coverFile.value) return coverUrl.value || undefined;
+
+  uploadingCover.value = true;
+  try {
+    const result = await uploadCover(coverFile.value, props.book?.id);
+    return result.url;
+  } catch (err) {
+    console.error('Cover upload failed:', err);
+    throw err;
+  } finally {
+    uploadingCover.value = false;
+  }
+};
+
 const save = async () => {
   if (!title.value.trim() || !authorId.value) return;
 
@@ -102,6 +131,12 @@ const save = async () => {
       finalPdfUrl = await uploadPdfFile();
     }
 
+    // Upload cover if selected
+    let finalCoverUrl = coverUrl.value || undefined;
+    if (coverFile.value) {
+      finalCoverUrl = await uploadCoverFile();
+    }
+
     const bookData: BookInput = {
       title: title.value.trim(),
       author: authorName,
@@ -111,6 +146,7 @@ const save = async () => {
       originally_published: originallyPublished.value.trim() || undefined,
       pdf_url: finalPdfUrl,
       pdf_page_offset: pdfPageOffset.value || 0,
+      cover_url: finalCoverUrl,
     };
 
     if (isEditing.value && props.book) {
@@ -206,19 +242,38 @@ const save = async () => {
         </div>
       </div>
 
+      <!-- Cover Image Upload (JPEG/PNG/WebP) — surfaces only as the
+           book-cover slide kind in essay presentation. -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs text-mono-400 uppercase tracking-wide">Cover image</label>
+        <div class="flex items-center gap-2">
+          <input ref="coverInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="handleCoverSelect" />
+          <button @click="coverInputRef?.click()" type="button" class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-mono-800 border border-mono-700 rounded-lg text-sm text-mono-300 hover:bg-mono-700 hover:text-white transition-colors cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+              <circle cx="9" cy="9" r="2" />
+              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+            </svg>
+            {{ coverFile ? 'Change' : coverUrl ? 'Replace' : 'Upload' }}
+          </button>
+          <span v-if="coverFile" class="text-xs text-essay">{{ coverFile.name.slice(0, 15) }}{{ coverFile.name.length > 15 ? '…' : '' }}</span>
+          <span v-else-if="coverUrl" class="text-xs text-essay">Cover attached</span>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex justify-end gap-2 pt-2">
         <button @click="close" class="px-4 py-2 text-mono-400 hover:text-white transition-colors cursor-pointer">
           Cancel
         </button>
-        <button @click="save" :disabled="loading || uploadingPdf || !title.trim() || !authorId" class="px-5 py-2 bg-accent hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
-          <span v-if="loading || uploadingPdf" class="animate-spin">
+        <button @click="save" :disabled="loading || uploadingPdf || uploadingCover || !title.trim() || !authorId" class="px-5 py-2 bg-accent hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+          <span v-if="loading || uploadingPdf || uploadingCover" class="animate-spin">
             <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           </span>
-          {{ uploadingPdf ? 'Uploading...' : (loading ? 'Saving...' : (isEditing ? 'Update' : 'Add Book')) }}
+          {{ uploadingPdf ? 'Uploading PDF…' : uploadingCover ? 'Uploading cover…' : (loading ? 'Saving...' : (isEditing ? 'Update' : 'Add Book')) }}
         </button>
       </div>
     </div>
