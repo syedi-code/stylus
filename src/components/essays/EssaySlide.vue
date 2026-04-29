@@ -28,7 +28,7 @@ const { fittedSize } = useAutoFitFontSize(containerRef, textRef, preferred);
 
 const lineHeight = computed(() => {
     const t = Math.min(1, Math.max(0, (fittedSize.value - 12) / 12));
-    return +(1.45 - t * 0.1).toFixed(2);
+    return +(1.35 - t * 0.15).toFixed(2);
 });
 
 const html = computed(() => formatMarkdown(props.text));
