@@ -192,6 +192,14 @@ body {
 	-webkit-font-smoothing: antialiased;
 }
 
+/* Italic spans matching a referenced book title get a gold underline.
+   Emitted by formatMarkdown(text, bookTitles) when the *italic* span
+   matches one of the essay's book references. */
+.book-ref {
+	border-bottom: 1.5px solid var(--color-gold);
+	padding-bottom: 1px;
+}
+
 /* Search Highlight */
 .search-highlight {
 	background: linear-gradient(

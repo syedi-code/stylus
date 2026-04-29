@@ -33,7 +33,6 @@ import ConfirmModal from './components/shared/ConfirmModal.vue';
 import EssayCard from './components/essays/EssayCard.vue';
 import EssayCardSkeleton from './components/essays/EssayCardSkeleton.vue';
 import EditEssayModal from './components/essays/EditEssayModal.vue';
-import MobileEssayCapture from './components/essays/MobileEssayCapture.vue';
 import PresentationViewEssay from './components/essays/PresentationViewEssay.vue';
 import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
 
@@ -94,7 +93,6 @@ onUnmounted(() => {
 const mobileNoteOpen = ref(false);
 const mobileQuoteOpen = ref(false);
 const mobileThoughtOpen = ref(false);
-const mobileEssayOpen = ref(false);
 
 // Thoughts tab
 const thoughtsListRef = ref<InstanceType<typeof ThoughtsList> | null>(null);
@@ -854,9 +852,6 @@ watch([threadsSearch], () => {
       <!-- Mobile Thought Capture -->
       <MobileThoughtCapture :isOpen="mobileThoughtOpen" @close="mobileThoughtOpen = false" @saved="thoughtsListRef?.reload()" />
 
-      <!-- Mobile Essay Capture -->
-      <MobileEssayCapture :isOpen="mobileEssayOpen" @close="mobileEssayOpen = false" @saved="essaysPagination.loadInitial()" />
-
       <!-- New Thread Modal -->
       <Teleport to="body">
         <Transition name="fade">
@@ -912,7 +907,7 @@ watch([threadsSearch], () => {
     </button>
 
     <!-- Amber FAB for essays tab -->
-    <button v-if="isMobile && currentTab === 'essays'" @click="mobileEssayOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-essay active:bg-essay-bright rounded-full shadow-lg shadow-essay/30 flex items-center justify-center text-black transition-all active:scale-95" aria-label="New Essay">
+    <button v-if="isMobile && currentTab === 'essays'" @click="showNewEssayModal = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-essay active:bg-essay-bright rounded-full shadow-lg shadow-essay/30 flex items-center justify-center text-black transition-all active:scale-95" aria-label="New Essay">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
         <path d="m15 5 4 4" />

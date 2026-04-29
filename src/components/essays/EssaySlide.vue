@@ -14,6 +14,7 @@ const props = defineProps<{
     latestThread: Thread | null;
     current: number;
     total: number;
+    bookTitles?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -28,10 +29,10 @@ const { fittedSize } = useAutoFitFontSize(containerRef, textRef, preferred);
 
 const lineHeight = computed(() => {
     const t = Math.min(1, Math.max(0, (fittedSize.value - 12) / 12));
-    return +(1.45 - t * 0.1).toFixed(2);
+    return +(1.35 - t * 0.15).toFixed(2);
 });
 
-const html = computed(() => formatMarkdown(props.text));
+const html = computed(() => formatMarkdown(props.text, props.bookTitles));
 </script>
 
 <template>
@@ -71,11 +72,6 @@ const html = computed(() => formatMarkdown(props.text));
                 }"
                 v-html="html"
             ></div>
-
-            <!-- Counter immediately below body -->
-            <div class="text-center">
-                <span class="font-mono text-[11px] text-gold tracking-[0.12em]">{{ current + 1 }} / {{ total }}</span>
-            </div>
         </div>
     </div>
 </template>
