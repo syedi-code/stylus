@@ -16,7 +16,7 @@ defineProps<{
     >
       <span
         class="w-1.5 h-1.5 rounded-full shrink-0 self-center"
-        :style="{ background: bookHue(ref.book_id) }"
+        :style="{ background: bookHue(ref.book_id || ref.entity_id) }"
       ></span>
       <span class="font-medium text-mono-400">{{ ref.book_author }}</span>
       <span class="italic">{{ ref.book_title }}</span>
