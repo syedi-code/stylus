@@ -379,7 +379,7 @@ defineExpose({ reload: load });
 						v-for="b in g.items"
 						:key="b.id"
 						@click="selectedBookId = b.id"
-						class="grid grid-cols-[56px_1fr_auto_auto] items-baseline gap-3.5 px-7 py-2 cursor-pointer border-l-[3px] transition-colors"
+						class="grid grid-cols-[56px_1fr] sm:grid-cols-[56px_1fr_auto_auto] items-baseline gap-3.5 px-4 sm:px-7 py-2 cursor-pointer border-l-[3px] transition-colors"
 						:class="
 							selectedBookId === b.id
 								? 'bg-mono-800 border-essay'
@@ -396,7 +396,7 @@ defineExpose({ reload: load });
 							{{ b.title }}
 						</span>
 						<span
-							class="flex gap-2 items-center text-[10.5px] text-mono-500 tabular-nums"
+							class="hidden sm:flex gap-2 items-center text-[10.5px] text-mono-500 tabular-nums"
 						>
 							<span>{{ b.quote_count }} q</span>
 							<span>{{ b.note_count }} n</span>
@@ -414,7 +414,7 @@ defineExpose({ reload: load });
 								{{ b.media_count }}🖼
 							</span>
 						</span>
-						<span class="text-[10px] text-mono-700 tabular-nums italic">
+						<span class="hidden sm:inline text-[10px] text-mono-700 tabular-nums italic">
 							{{ formatActivity(b) }}
 						</span>
 					</div>
