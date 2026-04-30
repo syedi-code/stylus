@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue';
 import { formatMarkdown } from '../../lib/formatText';
 import { useAutoFitFontSize } from '../../composables/useAutoFitFontSize';
-import type { Thread } from '../../lib/api';
 
 const props = defineProps<{
     text: string;
@@ -11,13 +10,10 @@ const props = defineProps<{
     hyphenation: boolean;
     active: boolean;
     version?: number;
-    latestThread: Thread | null;
+    /** First-line `# Header` of the essay, surfaced next to the ESSAY badge. */
+    essayHeader?: string | null;
     current: number;
     total: number;
-}>();
-
-const emit = defineEmits<{
-    (e: 'navigateToThread', threadId: string): void;
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -40,7 +36,7 @@ const html = computed(() => formatMarkdown(props.text));
         class="w-full h-full flex items-center justify-center overflow-y-auto overscroll-contain"
     >
         <div class="w-full max-w-xl px-6 sm:px-8 py-4 flex flex-col gap-4">
-            <!-- Badge row: ESSAY + in {thread} -->
+            <!-- Badge row: ESSAY · {first-line header, if any} -->
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="bg-essay text-essay-text px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] leading-[1.5]">
                     essay
@@ -48,14 +44,10 @@ const html = computed(() => formatMarkdown(props.text));
                 <span v-if="version && version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] leading-[1.5]">
                     v{{ version }}
                 </span>
-                <button
-                    v-if="latestThread"
-                    @click.stop="emit('navigateToThread', latestThread.id)"
-                    class="inline-flex items-baseline gap-1 cursor-pointer group/thread min-w-0"
-                >
-                    <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
-                    <span class="text-[11.5px] font-medium text-thread-muted group-hover/thread:text-thread transition-colors truncate">{{ latestThread.name }}</span>
-                </button>
+                <span v-if="essayHeader" class="inline-flex items-baseline gap-1 min-w-0">
+                    <span class="text-mono-500">·</span>
+                    <span class="text-[11.5px] font-bold text-mono-100 truncate">{{ essayHeader }}</span>
+                </span>
             </div>
 
             <!-- Text -->
