@@ -192,12 +192,23 @@ body {
 	-webkit-font-smoothing: antialiased;
 }
 
-/* Italic spans matching a referenced book title get a gold underline.
-   Emitted by formatMarkdown(text, bookTitles) when the *italic* span
-   matches one of the essay's book references. */
-.book-ref {
-	border-bottom: 1.5px solid var(--color-gold);
-	padding-bottom: 1px;
+/* Gold-underlined emphasis. Emitted by formatMarkdown when the user wraps
+   text in single angular brackets: <like this>. Uses text-decoration so the
+   line stays inside the line-box and never clips into the next line, with
+   skip-ink so descenders aren't bisected. */
+.gold-underline {
+	/* Longhand declarations — iOS Safari sometimes drops the shorthand-with-
+	   thickness form. Em-relative thickness with a 1.5px floor so the line
+	   never sub-pixel-rounds to 0 on high-DPI mobile, and survives the
+	   carousel's translateX transform in essay presentation. Faded gold
+	   (sepia / antique) instead of harsh #ffc000 — quieter emphasis. */
+	text-decoration-line: underline;
+	text-decoration-color: rgba(232, 200, 130, 0.55);
+	text-decoration-thickness: max(1.5px, 0.07em);
+	-webkit-text-decoration-line: underline;
+	-webkit-text-decoration-color: rgba(232, 200, 130, 0.55);
+	text-underline-offset: 0.14em;
+	text-decoration-skip-ink: auto;
 }
 
 /* Search Highlight */

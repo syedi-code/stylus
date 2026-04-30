@@ -622,6 +622,168 @@ export async function deleteBook(id: string): Promise<{ ok: boolean }> {
 }
 
 // ============================================================================
+// Library API (enriched listing + detail + media attachments)
+// ============================================================================
+
+export type LibraryDecade =
+	| 'pre-1900'
+	| '1900s'
+	| '2000s'
+	| '2010s'
+	| '2020s'
+	| 'unknown';
+
+export interface LibraryBook extends Book {
+	quote_count: number;
+	note_count: number;
+	citation_count: number;
+	media_count: number;
+	has_pdf: 0 | 1;
+	decade: LibraryDecade;
+	last_activity_at: string | null;
+	author_born?: string | null;
+	author_died?: string | null;
+}
+
+export interface LibraryListResponse {
+	books: LibraryBook[];
+	totals: { books: number; quotes: number; notes: number };
+}
+
+export interface BookMedia {
+	id: string;
+	book_id: string;
+	path: string;
+	kind: 'image';
+	caption?: string;
+	sort_order: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface BookDetailQuote {
+	id: string;
+	quote: string;
+	page: string | null;
+	created_at: string;
+}
+export interface BookDetailNote {
+	id: string;
+	content: string;
+	page: string | null;
+	created_at: string;
+}
+export interface BookDetailEssay {
+	id: string;
+	title: string;
+	subtitle: string | null;
+	page: string | null;
+}
+export interface BookDetailRelated {
+	id: string;
+	title: string;
+	author: string;
+	co_citations: number;
+}
+
+export interface BookDetail {
+	book: Book;
+	author: Author | null;
+	quotes: BookDetailQuote[];
+	notes: BookDetailNote[];
+	essays: BookDetailEssay[];
+	related: BookDetailRelated[];
+	media: BookMedia[];
+	stats: { quotes: number; notes: number; essays: number; media: number };
+}
+
+export async function fetchLibraryBooks(
+	params: {
+		search?: string;
+		decade?: LibraryDecade;
+		has_pdf?: boolean;
+		sort?: 'author_az' | 'recent' | 'year';
+	} = {}
+): Promise<LibraryListResponse> {
+	const response = await apiClient.get<LibraryListResponse & { error?: string }>(
+		'/books/library',
+		{ params }
+	);
+	if ((response.data as { error?: string }).error) {
+		throw new Error((response.data as { error: string }).error);
+	}
+	return response.data;
+}
+
+export async function fetchBookDetail(id: string): Promise<BookDetail> {
+	const response = await apiClient.get<BookDetail & { error?: string }>(
+		`/books/${id}/detail`
+	);
+	if ((response.data as { error?: string }).error) {
+		throw new Error((response.data as { error: string }).error);
+	}
+	return response.data;
+}
+
+export async function listBookMedia(bookId: string): Promise<BookMedia[]> {
+	const response = await apiClient.get<{ media: BookMedia[]; error?: string }>(
+		`/books/${bookId}/media`
+	);
+	if (response.data.error) throw new Error(response.data.error);
+	return response.data.media;
+}
+
+export async function uploadBookMedia(
+	bookId: string,
+	file: File
+): Promise<{ ok: boolean; path: string; url: string }> {
+	const formData = new FormData();
+	formData.append('file', file);
+	formData.append('bookId', bookId);
+
+	const response = await apiClient.post('/upload/book-media', formData, {
+		headers: { 'Content-Type': 'multipart/form-data' },
+	});
+	if (response.data.error) throw new Error(response.data.error);
+	return response.data;
+}
+
+export async function addBookMedia(
+	bookId: string,
+	payload: { path: string; caption?: string; sort_order?: number }
+): Promise<BookMedia> {
+	const response = await apiClient.post<{
+		ok: boolean;
+		media: BookMedia;
+		error?: string;
+	}>(`/books/${bookId}/media`, { kind: 'image', ...payload });
+	if (response.data.error) throw new Error(response.data.error);
+	return response.data.media;
+}
+
+export async function updateBookMedia(
+	bookId: string,
+	mediaId: string,
+	patch: { caption?: string; sort_order?: number }
+): Promise<{ ok: boolean }> {
+	const response = await apiClient.patch(
+		`/books/${bookId}/media/${mediaId}`,
+		patch
+	);
+	if (response.data.error) throw new Error(response.data.error);
+	return response.data;
+}
+
+export async function deleteBookMedia(
+	bookId: string,
+	mediaId: string
+): Promise<{ ok: boolean }> {
+	const response = await apiClient.delete(`/books/${bookId}/media/${mediaId}`);
+	if (response.data.error) throw new Error(response.data.error);
+	return response.data;
+}
+
+// ============================================================================
 // Authors API
 // ============================================================================
 

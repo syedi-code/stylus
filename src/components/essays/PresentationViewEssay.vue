@@ -35,17 +35,6 @@ const emit = defineEmits<{
 const essayRef = toRef(props, 'essay');
 const { slides, total, bodyTotal } = useEssaySlides(essayRef);
 
-// Book titles drawn from references (deduped, non-empty), passed to inline
-// markdown formatting so *italicized* titles get gold-underlined when they
-// match a referenced book.
-const bookTitles = computed(() => {
-    const titles = new Set<string>();
-    for (const r of essayRef.value?.references ?? []) {
-        if (r.book_title) titles.add(r.book_title);
-    }
-    return [...titles];
-});
-
 const currentIndex = ref(0);
 const latestThread = ref<Thread | null>(null);
 
@@ -346,7 +335,6 @@ function openFontControls() {
                                 :latest-thread="latestThread"
                                 :current="slide.index"
                                 :total="bodyTotal"
-                                :book-titles="bookTitles"
                                 @navigate-to-thread="(id) => emit('navigateToThread', id)"
                             />
                             <EssayHeaderSlide
@@ -359,7 +347,6 @@ function openFontControls() {
                                 :preferred-font-size="finalFontSize"
                                 :justified="justified"
                                 :hyphenation="hyphenation"
-                                :book-titles="bookTitles"
                             />
                             <EssayBookCoverSlide
                                 v-else-if="slide.kind === 'bookCover'"
