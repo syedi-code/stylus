@@ -118,6 +118,31 @@ function handleEmbedSelect(ref: EssayReferenceInput) {
   insertAsParagraph(token);
 }
 
+/**
+ * Wrap the current selection with `before…after` (e.g. `**…**`, `<…>`, `{…}`).
+ * If nothing is selected, inserts the delimiters and places the cursor between
+ * them so the user can type into the wrap.
+ */
+function wrapSelection(before: string, after: string) {
+  const ta = textareaRef.value;
+  if (!ta) return;
+  const { selectionStart, selectionEnd, value } = ta;
+  const selected = value.slice(selectionStart, selectionEnd);
+  const pre = value.slice(0, selectionStart);
+  const post = value.slice(selectionEnd);
+  content.value = `${pre}${before}${selected}${after}${post}`;
+  nextTick(() => {
+    ta.focus();
+    if (selected.length > 0) {
+      const start = pre.length + before.length;
+      ta.setSelectionRange(start, start + selected.length);
+    } else {
+      const cursor = pre.length + before.length;
+      ta.setSelectionRange(cursor, cursor);
+    }
+  });
+}
+
 function insertHeader() {
   const placeholder = 'Section title';
   const ta = textareaRef.value;
@@ -256,6 +281,44 @@ function handleTextareaFocus() {
           >
             {{ charCount.toLocaleString() }} / {{ MAX_CHARS.toLocaleString() }}
           </span>
+        </div>
+
+        <!-- Format row — wrap selection with markdown delimiters -->
+        <div class="shrink-0 flex items-center gap-2 px-4 py-1.5 border-b border-mono-800 bg-mono-900/95 backdrop-blur supports-[backdrop-filter]:bg-mono-900/85 overflow-x-auto">
+          <button
+            type="button"
+            @click="wrapSelection('**', '**')"
+            title="Bold (**text**)"
+            class="px-2.5 py-1 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-mono text-xs font-bold text-mono-200 cursor-pointer transition-colors shrink-0"
+          >
+            B
+          </button>
+          <button
+            type="button"
+            @click="wrapSelection('*', '*')"
+            title="Italics (*text*)"
+            class="px-2.5 py-1 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-mono text-xs italic text-mono-200 cursor-pointer transition-colors shrink-0"
+          >
+            I
+          </button>
+          <button
+            type="button"
+            @click="wrapSelection('&lt;', '&gt;')"
+            title="Underline (&lt;text&gt;)"
+            class="px-2.5 py-1 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-mono text-xs text-mono-200 cursor-pointer transition-colors shrink-0"
+            style="text-decoration: underline; text-decoration-color: rgba(232, 200, 130, 0.85); text-underline-offset: 2px; text-decoration-thickness: 1.5px;"
+          >
+            U
+          </button>
+          <button
+            type="button"
+            @click="wrapSelection('{', '}')"
+            title="Highlight ({text})"
+            class="px-2.5 py-1 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-mono text-xs cursor-pointer transition-colors shrink-0"
+            style="color: #e8d0a8;"
+          >
+            H
+          </button>
         </div>
 
         <!-- Writing area: single textarea, fills remaining height -->
