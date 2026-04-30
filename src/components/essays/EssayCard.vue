@@ -50,15 +50,6 @@ const formattedDate = computed(() => {
   });
 });
 
-// Book titles (for italic-title gold underline) drawn from references.
-const bookTitles = computed(() => {
-  const set = new Set<string>();
-  for (const r of props.essay.references) {
-    if (r.book_title) set.add(r.book_title);
-  }
-  return [...set];
-});
-
 // Reference lookup by polymorphic key — used to materialise inline tokens.
 const refByKey = computed(() => {
   const m = new Map<string, EssayReference>();
@@ -101,7 +92,7 @@ const blocks = computed<CardBlock[]>(() => {
       out.push({ kind: 'header', text: head[1].trim() });
       continue;
     }
-    out.push({ kind: 'paragraph', html: formatMarkdown(p, bookTitles.value) });
+    out.push({ kind: 'paragraph', html: formatMarkdown(p) });
   }
   return out;
 });

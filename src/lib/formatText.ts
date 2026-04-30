@@ -42,35 +42,24 @@ export const smartPunctuation = (text: string): string => {
 	return result;
 };
 
-/**
- * Normalise for matching: lowercase + collapse whitespace runs.
- * Used to compare italicised spans against known book titles.
- */
-const normaliseTitle = (s: string): string =>
-	s.toLowerCase().replace(/\s+/g, ' ').trim();
-
-export const formatMarkdown = (text: string, bookTitles?: string[]): string => {
+export const formatMarkdown = (text: string): string => {
 	let result = escapeHtml(smartPunctuation(text));
 
 	// **bold** → <strong>bold</strong> (process before single asterisks)
 	result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
-	// *italic* → <em>italic</em>. If the italicised text matches one of the
-	// essay's referenced book titles (case-insensitive, whitespace-normalised),
-	// emit it as <em class="book-ref"> so a gold underline can be applied.
-	const titleSet = bookTitles?.length
-		? new Set(bookTitles.map(normaliseTitle))
-		: null;
-	result = result.replace(/\*([^*]+)\*/g, (_match, inner: string) => {
-		// Strip any HTML entities for comparison (we only escaped & < > " ').
-		// For book-title matching, decoding back is unnecessary because the
-		// title set was provided as raw strings and gets escaped consistently.
-		const cls =
-			titleSet && titleSet.has(normaliseTitle(decodeBasicEntities(inner)))
-				? ' class="book-ref"'
-				: '';
-		return `<em${cls}>${inner}</em>`;
-	});
+	// *italic* → <em>italic</em>
+	result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+	// <text> → gold-underlined span. Dedicated delimiter for the gold-underline
+	// effect (formerly auto-applied to italics matching a referenced book title;
+	// now an explicit, content-agnostic emphasis). Operates on the post-escape
+	// stream where literal '<'/'>' are already &lt;/&gt;, so the only matches
+	// are user-typed angular brackets.
+	result = result.replace(
+		/&lt;((?:(?!&lt;|&gt;)[\s\S])+?)&gt;/g,
+		'<span class="gold-underline">$1</span>'
+	);
 
 	// `code` → <code>code</code>
 	result = result.replace(
@@ -86,11 +75,3 @@ export const formatMarkdown = (text: string, bookTitles?: string[]): string => {
 
 	return result;
 };
-
-const decodeBasicEntities = (s: string): string =>
-	s
-		.replace(/&amp;/g, '&')
-		.replace(/&lt;/g, '<')
-		.replace(/&gt;/g, '>')
-		.replace(/&quot;/g, '"')
-		.replace(/&#039;/g, "'");
