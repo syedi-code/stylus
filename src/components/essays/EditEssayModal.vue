@@ -28,22 +28,41 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const sheetOpen = ref(false);
 const sheetInitialKind = ref<'quote' | 'book'>('quote');
 
-const {
-  draftContent,
-  draftTags,
-  restore: restoreDraft,
-  clearDraft,
-} = useEssayDraft();
+// Backdrop close: only when both press AND release happened on the backdrop
+// itself. Prevents drag-select inside the textarea (release lands on the
+// backdrop) from being interpreted as an "intent to dismiss".
+const mouseDownOnBackdrop = ref(false);
+function onBackdropMouseDown(e: MouseEvent) {
+  if (e.target === e.currentTarget) mouseDownOnBackdrop.value = true;
+}
+function onBackdropMouseUp(e: MouseEvent) {
+  if (mouseDownOnBackdrop.value && e.target === e.currentTarget) {
+    emit('close');
+  }
+  mouseDownOnBackdrop.value = false;
+}
+
+// Scope getter: per-essay slot when editing, single global slot when new.
+const draft = useEssayDraft(() =>
+  props.essay ? { kind: 'edit', id: props.essay.id } : undefined
+);
+const { draftContent, draftTags, restore: restoreDraft, clearDraft } = draft;
 
 const isEditMode = computed(() => !!props.essay);
 
 watch(() => props.isOpen, (open) => {
   if (open) {
+    restoreDraft();
     if (props.essay) {
-      content.value = props.essay.content;
-      tags.value = [...(props.essay.tags || [])];
+      // Prefer cached draft (from a previous accidental close); fall back to
+      // the live server content + tags if no draft exists.
+      content.value =
+        draftContent.value !== '' ? draftContent.value : props.essay.content;
+      tags.value =
+        draftTags.value.length > 0
+          ? [...draftTags.value]
+          : [...(props.essay.tags || [])];
     } else {
-      restoreDraft();
       content.value = draftContent.value;
       tags.value = [...draftTags.value];
       tagInput.value = '';
@@ -59,8 +78,10 @@ watch(() => props.isOpen, (open) => {
   }
 });
 
-watch(content, (v) => { if (!isEditMode.value) draftContent.value = v; });
-watch(tags, (v) => { if (!isEditMode.value) draftTags.value = [...v]; }, { deep: true });
+// Mirror local refs into the draft regardless of mode — accidental closes
+// (drag-out, backdrop click) shouldn't destroy in-flight work.
+watch(content, (v) => { draftContent.value = v; });
+watch(tags, (v) => { draftTags.value = [...v]; }, { deep: true });
 
 const charCount = computed(() => content.value.length);
 const MAX_CHARS = 20000;
@@ -232,7 +253,8 @@ function handleTextareaFocus() {
         v-if="isOpen"
         class="fixed inset-0 z-50 flex sm:items-center sm:justify-center sm:p-6 lg:p-10 sm:bg-black/60 sm:backdrop-blur-sm"
         @keydown="handleKeydown"
-        @click.self="emit('close')"
+        @mousedown="onBackdropMouseDown"
+        @mouseup="onBackdropMouseUp"
       >
       <div
         class="flex flex-col bg-mono-950 w-full h-[100dvh] max-h-[100dvh] sm:h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-3rem)] sm:max-w-4xl sm:rounded-lg sm:border sm:border-mono-800 overflow-hidden"
