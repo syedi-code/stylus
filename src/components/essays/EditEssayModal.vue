@@ -48,7 +48,14 @@ watch(() => props.isOpen, (open) => {
       tags.value = [...draftTags.value];
       tagInput.value = '';
     }
-    nextTick(() => textareaRef.value?.focus());
+    // Skip auto-focus on touch / coarse-pointer devices so the soft keyboard
+    // doesn't pop up the moment the modal opens.
+    const isCoarse =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(pointer: coarse)').matches;
+    if (!isCoarse) {
+      nextTick(() => textareaRef.value?.focus());
+    }
   }
 });
 

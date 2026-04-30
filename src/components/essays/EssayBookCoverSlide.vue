@@ -38,7 +38,7 @@ const year = computed(() => props.reference.book_originally_published || '');
                 :alt="`${title} — ${author}`"
                 loading="eager"
                 decoding="async"
-                class="max-h-[58%] max-w-[78%] object-contain rounded-[2px]"
+                class="max-h-[40%] max-w-[55%] sm:max-h-[58%] sm:max-w-[78%] object-contain rounded-[2px]"
                 style="
                     box-shadow: 0 30px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
                     transform: translateZ(0);
