@@ -38,6 +38,14 @@ async function load() {
 
 watch(() => props.bookId, load, { immediate: true });
 
+// On mobile the detail pane sits above the list, so it stays compact by
+// default — tap the header to expand the full body. Desktop always shows
+// the full body (the pane has its own column).
+const expanded = ref(false);
+watch(() => props.bookId, () => {
+	expanded.value = false;
+});
+
 async function openPdf() {
 	if (!detail.value?.book.pdf_url) return;
 	try {
@@ -119,28 +127,48 @@ function handleMediaChanged() {
 			{{ error }}
 		</div>
 		<template v-else-if="detail">
-			<!-- Head -->
-			<div class="mb-4">
-				<div class="text-[13px] text-mono-300 font-medium mb-1">
-					{{ detail.book.author }}
-					<span v-if="formatLifespan()" class="text-mono-500 font-normal">
-						· {{ formatLifespan() }}
-					</span>
+			<!-- Head — tap to expand body on mobile. On lg the chevron is hidden
+			     and the body is always visible. -->
+			<button
+				type="button"
+				@click="expanded = !expanded"
+				class="w-full text-left lg:mb-4 cursor-pointer lg:cursor-default flex items-center gap-3"
+			>
+				<div class="flex-1 min-w-0">
+					<div class="text-[13px] text-mono-300 font-medium mb-1">
+						{{ detail.book.author }}
+						<span v-if="formatLifespan()" class="text-mono-500 font-normal">
+							· {{ formatLifespan() }}
+						</span>
+					</div>
+					<h2
+						class="text-[22px] italic text-mono-50 leading-tight m-0 tracking-tight"
+					>
+						{{ detail.book.title }}
+					</h2>
+					<div
+						v-if="detail.book.originally_published"
+						class="text-[13px] font-medium tabular-nums leading-none mt-1"
+						style="color: rgba(232, 200, 130, 0.85);"
+					>
+						{{ detail.book.originally_published }}
+					</div>
 				</div>
-				<h2
-					class="text-[22px] italic text-mono-50 leading-tight m-0 mb-2 tracking-tight"
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					class="lg:hidden shrink-0 self-center text-mono-400 transition-transform"
+					:class="expanded ? 'rotate-180' : ''"
 				>
-					{{ detail.book.title }}
-				</h2>
-				<div class="text-[11.5px] text-mono-500 italic tabular-nums">
-					<span v-if="detail.book.description">
-						{{ detail.book.description }} ·
-					</span>
-					<span v-if="detail.book.originally_published">
-						originally published {{ detail.book.originally_published }}
-					</span>
-				</div>
-			</div>
+					<path d="m6 9 6 6 6-6" />
+				</svg>
+			</button>
+
+			<div :class="[expanded ? 'block mt-4' : 'hidden', 'lg:block lg:mt-0']">
 
 			<!-- Stats -->
 			<div class="grid grid-cols-3 gap-3.5 mb-4">
@@ -304,6 +332,7 @@ function handleMediaChanged() {
 					</div>
 				</div>
 			</section>
+			</div>
 		</template>
 	</div>
 </template>

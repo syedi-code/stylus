@@ -626,7 +626,7 @@ watch([threadsSearch], () => {
     <AppHeader v-model:currentTab="currentTab" :userEmail="authUser?.email ?? null" @logout="logout" />
 
     <main class="w-full">
-      <div class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20">
+      <div v-if="currentTab !== 'library'" class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20">
 
         <!-- Notes Tab -->
         <transition name="fade" mode="out-in">
