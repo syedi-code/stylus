@@ -127,12 +127,6 @@ const groups = computed<Group[]>(() => {
 	return Array.from(map.values()).filter((g) => g.count > 0);
 });
 
-const selectedBook = computed(() =>
-	selectedBookId.value
-		? books.value.find((b) => b.id === selectedBookId.value) ?? null
-		: null
-);
-
 function formatYear(b: LibraryBook): string {
 	return b.originally_published || '—';
 }
