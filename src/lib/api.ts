@@ -74,14 +74,26 @@ export interface QuoteInput {
 // Essay Types
 // ============================================================================
 
+export type EssayEntityType = 'book' | 'quote' | 'book_cover';
+
 export interface EssayReference {
 	id: string;
-	book_id: string;
+	entity_type: EssayEntityType;
+	entity_id: string;
 	page?: string;
 	position: number;
+	// Joined from `books` for entity_type ∈ {book, book_cover}, or for a quote
+	// whose source is a book.
+	book_id?: string;
 	book_title?: string;
 	book_author?: string;
 	book_originally_published?: string;
+	book_cover_url?: string;
+	// Joined from `quotes` for entity_type='quote'.
+	quote_text?: string;
+	quote_creator?: string;
+	quote_work?: string;
+	quote_page?: string;
 }
 
 export interface Essay {
@@ -98,13 +110,20 @@ export interface Essay {
 	version?: number;
 }
 
+export interface EssayReferenceInput {
+	entity_type: EssayEntityType;
+	entity_id: string;
+	page?: string;
+	position?: number;
+}
+
 export interface EssayInput {
 	content: string;
 	posted?: boolean;
 	tags?: string[];
 	replaces?: string;
 	source?: string;
-	references: { book_id: string; page?: string; position?: number }[];
+	references: EssayReferenceInput[];
 	connections?: ConnectionInput[];
 }
 
@@ -745,6 +764,28 @@ export async function uploadPdf(
 	}
 
 	const response = await apiClient.post('/upload/pdf', formData, {
+		headers: {
+			'Content-Type': 'multipart/form-data',
+		},
+	});
+
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return response.data;
+}
+
+export async function uploadCover(
+	file: File,
+	bookId?: string
+): Promise<{ ok: boolean; path: string; url: string }> {
+	const formData = new FormData();
+	formData.append('file', file);
+	if (bookId) {
+		formData.append('bookId', bookId);
+	}
+
+	const response = await apiClient.post('/upload/cover', formData, {
 		headers: {
 			'Content-Type': 'multipart/form-data',
 		},
