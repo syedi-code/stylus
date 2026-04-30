@@ -29,8 +29,6 @@ const props = defineProps<{
     hyphenation: boolean;
     /** Tailwind classes from `useTypography('quote', 'presentation', length)`. */
     typographyClass?: string;
-    /** Book titles in scope — italic spans matching one get a gold underline. */
-    bookTitles?: string[];
 }>();
 
 const lineHeight = computed(() => {
@@ -38,7 +36,7 @@ const lineHeight = computed(() => {
     return +(1.35 - t * 0.15).toFixed(2);
 });
 
-const html = computed(() => formatMarkdown(props.text, props.bookTitles));
+const html = computed(() => formatMarkdown(props.text));
 </script>
 
 <template>
