@@ -198,9 +198,12 @@ function handleTextareaFocus() {
     <Transition name="fade">
       <div
         v-if="isOpen"
-        class="fixed inset-0 z-50 flex flex-col bg-mono-950"
-        style="height: 100dvh; max-height: 100dvh;"
+        class="fixed inset-0 z-50 flex sm:items-center sm:justify-center sm:p-6 lg:p-10 sm:bg-black/60 sm:backdrop-blur-sm"
         @keydown="handleKeydown"
+        @click.self="emit('close')"
+      >
+      <div
+        class="flex flex-col bg-mono-950 w-full h-[100dvh] max-h-[100dvh] sm:h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-3rem)] sm:max-w-4xl sm:rounded-lg sm:border sm:border-mono-800 overflow-hidden"
       >
         <!-- Top bar — Cancel left, Publish right (always above keyboard) -->
         <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-mono-800 bg-mono-900/95 backdrop-blur supports-[backdrop-filter]:bg-mono-900/85">
@@ -295,6 +298,7 @@ function handleTextareaFocus() {
           @close="sheetOpen = false"
           @select="handleEmbedSelect"
         />
+      </div>
       </div>
     </Transition>
   </Teleport>

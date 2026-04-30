@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { fetchNotes, fetchBooks, updateNote, deleteNote, fetchQuotes, updateQuote, deleteQuote, createThought, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
+import { fetchNotes, fetchBooks, fetchBookById, updateNote, deleteNote, fetchQuotes, updateQuote, deleteQuote, createThought, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
 import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';
 import NoteCard from './components/notes/NoteCard.vue';
@@ -15,6 +15,7 @@ import EditQuoteModal from './components/quotes/EditQuoteModal.vue';
 import EditBookModal from './components/library/EditBookModal.vue';
 import AuthorManager from './components/library/AuthorManager.vue';
 import EditAuthorModal from './components/library/EditAuthorModal.vue';
+import LibraryPage from './components/library/LibraryPage.vue';
 import PresentationViewNote from './components/notes/PresentationViewNote.vue';
 import PresentationViewQuote from './components/quotes/PresentationViewQuote.vue';
 import PresentationModeThoughts from './components/thoughts/PresentationModeThoughts.vue';
@@ -112,6 +113,7 @@ const showBookModal = ref(false);
 const editingAuthor = ref<import('./lib/api').Author | null>(null);
 const showAuthorModal = ref(false);
 const authorManagerRef = ref<InstanceType<typeof AuthorManager> | null>(null);
+const libraryPageRef = ref<InstanceType<typeof LibraryPage> | null>(null);
 
 const handleEditAuthor = (author: import('./lib/api').Author) => {
   editingAuthor.value = author;
@@ -210,6 +212,16 @@ const handleEditBook = (book: Book) => {
   showBookModal.value = true;
 };
 
+const handleEditBookById = async (bookId: string) => {
+  try {
+    const book = await fetchBookById(bookId);
+    editingBook.value = book;
+    showBookModal.value = true;
+  } catch (err) {
+    console.error('Failed to load book for edit:', err);
+  }
+};
+
 const handleAddBook = () => {
   editingBook.value = null;
   showBookModal.value = true;
@@ -219,6 +231,7 @@ const handleBookSaved = () => {
   showBookModal.value = false;
   editingBook.value = null;
   authorManagerRef.value?.loadAuthors();
+  libraryPageRef.value?.reload();
 };
 
 const handleToggleNotePosted = async (note: Note) => {
@@ -722,11 +735,6 @@ watch([threadsSearch], () => {
           </div>
         </transition>
 
-        <!-- Library Tab -->
-        <transition name="fade" mode="out-in">
-          <AuthorManager v-if="currentTab === 'library'" ref="authorManagerRef" :isAdmin="isAdmin" @edit="handleEditAuthor" @editBook="handleEditBook" @add="handleAddAuthor" @addBook="handleAddBook" />
-        </transition>
-
         <!-- Thoughts Tab -->
         <transition name="fade" mode="out-in">
           <div v-if="currentTab === 'thoughts'" class="space-y-8">
@@ -816,6 +824,14 @@ watch([threadsSearch], () => {
           </div>
         </transition>
       </div>
+
+      <!-- Library Tab — rendered outside the narrow max-w-3xl wrapper so the three-pane layout has room.
+           Fills viewport from below the header down to the bottom edge, no trailing footer gap. -->
+      <transition name="fade" mode="out-in">
+        <div v-if="currentTab === 'library'" class="w-full flex flex-col" style="min-height: calc(100vh - 56px);">
+          <LibraryPage ref="libraryPageRef" :isAdmin="isAdmin" @addBook="handleAddBook" @editBook="handleEditBookById" />
+        </div>
+      </transition>
 
       <EditNoteModal :isOpen="!!editingNote" :note="editingNote" @close="editingNote = null" @saved="handleNoteSaved" />
 
@@ -913,10 +929,6 @@ watch([threadsSearch], () => {
         <path d="m15 5 4 4" />
       </svg>
     </button>
-
-    <footer class="mt-20 py-8 text-center text-xs text-mono-700 uppercase tracking-widest border-t border-mono-900">
-      System Online • {{ new Date().getFullYear() }}
-    </footer>
 
   </div>
 </template>

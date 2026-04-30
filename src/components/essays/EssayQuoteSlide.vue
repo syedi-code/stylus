@@ -9,7 +9,6 @@ const props = defineProps<{
     preferredFontSize: number;
     justified: boolean;
     hyphenation: boolean;
-    bookTitles?: string[];
 }>();
 
 // Pull the shared `useTypography('quote', 'presentation', length)` styling
@@ -42,7 +41,6 @@ const page = computed(
             :justified="justified"
             :hyphenation="hyphenation"
             :typography-class="typographyClass"
-            :book-titles="bookTitles"
         />
     </div>
 </template>

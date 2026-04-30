@@ -14,7 +14,6 @@ const props = defineProps<{
     latestThread: Thread | null;
     current: number;
     total: number;
-    bookTitles?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -32,7 +31,7 @@ const lineHeight = computed(() => {
     return +(1.35 - t * 0.15).toFixed(2);
 });
 
-const html = computed(() => formatMarkdown(props.text, props.bookTitles));
+const html = computed(() => formatMarkdown(props.text));
 </script>
 
 <template>
