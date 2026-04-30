@@ -115,16 +115,6 @@ const showAuthorModal = ref(false);
 const authorManagerRef = ref<InstanceType<typeof AuthorManager> | null>(null);
 const libraryPageRef = ref<InstanceType<typeof LibraryPage> | null>(null);
 
-const handleEditAuthor = (author: import('./lib/api').Author) => {
-  editingAuthor.value = author;
-  showAuthorModal.value = true;
-};
-
-const handleAddAuthor = () => {
-  editingAuthor.value = null;
-  showAuthorModal.value = true;
-};
-
 const handleAuthorSaved = () => {
   showAuthorModal.value = false;
   editingAuthor.value = null;
@@ -205,11 +195,6 @@ const handleQuoteSaved = async () => {
   requestAnimationFrame(() => {
     window.scrollTo(0, scrollY);
   });
-};
-
-const handleEditBook = (book: Book) => {
-  editingBook.value = book;
-  showBookModal.value = true;
 };
 
 const handleEditBookById = async (bookId: string) => {
