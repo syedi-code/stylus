@@ -169,21 +169,18 @@ function handleDetailRefresh() {
 	load();
 }
 
+// Mobile: filters live in a collapsible row triggered by a button.
+const mobileFiltersOpen = ref(false);
+
 defineExpose({ reload: load });
 </script>
 
 <template>
-	<div class="lib-shell bg-mono-900 text-mono-100 flex-1 flex flex-col min-h-0">
+	<div class="lib-shell bg-mono-950 text-mono-100">
 		<!-- Hero -->
-		<div class="px-7 pt-6 pb-4 border-b border-mono-800 flex flex-col gap-3.5">
+		<div class="px-4 sm:px-7 pt-2 sm:pt-3 pb-3 border-b border-mono-800 flex flex-col gap-3.5">
 			<div class="flex items-center justify-between gap-6">
-				<h1 class="text-[22px] font-medium tracking-tight m-0">
-					Library
-					<span class="text-xs text-mono-500 ml-3 font-normal tabular-nums">
-						{{ totals.books }} books · {{ totals.quotes }} quotes ·
-						{{ totals.notes }} notes
-					</span>
-				</h1>
+				<h1 class="text-[22px] font-medium tracking-tight m-0">Library</h1>
 				<div v-if="isAdmin" class="flex gap-2 items-center">
 					<button
 						class="px-3 py-1.5 border border-mono-700 rounded-md text-xs text-mono-200 hover:bg-mono-800 hover:text-mono-50 cursor-pointer"
@@ -199,36 +196,48 @@ defineExpose({ reload: load });
 				</div>
 			</div>
 
-			<!-- Search bar -->
-			<div
-				class="flex gap-2 items-center bg-mono-800 border border-mono-700 rounded-lg px-3 py-2 focus-within:border-essay"
-			>
-				<svg
-					width="14"
-					height="14"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					class="text-mono-500 shrink-0"
+			<!-- Search bar + mobile filter toggle -->
+			<div class="flex gap-2 items-stretch">
+				<div
+					class="flex-1 flex gap-2 items-center bg-mono-800 border border-mono-700 rounded-lg px-3 py-2 focus-within:border-essay"
 				>
-					<circle cx="11" cy="11" r="8" />
-					<path d="m21 21-4.3-4.3" />
-				</svg>
-				<input
-					v-model="search"
-					placeholder="Search title or author…"
-					class="flex-1 bg-transparent border-none outline-none text-mono-100 text-sm font-[inherit]"
-				/>
-				<span
-					class="text-[11px] text-mono-500 px-1.5 py-0.5 bg-mono-700 rounded-sm"
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						class="text-mono-500 shrink-0"
+					>
+						<circle cx="11" cy="11" r="8" />
+						<path d="m21 21-4.3-4.3" />
+					</svg>
+					<input
+						v-model="search"
+						placeholder="Search title or author…"
+						class="flex-1 bg-transparent border-none outline-none text-mono-100 text-sm font-[inherit] min-w-0"
+					/>
+					<span
+						class="hidden sm:inline text-[11px] text-mono-500 px-1.5 py-0.5 bg-mono-700 rounded-sm"
+					>
+						title + author
+					</span>
+				</div>
+				<button
+					@click="mobileFiltersOpen = !mobileFiltersOpen"
+					class="sm:hidden shrink-0 px-3 bg-mono-800 border border-mono-700 rounded-lg text-xs text-mono-200 hover:bg-mono-700 cursor-pointer"
+					:class="mobileFiltersOpen ? 'border-essay text-essay' : ''"
 				>
-					title + author
-				</span>
+					Filters
+				</button>
 			</div>
 
-			<!-- Filter row -->
-			<div class="flex gap-1.5 flex-wrap items-center">
+			<!-- Filter row — hidden on mobile until the Filters button is tapped. -->
+			<div
+				class="gap-1.5 flex-wrap items-center"
+				:class="mobileFiltersOpen ? 'flex' : 'hidden sm:flex'"
+			>
 				<span
 					class="text-[10.5px] tracking-[0.14em] uppercase text-mono-600 px-1.5"
 				>
@@ -285,11 +294,11 @@ defineExpose({ reload: load });
 			</div>
 		</div>
 
-		<!-- Three-pane body -->
-		<div class="grid lg:grid-cols-[240px_1fr_360px] grid-cols-1 flex-1 min-h-0">
+		<!-- Three-pane body. Page scrolls; right detail pane sticks to viewport. -->
+		<div class="grid lg:grid-cols-[240px_1fr_360px] grid-cols-1 items-start">
 			<!-- Left rail -->
 			<aside
-				class="border-r border-mono-800 py-3.5 hidden lg:block min-h-0 overflow-y-auto"
+				class="border-r border-mono-800 py-3.5 hidden lg:block lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto"
 			>
 				<h4
 					class="text-[10.5px] tracking-[0.18em] uppercase text-mono-500 mt-0 mx-3.5 mb-2 font-medium"
@@ -326,8 +335,10 @@ defineExpose({ reload: load });
 				</div>
 			</aside>
 
-			<!-- Center list -->
-			<main class="py-1 min-h-0 overflow-y-auto">
+			<!-- Center list — page-scroll; no per-pane overflow so the right
+			     pane can remain sticky relative to the page scroll. On mobile
+			     the list sits below the detail pane (order swapped). -->
+			<main class="py-1 order-2 lg:order-none">
 				<div
 					v-if="loading && books.length === 0"
 					class="py-16 text-center text-mono-600 text-sm uppercase tracking-widest"
@@ -415,9 +426,11 @@ defineExpose({ reload: load });
 				</div>
 			</main>
 
-			<!-- Right detail -->
+			<!-- Right detail — on desktop, sticky on the right; on mobile,
+			     rendered above the list so the selected book's info is the
+			     first thing visible after the filters. -->
 			<aside
-				class="border-l border-mono-800 min-h-0 overflow-y-auto"
+				class="order-1 lg:order-none border-b border-mono-800 lg:border-b-0 lg:border-l lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto"
 			>
 				<LibraryDetailPane
 					v-if="selectedBookId"
