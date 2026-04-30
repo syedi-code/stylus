@@ -46,7 +46,7 @@ const html = computed(() => formatMarkdown(props.text));
                 </span>
                 <span v-if="essayHeader" class="inline-flex items-baseline gap-1 min-w-0">
                     <span class="text-mono-500">·</span>
-                    <span class="text-[11.5px] font-bold text-mono-100 truncate">{{ essayHeader }}</span>
+                    <span class="font-body italic font-semibold text-[12.5px] text-essay tracking-[-0.005em] truncate">{{ essayHeader }}</span>
                 </span>
             </div>
 
