@@ -38,7 +38,7 @@ const year = computed(() => props.reference.book_originally_published || '');
                 :alt="`${title} — ${author}`"
                 loading="eager"
                 decoding="async"
-                class="max-h-[40%] max-w-[55%] sm:max-h-[58%] sm:max-w-[78%] object-contain rounded-[2px]"
+                class="max-h-[58%] max-w-[78%] object-contain rounded-[2px]"
                 style="
                     box-shadow: 0 30px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
                     transform: translateZ(0);
@@ -59,20 +59,21 @@ const year = computed(() => props.reference.book_originally_published || '');
             </div>
         </template>
 
-        <!-- Typographic "imagined cover" — no image uploaded -->
+        <!-- Typographic "imagined cover" — no image uploaded.
+             Mirrors the with-cover header so the missing-image case still
+             reads like a book reference (italic essay-amber title + plain
+             author · year line) rather than a stylised display card. -->
         <div
             v-else
-            class="relative flex flex-col items-center justify-center text-center px-4 py-4 max-w-[80%] sm:max-w-md"
+            class="flex flex-col items-center text-center max-w-[80%] sm:max-w-md gap-2"
         >
-            <span class="font-mono text-[10.5px] text-gold/70 tracking-[0.32em] uppercase mb-10">A book</span>
             <h1
-                class="font-body italic font-semibold text-[36px] sm:text-[44px] text-gold leading-[1.05] tracking-[-0.01em] m-0"
+                class="font-body italic font-semibold text-[22px] sm:text-[26px] text-essay leading-[1.15] tracking-[-0.005em] m-0"
                 style="text-wrap: balance;"
             >{{ title }}</h1>
-            <div class="my-8 w-12 h-px bg-gold/60"></div>
-            <div class="text-[11px] uppercase tracking-[0.36em] text-mono-300">
+            <div class="font-body text-[14px] text-mono-200 leading-[1.4]">
                 <span>{{ author }}</span>
-                <span v-if="year" class="text-mono-500"> &middot; {{ year }}</span>
+                <span v-if="year" class="text-mono-400"> &middot; {{ year }}</span>
             </div>
         </div>
     </div>
