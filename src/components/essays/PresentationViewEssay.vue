@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, toRef, nextTick } from 'vue';
-import type { Essay, Thread } from '../../lib/api';
-import { fetchThreadsForEntity } from '../../lib/api';
+import type { Essay } from '../../lib/api';
 import {
     usePresentationFontSize,
     FONT_SIZE_MIN,
@@ -18,7 +17,6 @@ import EssaySlide from './EssaySlide.vue';
 import EssayHeaderSlide from './EssayHeaderSlide.vue';
 import EssayQuoteSlide from './EssayQuoteSlide.vue';
 import EssayBookCoverSlide from './EssayBookCoverSlide.vue';
-import EssayEndSlide from './EssayEndSlide.vue';
 import EssaySlideProgressBar from './EssaySlideProgressBar.vue';
 import EssaySlideExportFrame from './EssaySlideExportFrame.vue';
 
@@ -29,14 +27,22 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: 'close'): void;
-    (e: 'navigateToThread', threadId: string): void;
 }>();
 
 const essayRef = toRef(props, 'essay');
 const { slides, total, bodyTotal } = useEssaySlides(essayRef);
 
+// First-line header surfaced next to the ESSAY badge (e.g. "# Foo bar" → "Foo bar").
+// Empty when the essay doesn't open with a markdown header paragraph.
+const essayHeader = computed(() => {
+    const c = essayRef.value?.content;
+    if (!c) return null;
+    const firstParagraph = c.split(/\n{2,}/)[0]?.trim() ?? '';
+    const m = firstParagraph.match(/^#\s+(.+)$/);
+    return m ? m[1].trim() : null;
+});
+
 const currentIndex = ref(0);
-const latestThread = ref<Thread | null>(null);
 
 const baseFontSize = ref(12);
 const { finalFontSize, setFontSize, reset } = usePresentationFontSize('essay', baseFontSize);
@@ -132,22 +138,13 @@ function onKeydown(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onKeydown));
 onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
-watch(() => props.isOpen, async (isOpen) => {
+watch(() => props.isOpen, (isOpen) => {
     if (isOpen && props.essay) {
         currentIndex.value = 0;
         showChrome();
         poke();
         document.body.style.overflow = 'hidden';
-        try {
-            const threads = await fetchThreadsForEntity('essay', props.essay.id);
-            latestThread.value = threads.length
-                ? threads.sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]
-                : null;
-        } catch {
-            latestThread.value = null;
-        }
     } else {
-        latestThread.value = null;
         showFontControls.value = false;
         document.body.style.overflow = '';
     }
@@ -332,10 +329,9 @@ function openFontControls() {
                                 :hyphenation="hyphenation"
                                 :active="slide.index === currentIndex"
                                 :version="essay.version"
-                                :latest-thread="latestThread"
+                                :essay-header="essayHeader"
                                 :current="slide.index"
                                 :total="bodyTotal"
-                                @navigate-to-thread="(id) => emit('navigateToThread', id)"
                             />
                             <EssayHeaderSlide
                                 v-else-if="slide.kind === 'header'"
@@ -351,10 +347,6 @@ function openFontControls() {
                             <EssayBookCoverSlide
                                 v-else-if="slide.kind === 'bookCover'"
                                 :reference="slide.reference"
-                            />
-                            <EssayEndSlide
-                                v-else-if="slide.kind === 'end' && essay"
-                                :essay="essay"
                             />
                         </div>
                     </div>

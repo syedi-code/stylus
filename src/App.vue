@@ -838,7 +838,7 @@ watch([threadsSearch], () => {
 
       <PresentationModeThoughts :isOpen="!!presentingThought" :thought="presentingThought" @close="presentingThought = null" @navigateToThread="(id) => { presentingThought = null; handleNavigateToThread(id); }" />
 
-      <PresentationViewEssay :isOpen="!!presentingEssay" :essay="presentingEssay" @close="presentingEssay = null" @navigateToThread="(id) => { presentingEssay = null; handleNavigateToThread(id); }" />
+      <PresentationViewEssay :isOpen="!!presentingEssay" :essay="presentingEssay" @close="presentingEssay = null" />
 
       <AddToThreadModal :isOpen="threadModalOpen" :entityType="threadModalEntityType" :entityId="threadModalEntityId" @close="threadModalOpen = false" @updated="threadModalOpen = false" @navigateToThread="handleNavigateToThread" />
 

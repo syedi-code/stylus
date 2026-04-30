@@ -18,8 +18,7 @@ export type EssaySlide =
 	| { kind: 'paragraph'; text: string; index: number }
 	| { kind: 'header'; text: string; index: number }
 	| { kind: 'quote'; reference: EssayReference; index: number }
-	| { kind: 'bookCover'; reference: EssayReference; index: number }
-	| { kind: 'end'; index: number };
+	| { kind: 'bookCover'; reference: EssayReference; index: number };
 
 const TOKEN_RE = /^\[\[(quote|book):([0-9a-fA-F-]{36})\]\]$/;
 const HEADER_RE = /^#\s+(.+)$/;
@@ -74,11 +73,6 @@ export function useEssaySlides(essay: Ref<Essay | null>) {
 			}
 
 			result.push({ kind: 'paragraph', text: p, index: cursor++ });
-		}
-
-		// End slide whenever the essay has any references (citations exist).
-		if ((e.references ?? []).length) {
-			result.push({ kind: 'end', index: cursor++ });
 		}
 
 		return result;
