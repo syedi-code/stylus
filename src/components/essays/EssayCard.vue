@@ -8,6 +8,7 @@ import {
   type Thread,
 } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
+import BookAttribution from '../books/BookAttribution.vue';
 
 const props = defineProps<{
   essay: Essay;
@@ -184,12 +185,15 @@ const blocks = computed<CardBlock[]>(() => {
           <blockquote
             class="typography-quote text-mono-100 border-l-4 border-accent pl-4 py-1 text-[14px] leading-[1.45] whitespace-pre-wrap"
           >{{ block.reference.quote_text }}</blockquote>
-          <div class="pl-5 text-mono-400 text-[12px] flex flex-col gap-0.5">
-            <span v-if="block.reference.book_author || block.reference.quote_creator" class="font-medium text-mono-300">— {{ block.reference.book_author || block.reference.quote_creator }}</span>
-            <span v-if="block.reference.book_title || block.reference.quote_work">
-              <span class="underline decoration-mono-600 underline-offset-2 italic">{{ block.reference.book_title || block.reference.quote_work }}</span><span v-if="block.reference.book_originally_published"> ({{ block.reference.book_originally_published }})</span><span v-if="block.reference.page || block.reference.quote_page">, p.&nbsp;{{ block.reference.page || block.reference.quote_page }}</span>
-            </span>
-          </div>
+          <BookAttribution
+            class="pl-5"
+            variant="thread"
+            dash
+            :author="block.reference.book_author || block.reference.quote_creator"
+            :title="block.reference.book_title || block.reference.quote_work"
+            :year="block.reference.book_originally_published"
+            :page="block.reference.page || block.reference.quote_page"
+          />
         </div>
 
         <!-- Book embed: text-only marker (cover image lives only in presentation) -->
@@ -202,10 +206,11 @@ const blocks = computed<CardBlock[]>(() => {
             :style="{ background: bookHue(block.reference.entity_id) }"
           ></span>
           <span class="text-[11px] uppercase tracking-[0.16em] text-essay font-medium shrink-0">Book</span>
-          <span class="text-[12.5px] text-mono-200">
-            <span class="font-medium">{{ block.reference.book_author }}</span>,
-            <span class="italic text-mono-300">{{ block.reference.book_title }}</span>
-          </span>
+          <BookAttribution
+            variant="chip"
+            :author="block.reference.book_author"
+            :title="block.reference.book_title"
+          />
         </div>
       </template>
     </div>

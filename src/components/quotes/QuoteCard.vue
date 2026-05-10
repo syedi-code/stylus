@@ -4,6 +4,7 @@ import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, typ
 import { formatMarkdown } from '../../lib/formatText';
 import { useTypography } from '../../composables/useTypography';
 import AuthorPopover from '../library/AuthorPopover.vue';
+import BookAttribution from '../books/BookAttribution.vue';
 
 const props = defineProps<{
   quote: Quote;
@@ -186,19 +187,17 @@ const { lineHeightClass, typographyClass } = useTypography('quote', 'card', cont
     <div class="mt-1 text-mono-100">
       <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-accent pl-4 py-1 whitespace-pre-wrap']" :style="{ fontSize: quoteFontSize + 'px' }" v-html="highlightText(quote.quote)"></blockquote>
       <!-- Book attribution (when linked to book) -->
-      <div v-if="book" class="text-mono-400 text-sm mt-3 space-y-0.5">
-        <p class="font-medium text-mono-300">— {{ book.author }}</p>
-        <p class="flex items-center gap-1.5 flex-wrap">
-          <template v-if="pdfUrlWithPage">
-            <a :href="pdfUrlWithPage" target="_blank" @click.stop class="italic underline hover:text-accent transition-colors">{{ book.title }}</a>
-          </template>
-          <template v-else>
-            <span class="italic">{{ book.title }}</span>
-          </template>
-          <span v-if="book.originally_published" class="text-mono-500">({{ book.originally_published }})</span>
-          <span v-if="quote.page" class="text-mono-500">p. {{ quote.page }}</span>
-        </p>
-      </div>
+      <BookAttribution
+        v-if="book"
+        class="mt-3"
+        variant="card"
+        dash
+        :author="book.author"
+        :title="book.title"
+        :year="book.originally_published"
+        :page="quote.page"
+        :title-href="pdfUrlWithPage"
+      />
       <!-- Fallback attribution (no book linked) -->
       <div v-else-if="connectedAuthor" class="text-sm mt-3 relative">
         <button @click.stop="toggleAuthorPopover" class="inline-flex items-center gap-1.5 group/author cursor-pointer">
