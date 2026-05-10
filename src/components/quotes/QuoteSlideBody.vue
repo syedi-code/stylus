@@ -41,12 +41,12 @@ const html = computed(() => formatMarkdown(props.text));
 </script>
 
 <template>
-    <div class="w-full sm:max-w-2xl flex flex-col overflow-y-auto px-6 sm:px-4 mx-auto">
+    <div class="w-full sm:max-w-2xl flex flex-col overflow-y-auto px-6 sm:px-4 mx-auto -translate-y-[2vh]">
         <!-- Quote body -->
         <div class="pl-2 pr-4 pt-4 pb-0 sm:pl-3 sm:pr-5 sm:pt-5 sm:pb-0 min-h-0 overflow-y-auto scrollbar-hide flex-1">
             <blockquote
                 lang="en"
-                :class="[typographyClass, 'text-mono-100 border-l-4 border-accent pl-4 py-2 whitespace-pre-wrap']"
+                :class="[typographyClass, 'text-mono-100 py-2 whitespace-pre-wrap']"
                 :style="{
                     fontSize: fontSize + 'px',
                     lineHeight: lineHeight,
@@ -61,7 +61,7 @@ const html = computed(() => formatMarkdown(props.text));
              quotes share this rendering — BookAttribution handles either. -->
         <BookAttribution
             v-if="creator || work"
-            class="mt-2 pr-6 sm:pr-10 pb-2 shrink-0"
+            class="pr-6 sm:pr-10 pb-2 shrink-0 max-w-[92%] ml-auto"
             variant="presentation"
             align="end"
             dash

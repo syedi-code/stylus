@@ -16,7 +16,6 @@ const emit = defineEmits<{
   (e: 'edit', quote: Quote): void;
   (e: 'copy', quote: Quote): void;
   (e: 'present', quote: Quote): void;
-  (e: 'togglePosted', quote: Quote): void;
   (e: 'viewInLibrary', authorId: string): void;
   (e: 'addToThread', quote: Quote): void;
   (e: 'delete', quote: Quote): void;
@@ -117,12 +116,12 @@ const highlightText = (text: string | undefined) => {
 
 const quoteFontSize = computed(() => {
   const len = props.quote.quote?.length ?? 0;
-  if (len < 100) return 18;   // text-lg equivalent
-  if (len < 250) return 16;
-  if (len < 500) return 15;
-  if (len < 800) return 14;
-  if (len < 1200) return 13;
-  return 12;
+  if (len < 100) return 14;
+  if (len < 250) return 13;
+  if (len < 500) return 13;
+  if (len < 800) return 12;
+  if (len < 1200) return 12;
+  return 11;
 });
 
 const contentLength = computed(() => props.quote.quote?.length ?? 0);
@@ -138,20 +137,11 @@ const { lineHeightClass, typographyClass } = useTypography('quote', 'card', cont
         <span class="bg-accent text-accent-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
           quote
         </span>
-        <span v-if="quote.version && quote.version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
-          v{{ quote.version }}
-        </span>
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3 relative">
         <!-- Action buttons -->
         <div class="flex items-center gap-2 sm:absolute sm:right-0 sm:hidden sm:group-hover:flex">
-          <button @click.stop="emit('togglePosted', quote)" class="p-1.5 rounded cursor-pointer transition-all active:scale-95" :class="quote.posted ? 'bg-emerald-600 active:bg-emerald-500 sm:hover:bg-emerald-500 text-white' : 'bg-mono-700 active:bg-mono-600 sm:hover:bg-mono-600 text-mono-300'" :title="quote.posted ? 'Mark as Unposted' : 'Mark as Posted'">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-          </button>
           <button @click.stop="emit('copy', quote)" class="p-1.5 bg-accent active:bg-accent-bright sm:hover:bg-accent-bright text-white rounded cursor-pointer transition-all active:scale-95" title="Copy Quote">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
@@ -185,12 +175,13 @@ const { lineHeightClass, typographyClass } = useTypography('quote', 'card', cont
 
     <!-- Content -->
     <div class="mt-1 text-mono-100">
-      <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-accent pl-4 py-1 whitespace-pre-wrap']" :style="{ fontSize: quoteFontSize + 'px' }" v-html="highlightText(quote.quote)"></blockquote>
+      <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 py-1 whitespace-pre-wrap']" :style="{ fontSize: quoteFontSize + 'px' }" v-html="highlightText(quote.quote)"></blockquote>
       <!-- Book attribution (when linked to book) -->
       <BookAttribution
         v-if="book"
         class="mt-3"
         variant="card"
+        align="end"
         dash
         :author="book.author"
         :title="book.title"

@@ -25,7 +25,7 @@ function possessiveSuffix(a: ParsedAuthor): string {
 // Variants:
 //   - card / thread / presentation: vertically stacked
 //   - chip: single inline baseline-aligned row (essay reference chips)
-//   - note: single line possessive form — "{Author}'s {Title} ({year})"
+//   - note: single line possessive — "{Author}'s {Title}, p. X" + year below
 //
 // `dash` prepends an em-dash to the author row (quote-style attribution).
 // `align="end"` produces the right-aligned quote presentation block.
@@ -65,10 +65,17 @@ const lastAuthorColor = computed(() =>
 
 const titleSize = computed(() => {
     switch (props.variant) {
-        case 'presentation':
-            return 'text-[20px] sm:text-[24px]';
+        case 'presentation': {
+            // Scale down so long titles don't dominate the slide. ~30 chars
+            // is roughly the natural single-line cap at 17px.
+            const len = props.title?.length ?? 0;
+            if (len > 50) return 'text-[12px] sm:text-[14px]';
+            if (len > 30) return 'text-[13px] sm:text-[15px]';
+            return 'text-[15px] sm:text-[17px]';
+        }
         case 'card':
-            return 'text-[14px]';
+            // Match year size — title differentiates by italic.
+            return 'text-[13px]';
         case 'thread':
             return 'text-[13px]';
         case 'note':
@@ -83,9 +90,10 @@ const titleSize = computed(() => {
 const metaSize = computed(() => {
     switch (props.variant) {
         case 'presentation':
-            return 'text-[13px] sm:text-[14px]';
+            return 'text-[16px] sm:text-[20px]';
         case 'card':
-            return 'text-[12.5px]';
+            // Author bigger than the title — matches the presentation hierarchy.
+            return 'text-[15px]';
         case 'thread':
         case 'chip':
         case 'note':
@@ -99,16 +107,17 @@ const metaSize = computed(() => {
 const yearSize = computed(() => {
     switch (props.variant) {
         case 'presentation':
-            return 'text-[19px] sm:text-[23px]';
+            // Match title size — title differentiates by italic.
+            return 'text-[15px] sm:text-[17px]';
         case 'card':
+            // Match title size.
             return 'text-[13px]';
         case 'thread':
             return 'text-[12px]';
         case 'chip':
             return 'text-[11px]';
         case 'note':
-            // Year sits even smaller below the title's 13px to read as
-            // secondary metadata on a tight single line.
+            // Year sits a touch smaller than the citation row.
             return 'text-[10.5px]';
     }
     return '';
@@ -122,11 +131,31 @@ const alignClass = computed(() =>
           : 'items-start text-left',
 );
 
-const gapClass = computed(() => (props.variant === 'presentation' ? 'gap-1.5' : 'gap-0.5'));
+// Tight stacks across the board — wrapped title lines hug, year inline sits
+// on the same baseline as title.
+const gapClass = computed(() =>
+    props.variant === 'presentation' || props.variant === 'card' ? 'gap-0' : 'gap-0.5',
+);
+
+// Page size — kept smaller than meta/title because the page number is the
+// least-emphasized piece of the citation.
+const pageSize = computed(() => {
+    switch (props.variant) {
+        case 'presentation':
+            return 'text-[14px] sm:text-[16px]';
+        case 'card':
+            return 'text-[12px]';
+        case 'thread':
+        case 'chip':
+        case 'note':
+            return 'text-[10.5px]';
+    }
+    return '';
+});
 
 const titleClass = computed(() => [
     titleSize.value,
-    'font-body italic font-bold text-white leading-[1.2] tracking-[-0.005em]',
+    'font-body italic text-white leading-none tracking-[-0.005em]',
     props.titleHref ? 'hover:underline decoration-mono-500 transition-colors' : '',
 ]);
 </script>
@@ -151,8 +180,7 @@ const titleClass = computed(() => [
                 :href="titleHref || undefined"
                 :target="titleHref ? '_blank' : undefined"
                 :rel="titleHref ? 'noopener noreferrer' : undefined"
-                :class="[titleSize, 'font-body italic font-bold leading-[1.2] tracking-[-0.005em]', titleHref && 'hover:underline decoration-mono-500 transition-colors']"
-                style="color: #e8d0a8"
+                :class="[titleSize, 'font-body italic text-white leading-[1.2] tracking-[-0.005em]', titleHref && 'hover:underline decoration-mono-500 transition-colors']"
                 @click.stop
             >{{ title }}</component>
             <span v-if="page" :class="[yearSize, 'text-mono-500']">p.&nbsp;{{ page }}</span>
@@ -204,9 +232,9 @@ const titleClass = computed(() => [
             </template>
         </div>
 
-        <!-- Title + inline year. Year is parenthesised and 1px smaller than
-             the title — quietly secondary on the same line. -->
-        <div v-if="title" class="leading-[1.25]">
+        <!-- Title + inline year. Wrapper line-height tracks the title's so
+             wrapped title lines aren't padded by the (taller) year inline. -->
+        <div v-if="title" class="leading-none">
             <component
                 :is="titleHref ? 'a' : 'span'"
                 :href="titleHref || undefined"
@@ -224,7 +252,7 @@ const titleClass = computed(() => [
         <!-- Page on its own line below (omitted when no page). -->
         <div
             v-if="page"
-            :class="[metaSize, 'leading-[1.4] text-mono-400']"
+            :class="[pageSize, 'leading-[1.4] text-mono-400']"
         >p.&nbsp;{{ page }}</div>
     </div>
 </template>
