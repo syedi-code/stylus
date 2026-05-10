@@ -86,9 +86,9 @@ const { baseFontSize, lineHeightClass, typographyClass } = useTypography('quote'
 </script>
 
 <template>
-  <div class="flex flex-col gap-1.5 p-3 sm:p-4 border border-accent/20 bg-mono-900 rounded-lg">
+  <div class="flex flex-col gap-1.5 p-3 sm:p-4 border border-quote/20 bg-mono-900 rounded-lg">
     <!-- Content -->
-    <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-accent pl-4 sm:pr-2 py-2 whitespace-pre-wrap']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedQuote"></blockquote>
+    <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-quote pl-4 sm:pr-2 py-2 whitespace-pre-wrap']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedQuote"></blockquote>
 
     <!-- Book attribution -->
     <BookAttribution

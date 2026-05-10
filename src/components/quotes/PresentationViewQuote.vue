@@ -99,7 +99,7 @@ watch(() => props.isOpen, (isOpen) => {
                 <!-- Top-left controls -->
                 <div class="absolute top-3 left-3 z-10 flex items-center gap-1">
                     <!-- Font size toggle button -->
-                    <button @click.stop="showFontControls = !showFontControls" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showFontControls ? 'text-accent' : ''" aria-label="Toggle font size controls">
+                    <button @click.stop="showFontControls = !showFontControls" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showFontControls ? 'text-quote' : ''" aria-label="Toggle font size controls">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4 7V4h16v3" />
                             <path d="M9 20h6" />
@@ -108,7 +108,7 @@ watch(() => props.isOpen, (isOpen) => {
                     </button>
 
                     <!-- Justify toggle button -->
-                    <button @click.stop="toggleJustify()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="justified ? 'text-accent' : ''" :aria-label="justified ? 'Disable justified text' : 'Enable justified text'">
+                    <button @click.stop="toggleJustify()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="justified ? 'text-quote' : ''" :aria-label="justified ? 'Disable justified text' : 'Enable justified text'">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 6h18" />
                             <path d="M3 12h18" />
@@ -117,7 +117,7 @@ watch(() => props.isOpen, (isOpen) => {
                     </button>
 
                     <!-- Hyphenation toggle button -->
-                    <button @click.stop="toggleHyphenation()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="hyphenation ? 'text-accent' : ''" :aria-label="hyphenation ? 'Disable hyphenation' : 'Enable hyphenation'">
+                    <button @click.stop="toggleHyphenation()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="hyphenation ? 'text-quote' : ''" :aria-label="hyphenation ? 'Disable hyphenation' : 'Enable hyphenation'">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 6h18" />
                             <path d="M3 12h8" />
@@ -145,7 +145,7 @@ watch(() => props.isOpen, (isOpen) => {
                 </div>
 
                 <!-- Font size controls -->
-                <PresentationFontControls v-show="showFontControls" :fontSize="finalFontSize" :min="FONT_SIZE_MIN" :max="FONT_SIZE_MAX" :step="FONT_SIZE_STEP" color="accent" @change="setFontSize" @reset="reset" />
+                <PresentationFontControls v-show="showFontControls" :fontSize="finalFontSize" :min="FONT_SIZE_MIN" :max="FONT_SIZE_MAX" :step="FONT_SIZE_STEP" color="quote" @change="setFontSize" @reset="reset" />
             </div>
         </Transition>
     </Teleport>

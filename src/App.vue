@@ -830,8 +830,8 @@ watch([threadsSearch], () => {
       </svg>
     </button>
 
-    <!-- Blue FAB for quotes tab -->
-    <button v-if="isMobile && currentTab === 'quotes'" @click="mobileQuoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Quote">
+    <!-- Verdigris FAB for quotes tab -->
+    <button v-if="isMobile && currentTab === 'quotes'" @click="mobileQuoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-quote active:bg-quote-bright rounded-full shadow-lg shadow-quote/30 flex items-center justify-center text-quote-text transition-all active:scale-95" aria-label="Quick Quote">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 5v14" />
         <path d="M5 12h14" />

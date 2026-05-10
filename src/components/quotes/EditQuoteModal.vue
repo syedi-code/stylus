@@ -170,7 +170,7 @@ const charCount = computed(() => quoteText.value.length);
             Cancel
           </button>
           <h3 class="text-sm font-semibold text-white uppercase tracking-wide">Edit Quote</h3>
-          <button @click="save" :disabled="loading || !quoteText.trim()" class="px-3 py-2 text-sm font-semibold text-accent active:text-accent-bright transition-colors disabled:opacity-50">
+          <button @click="save" :disabled="loading || !quoteText.trim()" class="px-3 py-2 text-sm font-semibold text-quote active:text-quote-bright transition-colors disabled:opacity-50">
             {{ loading ? 'Saving...' : 'Save' }}
           </button>
         </div>
@@ -206,9 +206,9 @@ const charCount = computed(() => quoteText.value.length);
 
       <!-- Quote text -->
       <div class="flex flex-col gap-1.5">
-        <label class="text-xs text-mono-400 uppercase tracking-wide">Quote <span class="text-accent">*</span></label>
+        <label class="text-xs text-mono-400 uppercase tracking-wide">Quote <span class="text-quote">*</span></label>
         <div class="relative">
-          <textarea ref="textareaRef" v-model="quoteText" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-32 max-h-100 text-mono-100 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none text-sm leading-relaxed" placeholder="Enter the quote..." @keydown.ctrl.enter="save"></textarea>
+          <textarea ref="textareaRef" v-model="quoteText" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-32 max-h-100 text-mono-100 focus:outline-none focus:border-quote focus:ring-1 focus:ring-quote resize-none text-sm leading-relaxed" placeholder="Enter the quote..." @keydown.ctrl.enter="save"></textarea>
           <div class="absolute bottom-3 right-3 text-xs text-mono-600">{{ charCount }}</div>
         </div>
       </div>
@@ -225,7 +225,7 @@ const charCount = computed(() => quoteText.value.length);
           <button @click="close" class="px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-mono-400 hover:text-white transition-colors cursor-pointer">
             Cancel
           </button>
-          <button @click="save" :disabled="loading || !quoteText.trim()" class="px-4 py-1.5 bg-accent hover:bg-accent-bright rounded-md text-white text-xs font-medium uppercase tracking-wide transition-colors disabled:opacity-50 cursor-pointer">
+          <button @click="save" :disabled="loading || !quoteText.trim()" class="px-4 py-1.5 bg-quote hover:bg-quote-bright rounded-md text-quote-text text-xs font-medium uppercase tracking-wide transition-colors disabled:opacity-50 cursor-pointer">
             {{ loading ? 'Saving...' : 'Save Changes' }}
           </button>
         </div>

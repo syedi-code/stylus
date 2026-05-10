@@ -214,6 +214,7 @@ const highlightText = (text: string | undefined) => {
         v-else-if="book"
         class="mb-2"
         variant="note"
+        muted-title
         :author="book.author"
         :title="book.title"
         :year="book.originally_published"
@@ -230,7 +231,7 @@ const highlightText = (text: string | undefined) => {
         <p v-if="note.creator" class="font-medium text-mono-400">{{ note.creator }}</p>
         <p v-if="note.work" class="italic">{{ note.work }}</p>
       </div>
-      <p v-if="note.content" class="typography-prose whitespace-pre-wrap leading-[1.25] text-sm" v-html="highlightText(note.content)"></p>
+      <p v-if="note.content" class="typography-prose whitespace-pre-wrap leading-[1.25] text-sm text-white" v-html="highlightText(note.content)"></p>
     </div>
 
     <!-- Footer: Tags -->

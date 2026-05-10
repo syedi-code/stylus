@@ -16,7 +16,7 @@ const menuOpen = ref(false);
 const tabs = [
   { key: 'notes', label: 'notes', color: 'accent' },
   { key: 'thoughts', label: 'thoughts', color: 'rose' },
-  { key: 'quotes', label: 'quotes', color: 'accent' },
+  { key: 'quotes', label: 'quotes', color: 'quote' },
   { key: 'essays', label: 'essays', color: 'essay' },
   { key: 'library', label: 'library', color: 'accent' },
   { key: 'threads', label: 'threads', color: 'purple' },
@@ -56,10 +56,12 @@ function selectTab(tab: string) {
         'bg-rose text-white border-rose': currentTab === tab.key && tab.color === 'rose',
         'bg-purple-600 text-white border-purple-600': currentTab === tab.key && tab.color === 'purple',
         'bg-essay text-black border-essay': currentTab === tab.key && tab.color === 'essay',
+        'bg-quote text-quote-text border-quote': currentTab === tab.key && tab.color === 'quote',
         'text-mono-500 hover:text-white': currentTab !== tab.key && tab.color === 'accent',
         'text-mono-500 hover:text-rose-bright': currentTab !== tab.key && tab.color === 'rose',
         'text-mono-500 hover:text-purple-400': currentTab !== tab.key && tab.color === 'purple',
         'text-mono-500 hover:text-essay-bright': currentTab !== tab.key && tab.color === 'essay',
+        'text-mono-500 hover:text-quote-bright': currentTab !== tab.key && tab.color === 'quote',
       }">
         {{ tab.label }}
       </button>
@@ -69,7 +71,8 @@ function selectTab(tab: string) {
     <div class="sm:hidden mt-4 px-5">
       <button @click="menuOpen = !menuOpen" class="w-full flex items-center justify-center gap-1.5 py-1 cursor-pointer group" aria-label="Toggle navigation">
         <span class="text-sm font-semibold tracking-tight" :class="{
-          'text-accent': ['notes', 'quotes', 'library', 'fonts'].includes(currentTab),
+          'text-accent': ['notes', 'library', 'fonts'].includes(currentTab),
+          'text-quote-bright': currentTab === 'quotes',
           'text-rose-bright': currentTab === 'thoughts',
           'text-purple-400': currentTab === 'threads',
           'text-essay-bright': currentTab === 'essays',
@@ -89,6 +92,7 @@ function selectTab(tab: string) {
             'text-rose-bright': currentTab === tab.key && tab.color === 'rose',
             'text-purple-400': currentTab === tab.key && tab.color === 'purple',
             'text-essay-bright': currentTab === tab.key && tab.color === 'essay',
+            'text-quote-bright': currentTab === tab.key && tab.color === 'quote',
             'text-mono-500 active:text-mono-300': currentTab !== tab.key,
           }">
             {{ tab.label }}

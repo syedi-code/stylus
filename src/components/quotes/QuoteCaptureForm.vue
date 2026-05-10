@@ -129,8 +129,8 @@ const submit = async () => {
 
         <!-- Textarea Wrapper -->
         <div class="relative group">
-          <textarea ref="textareaRef" v-model="quote" @input="autoGrow" :maxlength="MAX_LENGTHS.CONTENT" placeholder="QUOTE..." class="relative w-full bg-mono-900 border border-mono-800 rounded-lg p-4 min-h-30 text-white italic focus:outline-none focus:border-accent transition-all duration-500 ease-out resize-none text-sm leading-relaxed placeholder:text-mono-600 block shadow-xl z-10 origin-center" :class="[
-            sent ? 'bg-accent! border-accent-bright! text-white! shadow-[0_0_40px_rgba(41,82,255,0.3)] scale-[0.98] placeholder:text-transparent' : ''
+          <textarea ref="textareaRef" v-model="quote" @input="autoGrow" :maxlength="MAX_LENGTHS.CONTENT" placeholder="QUOTE..." class="relative w-full bg-mono-900 border border-mono-800 rounded-lg p-4 min-h-30 text-white italic focus:outline-none focus:border-quote transition-all duration-500 ease-out resize-none text-sm leading-relaxed placeholder:text-mono-600 block shadow-xl z-10 origin-center" :class="[
+            sent ? 'bg-quote! border-quote-bright! text-quote-text! shadow-[0_0_40px_rgba(95,194,148,0.3)] scale-[0.98] placeholder:text-transparent' : ''
           ]" @keydown.enter.ctrl="submit"></textarea>
         </div>
 
@@ -147,7 +147,7 @@ const submit = async () => {
       </div>
 
       <!-- Submit Button -->
-      <button @click="submit" :disabled="loading || !quote.trim()" class="h-12 w-12 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-accent-bright active:bg-accent sm:hover:bg-accent text-white transition-all shadow-lg active:shadow-accent/50 sm:hover:shadow-accent/50 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 relative overflow-hidden active:scale-95 mt-9" :class="{ 'scale-110 shadow-accent-bright/50 shadow-xl': sent }">
+      <button @click="submit" :disabled="loading || !quote.trim()" class="h-12 w-12 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-quote-bright active:bg-quote sm:hover:bg-quote text-quote-text transition-all shadow-lg active:shadow-quote/50 sm:hover:shadow-quote/50 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 relative overflow-hidden active:scale-95 mt-9" :class="{ 'scale-110 shadow-quote-bright/50 shadow-xl': sent }">
         <transition name="icon-morph" mode="out-in">
           <!-- Loading -->
           <span v-if="loading" class="animate-spin relative z-10">

@@ -42,6 +42,9 @@ const props = withDefaults(
         align?: 'start' | 'center' | 'end';
         titleHref?: string | null;
         dash?: boolean;
+        /** Render the title in mono-200 instead of white — used by Quotes
+         *  to demote the book title's visual weight relative to the quote body. */
+        mutedTitle?: boolean;
     }>(),
     {
         variant: 'card',
@@ -50,6 +53,7 @@ const props = withDefaults(
         page: null,
         titleHref: null,
         dash: false,
+        mutedTitle: false,
     },
 );
 
@@ -155,7 +159,8 @@ const pageSize = computed(() => {
 
 const titleClass = computed(() => [
     titleSize.value,
-    'font-body italic text-white leading-none tracking-[-0.005em]',
+    'font-body italic leading-none tracking-[-0.005em]',
+    props.mutedTitle ? 'text-mono-200' : 'text-white',
     props.titleHref ? 'hover:underline decoration-mono-500 transition-colors' : '',
 ]);
 </script>
@@ -180,7 +185,7 @@ const titleClass = computed(() => [
                 :href="titleHref || undefined"
                 :target="titleHref ? '_blank' : undefined"
                 :rel="titleHref ? 'noopener noreferrer' : undefined"
-                :class="[titleSize, 'font-body italic text-white leading-[1.2] tracking-[-0.005em]', titleHref && 'hover:underline decoration-mono-500 transition-colors']"
+                :class="[titleSize, 'font-body italic leading-[1.2] tracking-[-0.005em]', mutedTitle ? 'text-mono-200' : 'text-white', titleHref && 'hover:underline decoration-mono-500 transition-colors']"
                 @click.stop
             >{{ title }}</component>
             <span v-if="page" :class="[yearSize, 'text-mono-500']">p.&nbsp;{{ page }}</span>
