@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { fetchNotes, fetchBooks, fetchBookById, deleteNote, fetchQuotes, updateQuote, deleteQuote, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
+import { fetchNotes, fetchBooks, fetchBookById, deleteNote, fetchQuotes, deleteQuote, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
 import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';
 import NoteCard from './components/notes/NoteCard.vue';
@@ -216,19 +216,6 @@ const handleBookSaved = () => {
   editingBook.value = null;
   authorManagerRef.value?.loadAuthors();
   libraryPageRef.value?.reload();
-};
-
-const handleToggleQuotePosted = async (quote: Quote) => {
-  const newPostedStatus = !quote.posted;
-  try {
-    await updateQuote(quote.id, { posted: newPostedStatus });
-    const idx = quotes.value.findIndex(q => q.id === quote.id);
-    if (idx !== -1) {
-      quotes.value[idx] = { ...quotes.value[idx], posted: newPostedStatus };
-    }
-  } catch (err) {
-    console.error('Failed to update posted status:', err);
-  }
 };
 
 const handleDeleteNote = async (note: Note) => {
@@ -668,7 +655,7 @@ watch([threadsSearch], () => {
 
               <!-- Quotes List -->
               <div v-else class="space-y-4">
-                <QuoteCard v-for="quote in filteredQuotes" :key="quote.id" :quote="quote" :searchQuery="quotesSearch" :isAdmin="isAdmin" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @togglePosted="handleToggleQuotePosted" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
+                <QuoteCard v-for="quote in filteredQuotes" :key="quote.id" :quote="quote" :searchQuery="quotesSearch" :isAdmin="isAdmin" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
               </div>
             </div>
           </div>
