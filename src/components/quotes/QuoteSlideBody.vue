@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { formatMarkdown } from '../../lib/formatText';
+import BookAttribution from '../books/BookAttribution.vue';
 
 /**
  * Shared inner rendering for a quote in any presentation context.
@@ -56,27 +57,19 @@ const html = computed(() => formatMarkdown(props.text));
             ></blockquote>
         </div>
 
-        <!-- Attribution (right-aligned, em-dash, italic underlined work) -->
-        <div
+        <!-- Attribution (right-aligned, em-dash). Free-text and book-backed
+             quotes share this rendering — BookAttribution handles either. -->
+        <BookAttribution
             v-if="creator || work"
-            class="mt-2 pr-6 sm:pr-10 pb-2 text-mono-400 text-sm flex flex-col gap-0.5 shrink-0 text-right"
-        >
-            <span v-if="creator" class="font-medium text-mono-300">— {{ creator }}</span>
-            <span v-if="work">
-                <a
-                    v-if="pdfUrl"
-                    :href="pdfUrl"
-                    target="_blank"
-                    @click.stop
-                    class="underline decoration-mono-600 underline-offset-2 hover:text-accent hover:decoration-accent transition-colors italic"
-                >{{ work }}</a>
-                <span
-                    v-else
-                    class="underline decoration-mono-600 underline-offset-2 italic"
-                >{{ work }}</span>
-                <span v-if="year" class="ml-0.5"> ({{ year }})</span>
-                <span v-if="page">, p. {{ page }}</span>
-            </span>
-        </div>
+            class="mt-2 pr-6 sm:pr-10 pb-2 shrink-0"
+            variant="presentation"
+            align="end"
+            dash
+            :author="creator"
+            :title="work"
+            :year="year"
+            :page="page"
+            :title-href="pdfUrl"
+        />
     </div>
 </template>

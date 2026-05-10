@@ -3,6 +3,7 @@ import { computed, ref, onMounted, watch } from 'vue';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, type Note, type Book, type Author } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
 import { useTypography } from '../../composables/useTypography';
+import BookAttribution from '../books/BookAttribution.vue';
 
 const props = defineProps<{
   note: Note;
@@ -97,17 +98,15 @@ const { baseFontSize, lineHeightClass, typographyClass } = useTypography('note',
     </div>
 
     <!-- Book Attribution -->
-    <div v-if="book" class="text-xs text-mono-500 leading-relaxed">
-      <a v-if="pdfUrlWithPage" :href="pdfUrlWithPage" target="_blank" @click.stop class="hover:text-accent transition-colors">{{ book.author }}</a>
-      <span v-else>{{ book.author }}</span>
-      <br />
-      <template v-if="pdfUrlWithPage">
-        <a :href="pdfUrlWithPage" target="_blank" @click.stop class="italic underline hover:text-accent transition-colors">{{ book.title }}</a><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span>
-      </template>
-      <template v-else>
-        <span><span class="italic">{{ book.title }}</span><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span></span>
-      </template>
-    </div>
+    <BookAttribution
+      v-if="book"
+      variant="note"
+      :author="book.author"
+      :title="book.title"
+      :year="book.originally_published"
+      :page="note.page"
+      :title-href="pdfUrlWithPage"
+    />
 
     <!-- Author Attribution (no book) -->
     <div v-else-if="connectedAuthor" class="text-xs text-mono-500 leading-relaxed">

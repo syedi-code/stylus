@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { fetchNotes, fetchBooks, fetchBookById, updateNote, deleteNote, fetchQuotes, updateQuote, deleteQuote, createThought, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
+import { fetchNotes, fetchBooks, fetchBookById, deleteNote, fetchQuotes, updateQuote, deleteQuote, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
 import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';
 import NoteCard from './components/notes/NoteCard.vue';
@@ -25,7 +25,6 @@ import QuoteCaptureForm from './components/quotes/QuoteCaptureForm.vue';
 import ThoughtCapture from './components/thoughts/ThoughtCapture.vue';
 import ThoughtsList from './components/thoughts/ThoughtsList.vue';
 import MobileThoughtCapture from './components/thoughts/MobileThoughtCapture.vue';
-import ConvertToThoughtModal from './components/thoughts/ConvertToThoughtModal.vue';
 import AddToThreadModal from './components/threads/AddToThreadModal.vue';
 import ThreadDetail from './components/threads/ThreadDetail.vue';
 import ThreadList from './components/threads/ThreadList.vue';
@@ -219,19 +218,6 @@ const handleBookSaved = () => {
   libraryPageRef.value?.reload();
 };
 
-const handleToggleNotePosted = async (note: Note) => {
-  const newPostedStatus = !note.posted;
-  try {
-    await updateNote(note.id, { posted: newPostedStatus });
-    notesPagination.updateItem(
-      (n) => n.id === note.id,
-      (n) => ({ ...n, posted: newPostedStatus })
-    );
-  } catch (err) {
-    console.error('Failed to update posted status:', err);
-  }
-};
-
 const handleToggleQuotePosted = async (quote: Quote) => {
   const newPostedStatus = !quote.posted;
   try {
@@ -242,38 +228,6 @@ const handleToggleQuotePosted = async (quote: Quote) => {
     }
   } catch (err) {
     console.error('Failed to update posted status:', err);
-  }
-};
-
-// Convert to Thought modal
-const convertingNote = ref<Note | null>(null);
-const convertLoading = ref(false);
-
-const handleConvertToThought = (note: Note) => {
-  if (!note.content) return;
-  convertingNote.value = note;
-};
-
-const confirmConvertToThought = async () => {
-  const note = convertingNote.value;
-  if (!note?.content) return;
-
-  convertLoading.value = true;
-  try {
-    await createThought({
-      content: note.content,
-      author: 'web',
-      created_at: note.originalCreatedAt || note.created_at,
-    });
-
-    await deleteNote(note.id);
-
-    convertingNote.value = null;
-    await loadNotes();
-  } catch (err) {
-    console.error('Failed to convert note to thought:', err);
-  } finally {
-    convertLoading.value = false;
   }
 };
 
@@ -662,7 +616,7 @@ watch([threadsSearch], () => {
 
               <!-- List -->
               <div v-else class="space-y-3">
-                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" :isAdmin="isAdmin" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @togglePosted="handleToggleNotePosted" @convertToThought="handleConvertToThought" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" @navigateToThread="handleNavigateToThread" />
+                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" :isAdmin="isAdmin" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" @navigateToThread="handleNavigateToThread" />
 
                 <!-- Scroll sentinel for infinite scroll -->
                 <div ref="notesScrollSentinel" class="h-1"></div>
@@ -830,9 +784,7 @@ watch([threadsSearch], () => {
 
       <EditAuthorModal :isOpen="showAuthorModal" :author="editingAuthor" @close="showAuthorModal = false; editingAuthor = null" @saved="handleAuthorSaved" />
 
-      <ConvertToThoughtModal :isOpen="!!convertingNote" :note="convertingNote" :loading="convertLoading" @close="convertingNote = null" @confirm="confirmConvertToThought" />
-
-      <PresentationViewNote :isOpen="!!presentingNote" :note="presentingNote" :showVersionBadge="showVersionBadgeInPresentation" @close="presentingNote = null" @navigateToThread="(id) => { presentingNote = null; handleNavigateToThread(id); }" />
+<PresentationViewNote :isOpen="!!presentingNote" :note="presentingNote" :showVersionBadge="showVersionBadgeInPresentation" @close="presentingNote = null" @navigateToThread="(id) => { presentingNote = null; handleNavigateToThread(id); }" />
 
       <PresentationViewQuote :isOpen="!!presentingQuote" :quote="presentingQuote" @close="presentingQuote = null" />
 
