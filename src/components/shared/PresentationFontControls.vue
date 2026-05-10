@@ -4,7 +4,7 @@ defineProps<{
     min: number;
     max: number;
     step: number;
-    color?: 'accent' | 'rose' | 'essay';
+    color?: 'accent' | 'rose' | 'essay' | 'quote';
 }>();
 
 const emit = defineEmits<{
@@ -16,7 +16,7 @@ const emit = defineEmits<{
 <template>
     <div
         class="flex items-center gap-3 w-[70vw] max-w-xs mx-auto mt-8 shrink-0"
-        :class="color === 'rose' ? 'font-controls-rose' : color === 'essay' ? 'font-controls-essay' : 'font-controls-accent'"
+        :class="color === 'rose' ? 'font-controls-rose' : color === 'essay' ? 'font-controls-essay' : color === 'quote' ? 'font-controls-quote' : 'font-controls-accent'"
         style="touch-action: manipulation"
         @click.stop
     >
@@ -51,6 +51,9 @@ const emit = defineEmits<{
 .font-controls-essay {
     color: var(--color-essay-bright);
 }
+.font-controls-quote {
+    color: var(--color-quote-bright);
+}
 
 /* Track */
 .font-controls-accent .font-slider {
@@ -61,6 +64,9 @@ const emit = defineEmits<{
 }
 .font-controls-essay .font-slider {
     background: color-mix(in srgb, var(--color-essay) 25%, transparent);
+}
+.font-controls-quote .font-slider {
+    background: color-mix(in srgb, var(--color-quote) 25%, transparent);
 }
 
 /* Webkit thumb */
@@ -82,6 +88,9 @@ const emit = defineEmits<{
 }
 .font-controls-essay .font-slider::-webkit-slider-thumb {
     background: var(--color-essay-bright);
+}
+.font-controls-quote .font-slider::-webkit-slider-thumb {
+    background: var(--color-quote-bright);
 }
 .font-slider::-webkit-slider-thumb:active {
     transform: scale(1.15);
@@ -105,6 +114,9 @@ const emit = defineEmits<{
 .font-controls-essay .font-slider::-moz-range-thumb {
     background: var(--color-essay-bright);
 }
+.font-controls-quote .font-slider::-moz-range-thumb {
+    background: var(--color-quote-bright);
+}
 .font-slider::-moz-range-thumb:active {
     transform: scale(1.15);
 }
@@ -123,6 +135,11 @@ const emit = defineEmits<{
 .font-controls-essay .font-slider::-moz-range-track {
     height: 2px;
     background: color-mix(in srgb, var(--color-essay) 25%, transparent);
+    border-radius: 9999px;
+}
+.font-controls-quote .font-slider::-moz-range-track {
+    height: 2px;
+    background: color-mix(in srgb, var(--color-quote) 25%, transparent);
     border-radius: 9999px;
 }
 </style>

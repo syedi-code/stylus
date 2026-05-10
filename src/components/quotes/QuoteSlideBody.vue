@@ -46,7 +46,7 @@ const html = computed(() => formatMarkdown(props.text));
         <div class="pl-2 pr-4 pt-4 pb-0 sm:pl-3 sm:pr-5 sm:pt-5 sm:pb-0 min-h-0 overflow-y-auto scrollbar-hide flex-1">
             <blockquote
                 lang="en"
-                :class="[typographyClass, 'text-mono-100 py-2 whitespace-pre-wrap']"
+                :class="[typographyClass, 'text-white py-2 whitespace-pre-wrap']"
                 :style="{
                     fontSize: fontSize + 'px',
                     lineHeight: lineHeight,
@@ -65,6 +65,7 @@ const html = computed(() => formatMarkdown(props.text));
             variant="presentation"
             align="end"
             dash
+            muted-title
             :author="creator"
             :title="work"
             :year="year"

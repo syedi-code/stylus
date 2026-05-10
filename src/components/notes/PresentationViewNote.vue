@@ -214,6 +214,7 @@ const loadAuthorConnection = async () => {
                         v-if="book"
                         class="mb-3"
                         variant="note"
+                        muted-title
                         :author="book.author"
                         :title="book.title"
                         :year="book.originally_published"
@@ -231,7 +232,7 @@ const loadAuthorConnection = async () => {
                         <p v-if="note.creator" class="font-medium text-mono-400">{{ note.creator }}</p>
                         <p v-if="note.work" class="italic">{{ note.work }}</p>
                     </div>
-                    <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(note.content)"></p>
+                    <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-white']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(note.content)"></p>
                 </div>
 
                 <!-- Font size controls -->
