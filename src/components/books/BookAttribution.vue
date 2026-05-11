@@ -61,12 +61,6 @@ const authors = computed(() => parseAuthors(props.author));
 const isInline = computed(() => props.variant === 'chip');
 const isNote = computed(() => props.variant === 'note');
 
-// Year tone for the note variant uses the last author's surname color so
-// the metadata visually attaches to the possessor.
-const lastAuthorColor = computed(() =>
-    authors.value.length ? authors.value[authors.value.length - 1].color : undefined,
-);
-
 const titleSize = computed(() => {
     switch (props.variant) {
         case 'presentation': {
