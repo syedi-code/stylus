@@ -134,7 +134,7 @@ const handleClose = () => {
 
                     <span class="text-sm font-semibold text-white uppercase tracking-wide">New Quote</span>
 
-                    <button @click="submit" :disabled="loading || !draft.trim()" class="px-4 py-2 text-sm font-bold transition-all disabled:opacity-50 rounded-lg active:scale-95 cursor-pointer" :class="sent ? 'text-emerald-400 bg-emerald-500/20' : 'text-accent bg-accent/20 active:bg-accent/30'">
+                    <button @click="submit" :disabled="loading || !draft.trim()" class="px-4 py-2 text-sm font-bold transition-all disabled:opacity-50 rounded-lg active:scale-95 cursor-pointer" :class="sent ? 'text-emerald-400 bg-emerald-500/20' : 'text-quote bg-quote/20 active:bg-quote/30'">
                         {{ loading ? '...' : sent ? '✓ Saved' : 'Capture' }}
                     </button>
                 </div>

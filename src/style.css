@@ -54,6 +54,12 @@
 	--color-essay-bright: #f0b860;
 	--color-essay-muted: rgba(232, 160, 64, 0.15);
 	--color-essay-text: #000000;
+
+	/* Quote - verdigris (oxidized copper) */
+	--color-quote: #5fc294;
+	--color-quote-bright: #7ed4a8;
+	--color-quote-muted: rgba(95, 194, 148, 0.15);
+	--color-quote-text: #000000;
 }
 
 /* Font Face Declarations */

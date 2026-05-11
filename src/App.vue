@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { fetchNotes, fetchBooks, fetchBookById, updateNote, deleteNote, fetchQuotes, updateQuote, deleteQuote, createThought, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
+import { fetchNotes, fetchBooks, fetchBookById, deleteNote, fetchQuotes, deleteQuote, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
 import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';
 import NoteCard from './components/notes/NoteCard.vue';
@@ -25,7 +25,6 @@ import QuoteCaptureForm from './components/quotes/QuoteCaptureForm.vue';
 import ThoughtCapture from './components/thoughts/ThoughtCapture.vue';
 import ThoughtsList from './components/thoughts/ThoughtsList.vue';
 import MobileThoughtCapture from './components/thoughts/MobileThoughtCapture.vue';
-import ConvertToThoughtModal from './components/thoughts/ConvertToThoughtModal.vue';
 import AddToThreadModal from './components/threads/AddToThreadModal.vue';
 import ThreadDetail from './components/threads/ThreadDetail.vue';
 import ThreadList from './components/threads/ThreadList.vue';
@@ -217,64 +216,6 @@ const handleBookSaved = () => {
   editingBook.value = null;
   authorManagerRef.value?.loadAuthors();
   libraryPageRef.value?.reload();
-};
-
-const handleToggleNotePosted = async (note: Note) => {
-  const newPostedStatus = !note.posted;
-  try {
-    await updateNote(note.id, { posted: newPostedStatus });
-    notesPagination.updateItem(
-      (n) => n.id === note.id,
-      (n) => ({ ...n, posted: newPostedStatus })
-    );
-  } catch (err) {
-    console.error('Failed to update posted status:', err);
-  }
-};
-
-const handleToggleQuotePosted = async (quote: Quote) => {
-  const newPostedStatus = !quote.posted;
-  try {
-    await updateQuote(quote.id, { posted: newPostedStatus });
-    const idx = quotes.value.findIndex(q => q.id === quote.id);
-    if (idx !== -1) {
-      quotes.value[idx] = { ...quotes.value[idx], posted: newPostedStatus };
-    }
-  } catch (err) {
-    console.error('Failed to update posted status:', err);
-  }
-};
-
-// Convert to Thought modal
-const convertingNote = ref<Note | null>(null);
-const convertLoading = ref(false);
-
-const handleConvertToThought = (note: Note) => {
-  if (!note.content) return;
-  convertingNote.value = note;
-};
-
-const confirmConvertToThought = async () => {
-  const note = convertingNote.value;
-  if (!note?.content) return;
-
-  convertLoading.value = true;
-  try {
-    await createThought({
-      content: note.content,
-      author: 'web',
-      created_at: note.originalCreatedAt || note.created_at,
-    });
-
-    await deleteNote(note.id);
-
-    convertingNote.value = null;
-    await loadNotes();
-  } catch (err) {
-    console.error('Failed to convert note to thought:', err);
-  } finally {
-    convertLoading.value = false;
-  }
 };
 
 const handleDeleteNote = async (note: Note) => {
@@ -662,7 +603,7 @@ watch([threadsSearch], () => {
 
               <!-- List -->
               <div v-else class="space-y-3">
-                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" :isAdmin="isAdmin" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @togglePosted="handleToggleNotePosted" @convertToThought="handleConvertToThought" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" @navigateToThread="handleNavigateToThread" />
+                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" :isAdmin="isAdmin" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" @navigateToThread="handleNavigateToThread" />
 
                 <!-- Scroll sentinel for infinite scroll -->
                 <div ref="notesScrollSentinel" class="h-1"></div>
@@ -714,7 +655,7 @@ watch([threadsSearch], () => {
 
               <!-- Quotes List -->
               <div v-else class="space-y-4">
-                <QuoteCard v-for="quote in filteredQuotes" :key="quote.id" :quote="quote" :searchQuery="quotesSearch" :isAdmin="isAdmin" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @togglePosted="handleToggleQuotePosted" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
+                <QuoteCard v-for="quote in filteredQuotes" :key="quote.id" :quote="quote" :searchQuery="quotesSearch" :isAdmin="isAdmin" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
               </div>
             </div>
           </div>
@@ -830,9 +771,7 @@ watch([threadsSearch], () => {
 
       <EditAuthorModal :isOpen="showAuthorModal" :author="editingAuthor" @close="showAuthorModal = false; editingAuthor = null" @saved="handleAuthorSaved" />
 
-      <ConvertToThoughtModal :isOpen="!!convertingNote" :note="convertingNote" :loading="convertLoading" @close="convertingNote = null" @confirm="confirmConvertToThought" />
-
-      <PresentationViewNote :isOpen="!!presentingNote" :note="presentingNote" :showVersionBadge="showVersionBadgeInPresentation" @close="presentingNote = null" @navigateToThread="(id) => { presentingNote = null; handleNavigateToThread(id); }" />
+<PresentationViewNote :isOpen="!!presentingNote" :note="presentingNote" :showVersionBadge="showVersionBadgeInPresentation" @close="presentingNote = null" @navigateToThread="(id) => { presentingNote = null; handleNavigateToThread(id); }" />
 
       <PresentationViewQuote :isOpen="!!presentingQuote" :quote="presentingQuote" @close="presentingQuote = null" />
 
@@ -891,8 +830,8 @@ watch([threadsSearch], () => {
       </svg>
     </button>
 
-    <!-- Blue FAB for quotes tab -->
-    <button v-if="isMobile && currentTab === 'quotes'" @click="mobileQuoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-accent active:bg-accent-bright rounded-full shadow-lg shadow-accent/30 flex items-center justify-center text-white transition-all active:scale-95" aria-label="Quick Quote">
+    <!-- Verdigris FAB for quotes tab -->
+    <button v-if="isMobile && currentTab === 'quotes'" @click="mobileQuoteOpen = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-quote active:bg-quote-bright rounded-full shadow-lg shadow-quote/30 flex items-center justify-center text-quote-text transition-all active:scale-95" aria-label="Quick Quote">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 5v14" />
         <path d="M5 12h14" />
