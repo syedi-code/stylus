@@ -191,7 +191,7 @@ const loadAuthorConnection = async () => {
                     </button>
                 </div>
 
-                <div ref="cardRef" class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-4" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                <div ref="cardRef" class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-4 -translate-y-[2vh]" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
                     <!-- Type badge. Version + parent-thread chip is hidden by
                          default; the tag toggle in the top chrome reveals them.
                          Book attribution below is independent and always shown
