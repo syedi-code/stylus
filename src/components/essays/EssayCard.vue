@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { bookGradient, bookHue } from '../../composables/useBookHue';
+import { bookGradient } from '../../composables/useBookHue';
 import {
   fetchThreadsForEntity,
   type Essay,
@@ -199,13 +199,8 @@ const blocks = computed<CardBlock[]>(() => {
         <!-- Book embed: text-only marker (cover image lives only in presentation) -->
         <div
           v-else-if="block.kind === 'book'"
-          class="flex items-baseline gap-2 py-1"
+          class="flex justify-center py-1"
         >
-          <span
-            class="w-1.5 h-1.5 rounded-full shrink-0 self-center"
-            :style="{ background: bookHue(block.reference.entity_id) }"
-          ></span>
-          <span class="text-[11px] uppercase tracking-[0.16em] text-essay font-medium shrink-0">Book</span>
           <BookAttribution
             variant="chip"
             :author="block.reference.book_author"
