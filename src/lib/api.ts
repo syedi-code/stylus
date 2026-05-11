@@ -74,7 +74,7 @@ export interface QuoteInput {
 // Essay Types
 // ============================================================================
 
-export type EssayEntityType = 'book' | 'quote' | 'book_cover';
+export type EssayEntityType = 'book' | 'quote' | 'book_cover' | 'image';
 
 export interface EssayReference {
 	id: string;
@@ -82,6 +82,13 @@ export interface EssayReference {
 	entity_id: string;
 	page?: string;
 	position: number;
+	/**
+	 * Per-embed presentation overrides parsed from the inline token tail
+	 * (e.g. `[[quote:UUID size=24]]` → `{ size: 24 }`). Shape is governed
+	 * by EMBED_PARAM_SPECS in packages/core/database/essay-tokens.ts.
+	 * Absent / undefined means "use renderer defaults."
+	 */
+	params?: Record<string, string | number>;
 	// Joined from `books` for entity_type ∈ {book, book_cover}, or for a quote
 	// whose source is a book.
 	book_id?: string;
@@ -94,6 +101,22 @@ export interface EssayReference {
 	quote_creator?: string;
 	quote_work?: string;
 	quote_page?: string;
+	// Joined from `essay_images` for entity_type='image'. `image_url` is the
+	// R2 path (e.g. 'essays/images/uuid-name.jpg').
+	image_url?: string;
+	image_caption?: string;
+	image_source_url?: string;
+}
+
+export interface EssayImage {
+	id: string;
+	user_id: string;
+	path: string;
+	mime_type?: string;
+	caption?: string;
+	source_url?: string;
+	created_at: string;
+	updated_at: string;
 }
 
 export interface Essay {
@@ -731,6 +754,48 @@ export async function listBookMedia(bookId: string): Promise<BookMedia[]> {
 	);
 	if (response.data.error) throw new Error(response.data.error);
 	return response.data.media;
+}
+
+/**
+ * Upload an essay-embedded image to R2 and create an `essay_images` row.
+ * The optional `id` lets the editor mint a UUID and insert `[[image:UUID]]`
+ * at the cursor before the upload resolves; pass the same id back here so
+ * the row matches the token.
+ */
+export async function uploadEssayImage(
+	file: File,
+	options: { id?: string; caption?: string; source_url?: string } = {}
+): Promise<{ ok: boolean; id: string; path: string; url: string; image: EssayImage }> {
+	const formData = new FormData();
+	formData.append('file', file);
+	if (options.id) formData.append('id', options.id);
+	if (options.caption) formData.append('caption', options.caption);
+	if (options.source_url) formData.append('source_url', options.source_url);
+
+	const response = await apiClient.post('/upload/essay-image', formData, {
+		headers: { 'Content-Type': 'multipart/form-data' },
+	});
+	if (response.data.error) throw new Error(response.data.error);
+	return response.data;
+}
+
+export async function updateEssayImage(
+	id: string,
+	patch: { caption?: string | null; source_url?: string | null }
+): Promise<EssayImage> {
+	const response = await apiClient.patch<{ ok: boolean; image: EssayImage; error?: string }>(
+		`/essay-images/${id}`,
+		patch
+	);
+	if (response.data.error) throw new Error(response.data.error);
+	return response.data.image;
+}
+
+export async function deleteEssayImage(id: string): Promise<void> {
+	const response = await apiClient.delete<{ ok: boolean; error?: string }>(
+		`/essay-images/${id}`
+	);
+	if (response.data.error) throw new Error(response.data.error);
 }
 
 export async function uploadBookMedia(

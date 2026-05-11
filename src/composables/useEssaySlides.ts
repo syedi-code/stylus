@@ -1,5 +1,6 @@
 import { computed, type Ref } from 'vue';
 import type { Essay, EssayReference } from '../lib/api';
+import { parseEssayToken } from '@antisocial/core';
 
 /**
  * Slide kinds in an essay deck.
@@ -12,15 +13,16 @@ import type { Essay, EssayReference } from '../lib/api';
  *
  * `essay.references` is consulted only as a lookup table — the *order* of
  * embeds comes from where their tokens sit in the prose, not from any
- * `position` field.
+ * `position` field. Token grammar (including the optional attr-tail) is
+ * owned by `essay-tokens.ts`; this composable does not re-parse.
  */
 export type EssaySlide =
 	| { kind: 'paragraph'; text: string; index: number }
 	| { kind: 'header'; text: string; index: number }
 	| { kind: 'quote'; reference: EssayReference; index: number }
-	| { kind: 'bookCover'; reference: EssayReference; index: number };
+	| { kind: 'bookCover'; reference: EssayReference; index: number }
+	| { kind: 'image'; reference: EssayReference; index: number };
 
-const TOKEN_RE = /^\[\[(quote|book):([0-9a-fA-F-]{36})\]\]$/;
 const HEADER_RE = /^#\s+(.+)$/;
 
 export function useEssaySlides(essay: Ref<Essay | null>) {
@@ -46,16 +48,20 @@ export function useEssaySlides(essay: Ref<Essay | null>) {
 		let cursor = 0;
 
 		for (const p of paragraphs) {
-			const tokenMatch = p.match(TOKEN_RE);
-			if (tokenMatch) {
-				const kind = tokenMatch[1] as 'quote' | 'book';
-				const id = tokenMatch[2];
+			const parsed = parseEssayToken(p);
+			if (parsed) {
 				const refKey =
-					kind === 'quote' ? `quote:${id}` : `book_cover:${id}`;
+					parsed.kind === 'quote'
+						? `quote:${parsed.id}`
+						: parsed.kind === 'image'
+							? `image:${parsed.id}`
+							: `book_cover:${parsed.id}`;
 				const reference = refByKey.get(refKey);
 				if (!reference) continue; // token without resolved ref — skip silently
-				if (kind === 'quote') {
+				if (parsed.kind === 'quote') {
 					result.push({ kind: 'quote', reference, index: cursor++ });
+				} else if (parsed.kind === 'image') {
+					result.push({ kind: 'image', reference, index: cursor++ });
 				} else {
 					result.push({ kind: 'bookCover', reference, index: cursor++ });
 				}
