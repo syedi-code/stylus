@@ -30,6 +30,8 @@ const props = defineProps<{
     hyphenation: boolean;
     /** Tailwind classes from `useTypography('quote', 'presentation', length)`. */
     typographyClass?: string;
+    /** When true, wrap the quote text in gold curly quotation marks. */
+    withQuotationMarks?: boolean;
 }>();
 
 const lineHeight = computed(() => {
@@ -44,33 +46,18 @@ const html = computed(() => formatMarkdown(props.text));
     <div class="w-full sm:max-w-2xl flex flex-col overflow-y-auto px-6 sm:px-4 mx-auto -translate-y-[2vh]">
         <!-- Quote body -->
         <div class="pl-2 pr-4 pt-4 pb-0 sm:pl-3 sm:pr-5 sm:pt-5 sm:pb-0 min-h-0 overflow-y-auto scrollbar-hide flex-1">
-            <blockquote
-                lang="en"
-                :class="[typographyClass, 'text-white py-2 whitespace-pre-wrap']"
-                :style="{
-                    fontSize: fontSize + 'px',
-                    lineHeight: lineHeight,
-                    textAlign: justified ? 'justify' : 'left',
-                    hyphens: hyphenation ? 'auto' : 'none',
-                }"
-                v-html="html"
-            ></blockquote>
+            <blockquote lang="en" :class="[typographyClass, 'text-white py-2 whitespace-pre-wrap']" :style="{
+                fontSize: fontSize + 'px',
+                lineHeight: lineHeight,
+                textAlign: justified ? 'justify' : 'left',
+                hyphens: hyphenation ? 'auto' : 'none',
+            }">
+                <span v-if="withQuotationMarks" style="color: #e8d0a8" aria-hidden="true">&ldquo;</span><span v-html="html"></span><span v-if="withQuotationMarks" style="color: #e8d0a8" aria-hidden="true">&rdquo;</span>
+            </blockquote>
         </div>
 
         <!-- Attribution (right-aligned, em-dash). Free-text and book-backed
              quotes share this rendering — BookAttribution handles either. -->
-        <BookAttribution
-            v-if="creator || work"
-            class="pr-6 sm:pr-10 pb-2 shrink-0 max-w-[92%] ml-auto"
-            variant="presentation"
-            align="end"
-            dash
-            muted-title
-            :author="creator"
-            :title="work"
-            :year="year"
-            :page="page"
-            :title-href="pdfUrl"
-        />
+        <BookAttribution v-if="creator || work" class="pr-6 sm:pr-10 pb-2 shrink-0 max-w-[92%] ml-auto" variant="presentation" align="end" dash muted-title :author="creator" :title="work" :year="year" :page="page" :title-href="pdfUrl" />
     </div>
 </template>
