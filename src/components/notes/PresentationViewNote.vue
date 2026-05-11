@@ -196,7 +196,7 @@ const loadAuthorConnection = async () => {
                          default; the tag toggle in the top chrome reveals them.
                          Book attribution below is independent and always shown
                          when a book is linked. -->
-                    <div class="mb-4 flex items-center gap-2">
+                    <div class="mb-1.5 flex items-center gap-2">
                         <span class="bg-accent text-accent-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
                             note
                         </span>
@@ -212,7 +212,7 @@ const loadAuthorConnection = async () => {
                     <!-- Book Attribution -->
                     <BookAttribution
                         v-if="book"
-                        class="mb-3"
+                        class="mb-5"
                         variant="note"
                         muted-title
                         :author="book.author"
@@ -223,12 +223,12 @@ const loadAuthorConnection = async () => {
                     />
 
                     <!-- Author Attribution (no book, connected via connections table) -->
-                    <div v-else-if="connectedAuthor" class="mb-3 text-xs text-mono-500 leading-relaxed">
+                    <div v-else-if="connectedAuthor" class="mb-5 text-xs text-mono-500 leading-relaxed">
                         <span class="underline decoration-mono-600 underline-offset-2 text-mono-400">{{ connectedAuthor.name }}</span>
                     </div>
 
                     <!-- Free-text Attribution (no book, no author connection) -->
-                    <div v-else-if="note.creator || note.work" class="mb-3 text-xs text-mono-500 leading-relaxed">
+                    <div v-else-if="note.creator || note.work" class="mb-5 text-xs text-mono-500 leading-relaxed">
                         <p v-if="note.creator" class="font-medium text-mono-400">{{ note.creator }}</p>
                         <p v-if="note.work" class="italic">{{ note.work }}</p>
                     </div>

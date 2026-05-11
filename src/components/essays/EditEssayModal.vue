@@ -2,12 +2,16 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import {
   createEssay,
+  uploadEssayImage,
   type Essay,
   type EssayInput,
   type EssayReferenceInput,
 } from '../../lib/api';
 import { useEssayDraft } from '../../composables/useEssayDraft';
+import { useEditorTokenContext } from '../../composables/useEditorTokenContext';
+import { useKeyboardAnchor } from '../../composables/useKeyboardAnchor';
 import EssayEmbedSheet from './EssayEmbedSheet.vue';
+import EssayParamBar from './EssayParamBar.vue';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -27,6 +31,9 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const sheetOpen = ref(false);
 const sheetInitialKind = ref<'quote' | 'book'>('quote');
+
+const imageFileInput = ref<HTMLInputElement | null>(null);
+const imageUploading = ref(false);
 
 // Backdrop close: only when both press AND release happened on the backdrop
 // itself. Prevents drag-select inside the textarea (release lands on the
@@ -146,6 +153,34 @@ function handleEmbedSelect(ref: EssayReferenceInput) {
   insertAsParagraph(token);
 }
 
+// Image upload: pick a file, mint the ref id client-side, insert the
+// [[image:UUID]] token immediately, then upload. Token resolves once the
+// upload settles and the references reload on save.
+function triggerImageUpload() {
+  imageFileInput.value?.click();
+}
+
+async function handleImageSelected(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = ''; // allow re-uploading same file later
+  if (!file) return;
+
+  const id = crypto.randomUUID();
+  insertAsParagraph(`[[image:${id}]]`);
+
+  imageUploading.value = true;
+  try {
+    await uploadEssayImage(file, { id });
+  } catch (err) {
+    console.error('Failed to upload essay image:', err);
+    // Strip the unresolved token so the user isn't left with a dead embed.
+    content.value = content.value.replace(`[[image:${id}]]`, '').replace(/\n{3,}/g, '\n\n').trim();
+  } finally {
+    imageUploading.value = false;
+  }
+}
+
 /**
  * Wrap the current selection with `before…after` (e.g. `**…**`, `<…>`, `{…}`).
  * If nothing is selected, inserts the delimiters and places the cursor between
@@ -237,6 +272,31 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 };
 
+// ─── Embed param bar wiring ───
+const { tokenContext } = useEditorTokenContext(textareaRef, content);
+const { keyboardOffset } = useKeyboardAnchor();
+
+function handleParamReplace(payload: {
+  range: [number, number];
+  next: string;
+  selection?: [number, number];
+}) {
+  const ta = textareaRef.value;
+  const value = content.value;
+  const [start, end] = payload.range;
+  content.value = `${value.slice(0, start)}${payload.next}${value.slice(end)}`;
+  nextTick(() => {
+    if (!ta) return;
+    ta.focus();
+    if (payload.selection) {
+      ta.setSelectionRange(payload.selection[0], payload.selection[1]);
+    } else {
+      const cursor = start + payload.next.length;
+      ta.setSelectionRange(cursor, cursor);
+    }
+  });
+}
+
 function handleTextareaFocus() {
   // iOS Safari sometimes leaves the focused field under the keyboard;
   // nudge it into view.
@@ -299,6 +359,21 @@ function handleTextareaFocus() {
           </button>
           <button
             type="button"
+            @click="triggerImageUpload"
+            :disabled="imageUploading"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-body text-xs text-mono-200 cursor-pointer transition-colors shrink-0 disabled:opacity-50 disabled:cursor-wait"
+          >
+            <span class="text-mono-400">＋</span> {{ imageUploading ? 'Uploading…' : 'Image' }}
+          </button>
+          <input
+            ref="imageFileInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            class="hidden"
+            @change="handleImageSelected"
+          />
+          <button
+            type="button"
             @click="insertHeader"
             class="flex items-center gap-1.5 px-3 py-1.5 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-body text-xs text-mono-200 cursor-pointer transition-colors shrink-0"
           >
@@ -349,6 +424,17 @@ function handleTextareaFocus() {
             H
           </button>
         </div>
+
+        <!-- Context-aware embed param strip. Renders only when the caret sits
+             inside an embed token paragraph. On mobile with a visible soft
+             keyboard, the strip pins itself above the keyboard via fixed
+             positioning; otherwise it sits inline above the textarea. -->
+        <EssayParamBar
+          v-if="tokenContext"
+          :context="tokenContext"
+          :keyboard-offset="keyboardOffset"
+          @replace="handleParamReplace"
+        />
 
         <!-- Writing area: single textarea, fills remaining height -->
         <div class="flex-1 min-h-0 flex flex-col overflow-hidden">

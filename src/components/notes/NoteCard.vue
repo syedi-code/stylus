@@ -203,16 +203,16 @@ const highlightText = (text: string | undefined) => {
     </div>
 
     <!-- Content -->
-    <div class="mt-1 text-mono-100">
+    <div class="-mt-1.5 text-mono-100">
       <!-- Attribution Loading Skeleton -->
-      <div v-if="loadingAttribution && (note.book_id)" class="mb-2 space-y-1.5">
+      <div v-if="loadingAttribution && (note.book_id)" class="mb-3.5 space-y-1.5">
         <SkeletonBlock widthClass="w-24" heightClass="h-3" />
         <SkeletonBlock widthClass="w-48" heightClass="h-3" />
       </div>
       <!-- Book Attribution -->
       <BookAttribution
         v-else-if="book"
-        class="mb-2"
+        class="mb-3.5"
         variant="note"
         muted-title
         :author="book.author"
@@ -222,12 +222,12 @@ const highlightText = (text: string | undefined) => {
         :title-href="pdfUrlWithPage"
       />
       <!-- Author Attribution (no book, connected via connections table) -->
-      <div v-else-if="connectedAuthor" class="mb-2 text-xs text-mono-500 leading-relaxed relative">
+      <div v-else-if="connectedAuthor" class="mb-3.5 text-xs text-mono-500 leading-relaxed relative">
         <button @click="toggleAuthorPopover" class="underline decoration-mono-600 underline-offset-2 hover:text-accent hover:decoration-accent transition-colors cursor-pointer">{{ connectedAuthor.name }}</button>
         <AuthorPopover v-if="showAuthorPopover" :author="connectedAuthor" @close="showAuthorPopover = false" @viewInLibrary="handleViewInLibrary" />
       </div>
       <!-- Free-text Attribution (no book, no author connection) -->
-      <div v-else-if="note.creator || note.work" class="mb-2 text-xs text-mono-500 leading-relaxed">
+      <div v-else-if="note.creator || note.work" class="mb-3.5 text-xs text-mono-500 leading-relaxed">
         <p v-if="note.creator" class="font-medium text-mono-400">{{ note.creator }}</p>
         <p v-if="note.work" class="italic">{{ note.work }}</p>
       </div>

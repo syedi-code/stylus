@@ -17,6 +17,7 @@ import EssaySlide from './EssaySlide.vue';
 import EssayHeaderSlide from './EssayHeaderSlide.vue';
 import EssayQuoteSlide from './EssayQuoteSlide.vue';
 import EssayBookCoverSlide from './EssayBookCoverSlide.vue';
+import EssayImageSlide from './EssayImageSlide.vue';
 import EssaySlideProgressBar from './EssaySlideProgressBar.vue';
 import EssaySlideExportFrame from './EssaySlideExportFrame.vue';
 
@@ -346,6 +347,10 @@ function openFontControls() {
                             />
                             <EssayBookCoverSlide
                                 v-else-if="slide.kind === 'bookCover'"
+                                :reference="slide.reference"
+                            />
+                            <EssayImageSlide
+                                v-else-if="slide.kind === 'image'"
                                 :reference="slide.reference"
                             />
                         </div>

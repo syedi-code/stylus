@@ -3,11 +3,13 @@ import { computed, ref, onMounted } from 'vue';
 import { bookGradient } from '../../composables/useBookHue';
 import {
   fetchThreadsForEntity,
+  getFileUrl,
   type Essay,
   type EssayReference,
   type Thread,
 } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
+import { parseEssayToken } from '@antisocial/core';
 import BookAttribution from '../books/BookAttribution.vue';
 
 const props = defineProps<{
@@ -64,9 +66,9 @@ type CardBlock =
   | { kind: 'paragraph'; html: string }
   | { kind: 'header'; text: string }
   | { kind: 'quote'; reference: EssayReference }
-  | { kind: 'book'; reference: EssayReference };
+  | { kind: 'book'; reference: EssayReference }
+  | { kind: 'image'; reference: EssayReference };
 
-const TOKEN_RE = /^\[\[(quote|book):([0-9a-fA-F-]{36})\]\]$/;
 const HEADER_RE = /^#\s+(.+)$/;
 
 const blocks = computed<CardBlock[]>(() => {
@@ -77,14 +79,23 @@ const blocks = computed<CardBlock[]>(() => {
     .filter((p) => p.length > 0);
 
   for (const p of paragraphs) {
-    const tok = p.match(TOKEN_RE);
-    if (tok) {
-      const kind = tok[1] as 'quote' | 'book';
-      const id = tok[2];
-      const refKey = kind === 'quote' ? `quote:${id}` : `book_cover:${id}`;
+    const parsed = parseEssayToken(p);
+    if (parsed) {
+      const refKey =
+        parsed.kind === 'quote'
+          ? `quote:${parsed.id}`
+          : parsed.kind === 'image'
+          ? `image:${parsed.id}`
+          : `book_cover:${parsed.id}`;
       const reference = refByKey.value.get(refKey);
       if (reference) {
-        out.push({ kind: kind === 'quote' ? 'quote' : 'book', reference });
+        const blockKind =
+          parsed.kind === 'quote'
+            ? 'quote'
+            : parsed.kind === 'image'
+            ? 'image'
+            : 'book';
+        out.push({ kind: blockKind, reference });
       }
       continue;
     }
@@ -97,6 +108,13 @@ const blocks = computed<CardBlock[]>(() => {
   }
   return out;
 });
+
+function resolveImageUrl(reference: EssayReference): string | null {
+  const url = reference.image_url;
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return getFileUrl(url.replace(/^\/files\//, ''));
+}
 </script>
 
 <template>
@@ -206,6 +224,38 @@ const blocks = computed<CardBlock[]>(() => {
             :author="block.reference.book_author"
             :title="block.reference.book_title"
           />
+        </div>
+
+        <!-- Image embed: thumbnail + optional caption / source -->
+        <div
+          v-else-if="block.kind === 'image'"
+          class="my-2 flex flex-col items-center gap-1.5"
+        >
+          <img
+            v-if="resolveImageUrl(block.reference)"
+            :src="resolveImageUrl(block.reference)!"
+            :alt="block.reference.image_caption || 'Essay image'"
+            loading="lazy"
+            decoding="async"
+            class="max-h-72 max-w-full object-contain rounded-sm"
+            style="box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);"
+          />
+          <div
+            v-else
+            class="flex items-center justify-center w-48 aspect-[4/3] bg-mono-900 border border-mono-800 rounded-sm text-mono-600 text-xs italic"
+          >image missing</div>
+          <p
+            v-if="block.reference.image_caption"
+            class="font-body italic text-mono-300 text-[12px] leading-[1.35] text-center max-w-[85%]"
+          >{{ block.reference.image_caption }}</p>
+          <a
+            v-if="block.reference.image_source_url"
+            :href="block.reference.image_source_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="font-body text-[10.5px] text-mono-500 hover:text-mono-300 transition-colors underline decoration-mono-700 underline-offset-2"
+            @click.stop
+          >source</a>
         </div>
       </template>
     </div>

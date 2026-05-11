@@ -27,20 +27,17 @@ const year = computed(() => props.reference.book_originally_published);
 const page = computed(
     () => props.reference.page || props.reference.quote_page
 );
+
+// Per-embed size override (`[[quote:UUID size=24]]`). Wins absolutely over the
+// global font-size knob so the author's intent survives across viewers.
+const effectiveFontSize = computed(() => {
+    const override = props.reference.params?.size;
+    return typeof override === 'number' ? override : props.preferredFontSize;
+});
 </script>
 
 <template>
     <div class="w-full h-full flex items-center justify-center overflow-y-auto overscroll-contain py-6">
-        <QuoteSlideBody
-            :text="text"
-            :creator="creator || undefined"
-            :work="work || undefined"
-            :year="year || undefined"
-            :page="page || undefined"
-            :font-size="preferredFontSize"
-            :justified="justified"
-            :hyphenation="hyphenation"
-            :typography-class="typographyClass"
-        />
+        <QuoteSlideBody :text="text" :creator="creator || undefined" :work="work || undefined" :year="year || undefined" :page="page || undefined" :font-size="effectiveFontSize" :justified="justified" :hyphenation="hyphenation" :typography-class="typographyClass" with-quotation-marks />
     </div>
 </template>
