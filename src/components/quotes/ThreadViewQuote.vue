@@ -3,6 +3,7 @@ import { computed, ref, onMounted, watch } from 'vue';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, type Quote, type Book, type Author } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
 import { useTypography } from '../../composables/useTypography';
+import BookAttribution from '../books/BookAttribution.vue';
 
 const props = defineProps<{
   quote: Quote;
@@ -85,24 +86,21 @@ const { baseFontSize, lineHeightClass, typographyClass } = useTypography('quote'
 </script>
 
 <template>
-  <div class="flex flex-col gap-1.5 p-3 sm:p-4 border border-accent/20 bg-mono-900 rounded-lg">
+  <div class="flex flex-col gap-1.5 p-3 sm:p-4 border border-quote/20 bg-mono-900 rounded-lg">
     <!-- Content -->
-    <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-accent pl-4 sm:pr-2 py-2 whitespace-pre-wrap']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedQuote"></blockquote>
+    <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-quote pl-4 sm:pr-2 py-2 whitespace-pre-wrap']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedQuote"></blockquote>
 
     <!-- Book attribution -->
-    <div v-if="book" class="text-mono-400 text-xs space-y-0.5">
-      <p class="font-medium text-mono-300">— {{ book.author }}</p>
-      <p class="flex items-center gap-1.5 flex-wrap">
-        <template v-if="pdfUrlWithPage">
-          <a :href="pdfUrlWithPage" target="_blank" @click.stop class="italic underline hover:text-accent transition-colors">{{ book.title }}</a>
-        </template>
-        <template v-else>
-          <span class="italic">{{ book.title }}</span>
-        </template>
-        <span v-if="book.originally_published" class="text-mono-500">({{ book.originally_published }})</span>
-        <span v-if="quote.page" class="text-mono-500">p. {{ quote.page }}</span>
-      </p>
-    </div>
+    <BookAttribution
+      v-if="book"
+      variant="thread"
+      dash
+      :author="book.author"
+      :title="book.title"
+      :year="book.originally_published"
+      :page="quote.page"
+      :title-href="pdfUrlWithPage"
+    />
 
     <!-- Connected author attribution -->
     <div v-else-if="connectedAuthor" class="text-xs flex items-center gap-1.5">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { getFileUrl, type EssayReference } from '../../lib/api';
+import BookAttribution from '../books/BookAttribution.vue';
 
 const props = defineProps<{
     reference: EssayReference;
@@ -47,34 +48,27 @@ const year = computed(() => props.reference.book_originally_published || '');
                     image-rendering: auto;
                 "
             />
-            <div class="flex flex-col items-center text-center max-w-[80%] sm:max-w-md gap-2">
-                <h1
-                    class="font-body italic font-semibold text-[22px] sm:text-[26px] text-essay leading-[1.15] tracking-[-0.005em] m-0"
-                    style="text-wrap: balance;"
-                >{{ title }}</h1>
-                <div class="font-body text-[14px] text-mono-200 leading-[1.4]">
-                    <span>{{ author }}</span>
-                    <span v-if="year" class="text-mono-400"> &middot; {{ year }}</span>
-                </div>
-            </div>
+            <BookAttribution
+                class="max-w-[80%] sm:max-w-md"
+                variant="presentation"
+                align="center"
+                :author="author"
+                :title="title"
+                :year="year"
+            />
         </template>
 
-        <!-- Typographic "imagined cover" — no image uploaded.
-             Mirrors the with-cover header so the missing-image case still
-             reads like a book reference (italic essay-amber title + plain
-             author · year line) rather than a stylised display card. -->
-        <div
+        <!-- Typographic "imagined cover" — no image uploaded. Same metadata
+             stack as the with-cover case so the missing-image surface still
+             reads like a book reference. -->
+        <BookAttribution
             v-else
-            class="flex flex-col items-center text-center max-w-[80%] sm:max-w-md gap-2"
-        >
-            <h1
-                class="font-body italic font-semibold text-[22px] sm:text-[26px] text-essay leading-[1.15] tracking-[-0.005em] m-0"
-                style="text-wrap: balance;"
-            >{{ title }}</h1>
-            <div class="font-body text-[14px] text-mono-200 leading-[1.4]">
-                <span>{{ author }}</span>
-                <span v-if="year" class="text-mono-400"> &middot; {{ year }}</span>
-            </div>
-        </div>
+            class="max-w-[80%] sm:max-w-md"
+            variant="presentation"
+            align="center"
+            :author="author"
+            :title="title"
+            :year="year"
+        />
     </div>
 </template>

@@ -8,6 +8,7 @@ import { useTypography } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
+import BookAttribution from '../books/BookAttribution.vue';
 
 const props = withDefaults(defineProps<{
     note: Note | null;
@@ -23,6 +24,9 @@ const emit = defineEmits<{
 }>();
 
 const showFontControls = ref(false);
+// Version + thread metadata is hidden by default; toggled by the info button
+// in the top-left chrome so the presentation surface stays minimal.
+const showMeta = ref(false);
 const book = ref<Book | null>(null);
 const pdfUrl = ref<string | null>(null);
 const connectedAuthor = ref<Author | null>(null);
@@ -176,35 +180,47 @@ const loadAuthorConnection = async () => {
                             <path d="M3 18h18" />
                         </svg>
                     </button>
+
+                    <!-- Meta toggle: reveals version badge + parent thread name.
+                         Tag icon reads as "show labels/badges". -->
+                    <button @click.stop="showMeta = !showMeta" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showMeta ? 'text-accent' : ''" :aria-label="showMeta ? 'Hide note metadata' : 'Show note metadata'">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+                            <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
+                        </svg>
+                    </button>
                 </div>
 
-                <div ref="cardRef" class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-4" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
-                    <!-- Type badge -->
+                <div ref="cardRef" class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-4 -translate-y-[2vh]" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                    <!-- Type badge. Version + parent-thread chip is hidden by
+                         default; the tag toggle in the top chrome reveals them.
+                         Book attribution below is independent and always shown
+                         when a book is linked. -->
                     <div class="mb-4 flex items-center gap-2">
                         <span class="bg-accent text-accent-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
                             note
                         </span>
-                        <span v-if="showVersionBadge && note.version && note.version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
+                        <span v-show="showMeta && showVersionBadge && note.version && note.version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
                             v{{ note.version }}
                         </span>
-                        <button v-if="latestThread" @click.stop="emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread">
+                        <button v-show="showMeta && latestThread" @click.stop="latestThread && emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread">
                             <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
-                            <span class="text-[11.5px] font-medium text-thread-muted group-hover/thread:text-thread transition-colors max-w-[240px] truncate">{{ latestThread.name }}</span>
+                            <span class="text-[11.5px] font-medium text-thread-muted group-hover/thread:text-thread transition-colors max-w-[240px] truncate">{{ latestThread?.name }}</span>
                         </button>
                     </div>
 
                     <!-- Book Attribution -->
-                    <div v-if="book" class="mb-3 text-xs text-mono-500 leading-relaxed">
-                        <a v-if="pdfUrlWithPage" :href="pdfUrlWithPage" target="_blank" @click.stop class="hover:text-accent transition-colors">{{ book.author }}</a>
-                        <span v-else>{{ book.author }}</span>
-                        <br />
-                        <template v-if="pdfUrlWithPage">
-                            <a :href="pdfUrlWithPage" target="_blank" @click.stop class="italic underline hover:text-accent transition-colors">{{ book.title }}</a><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span>
-                        </template>
-                        <template v-else>
-                            <span><span class="italic">{{ book.title }}</span><span v-if="book.originally_published"> ({{ book.originally_published }})</span><span v-if="note.page">, p. {{ note.page }}</span></span>
-                        </template>
-                    </div>
+                    <BookAttribution
+                        v-if="book"
+                        class="mb-3"
+                        variant="note"
+                        muted-title
+                        :author="book.author"
+                        :title="book.title"
+                        :year="book.originally_published"
+                        :page="note.page"
+                        :title-href="pdfUrlWithPage"
+                    />
 
                     <!-- Author Attribution (no book, connected via connections table) -->
                     <div v-else-if="connectedAuthor" class="mb-3 text-xs text-mono-500 leading-relaxed">
@@ -216,7 +232,7 @@ const loadAuthorConnection = async () => {
                         <p v-if="note.creator" class="font-medium text-mono-400">{{ note.creator }}</p>
                         <p v-if="note.work" class="italic">{{ note.work }}</p>
                     </div>
-                    <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(note.content)"></p>
+                    <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-white']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(note.content)"></p>
                 </div>
 
                 <!-- Font size controls -->
