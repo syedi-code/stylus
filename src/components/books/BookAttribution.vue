@@ -280,7 +280,7 @@ const titleStyle = computed(() => {
         <div
             v-if="year && prominent"
             :class="[yearSize, 'leading-[1.4] text-white mt-1.5']"
-        >({{ year }})</div>
+        >{{ year }}</div>
 
         <!-- Page on its own line below (omitted when no page). -->
         <div
