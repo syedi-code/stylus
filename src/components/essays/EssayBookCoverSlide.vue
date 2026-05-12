@@ -21,8 +21,19 @@ const coverUrl = computed(() => {
     return getFileUrl(path);
 });
 const title = computed(() => props.reference.book_title || '');
-const author = computed(() => props.reference.book_author || '');
+// Author is hidden by default on essay book-cover slides — the title is the
+// focal point. Opt in per embed with `[[book:UUID author=show]]`.
+const showAuthor = computed(() => props.reference.params?.author === 'show');
+const author = computed(() =>
+    showAuthor.value ? props.reference.book_author || '' : ''
+);
 const year = computed(() => props.reference.book_originally_published || '');
+// Per-embed title size override (`[[book:UUID size=32]]`). Falls back to the
+// bucketed prominent sizing when absent.
+const titleSizePx = computed(() => {
+    const v = props.reference.params?.size;
+    return typeof v === 'number' ? v : null;
+});
 </script>
 
 <template>
@@ -52,9 +63,11 @@ const year = computed(() => props.reference.book_originally_published || '');
                 class="max-w-[80%] sm:max-w-md"
                 variant="presentation"
                 align="center"
+                prominent
                 :author="author"
                 :title="title"
                 :year="year"
+                :title-size-px="titleSizePx"
             />
         </template>
 
