@@ -45,6 +45,12 @@ const props = withDefaults(
         /** Render the title in mono-200 instead of white — used by Quotes
          *  to demote the book title's visual weight relative to the quote body. */
         mutedTitle?: boolean;
+        /** Promote title to a larger size (presentation variant only). Used
+         *  by the essay book-cover slide where the title is the focal point. */
+        prominent?: boolean;
+        /** Absolute title font size in px. When set, overrides the bucketed
+         *  prominent sizing — used by the essay token system's `size=` param. */
+        titleSizePx?: number | null;
     }>(),
     {
         variant: 'card',
@@ -54,6 +60,8 @@ const props = withDefaults(
         titleHref: null,
         dash: false,
         mutedTitle: false,
+        prominent: false,
+        titleSizePx: null,
     },
 );
 
@@ -66,7 +74,17 @@ const titleSize = computed(() => {
         case 'presentation': {
             // Scale down so long titles don't dominate the slide. ~30 chars
             // is roughly the natural single-line cap at 17px.
+            // `prominent` bumps each bucket up — used by the essay book-cover
+            // slide where the title is the focal point. When `titleSizePx` is
+            // set (via the essay token `size=` param), the bucketed class is
+            // dropped and the size is applied via inline style instead.
             const len = props.title?.length ?? 0;
+            if (props.prominent) {
+                if (props.titleSizePx != null) return 'font-bold';
+                if (len > 50) return 'text-[16px] sm:text-[19px] font-bold';
+                if (len > 30) return 'text-[18px] sm:text-[22px] font-bold';
+                return 'text-[20px] sm:text-[26px] font-bold';
+            }
             if (len > 50) return 'text-[12px] sm:text-[14px]';
             if (len > 30) return 'text-[13px] sm:text-[15px]';
             return 'text-[15px] sm:text-[17px]';
@@ -154,9 +172,19 @@ const pageSize = computed(() => {
 const titleClass = computed(() => [
     titleSize.value,
     'font-body italic leading-none tracking-[-0.005em]',
-    props.mutedTitle ? 'text-mono-200' : 'text-white',
+    props.prominent ? '' : props.mutedTitle ? 'text-mono-200' : 'text-white',
     props.titleHref ? 'hover:underline decoration-mono-500 transition-colors' : '',
 ]);
+
+// Title color: prominent (essay book-cover slide) uses the warm essay amber
+// (--color-essay, #e8a040) so book titles read as part of the essay-themed
+// surface. Other variants stay white / mono-200.
+const titleStyle = computed(() => {
+    if (!props.prominent) return {} as Record<string, string>;
+    const out: Record<string, string> = { color: 'var(--color-essay)' };
+    if (props.titleSizePx != null) out.fontSize = `${props.titleSizePx}px`;
+    return out;
+});
 </script>
 
 <template>
@@ -232,7 +260,9 @@ const titleClass = computed(() => [
         </div>
 
         <!-- Title + inline year. Wrapper line-height tracks the title's so
-             wrapped title lines aren't padded by the (taller) year inline. -->
+             wrapped title lines aren't padded by the (taller) year inline.
+             `prominent` (essay book-cover slide) drops the year onto its own
+             line below the title for a more deliberate cover-page layout. -->
         <div v-if="title" class="leading-none">
             <component
                 :is="titleHref ? 'a' : 'span'"
@@ -240,13 +270,17 @@ const titleClass = computed(() => [
                 :target="titleHref ? '_blank' : undefined"
                 :rel="titleHref ? 'noopener noreferrer' : undefined"
                 :class="titleClass"
-                style="text-wrap: balance;"
+                :style="{ 'text-wrap': 'balance', ...titleStyle }"
                 @click.stop
             >{{ title }}</component><span
-                v-if="year"
+                v-if="year && !prominent"
                 :class="[yearSize, 'text-white ml-1.5']"
             >({{ year }})</span>
         </div>
+        <div
+            v-if="year && prominent"
+            :class="[yearSize, 'leading-[1.4] text-white mt-1.5']"
+        >({{ year }})</div>
 
         <!-- Page on its own line below (omitted when no page). -->
         <div
