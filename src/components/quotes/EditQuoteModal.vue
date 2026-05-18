@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import { createQuote, createConnectionApi, fetchConnections, type Quote } from '../../lib/api';
+import { updateQuote, createConnectionApi, fetchConnections, type Quote } from '../../lib/api';
 import SourceSelector from '../library/SourceSelector.vue';
 import type { SourceAttribution } from '../library/SourceSelector.vue';
 
@@ -126,8 +126,6 @@ const save = async () => {
       creator: effectiveCreator.value || undefined,
       work: effectiveWork.value || undefined,
       kind: effectiveKind.value || undefined,
-      source: 'web',
-      replaces: props.quote.id,
     };
 
     // Dual-write: set book_id for legacy compatibility
@@ -136,11 +134,13 @@ const save = async () => {
       if (attr.page) input.page = attr.page;
     }
 
-    const result = await createQuote(input);
+    // Mutate the existing row in place so essay_references (and every
+    // other link by UUID) keep pointing at the edited content.
+    await updateQuote(props.quote.id, input);
 
     // Create connections for non-book attributions
-    if (sourceSelectorRef.value && result.quote?.id && attr.mode === 'author') {
-      const connections = sourceSelectorRef.value.buildConnections(result.quote.id);
+    if (sourceSelectorRef.value && attr.mode === 'author') {
+      const connections = sourceSelectorRef.value.buildConnections(props.quote.id);
       for (const conn of connections) {
         await createConnectionApi(conn);
       }
