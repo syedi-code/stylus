@@ -35,7 +35,7 @@ const html = computed(() => formatMarkdown(props.text));
         ref="containerRef"
         class="w-full h-full flex items-center justify-center overflow-y-auto overscroll-contain"
     >
-        <div class="w-full max-w-xl px-6 sm:px-8 py-4 flex flex-col gap-4">
+        <div class="w-full max-w-xl px-6 sm:px-8 py-4 flex flex-col gap-4 -translate-y-[2vh]">
             <!-- Badge row: ESSAY · {first-line header, if any} -->
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="bg-essay text-essay-text px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] leading-[1.5]">
