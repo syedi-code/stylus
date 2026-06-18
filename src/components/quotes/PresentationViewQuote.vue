@@ -6,7 +6,9 @@ import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP }
 import { useTypography } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
+import { useAutoChrome } from '../../composables/useAutoChrome';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
+import PresentationChrome from '../shared/PresentationChrome.vue';
 import QuoteSlideBody from './QuoteSlideBody.vue';
 
 const props = withDefaults(defineProps<{
@@ -30,6 +32,10 @@ const { finalFontSize, setFontSize, reset } = usePresentationFontSize('quote', b
 const { justified, toggle: toggleJustify } = usePresentationJustify();
 
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation();
+
+// Auto-fading chrome (action buttons) — mirrors the essay deck via the shared
+// useAutoChrome timer + PresentationChrome wrapper.
+const { chromeVisible, poke } = useAutoChrome(2800);
 
 const parsePrintPage = (pageStr: string | undefined): number | null => {
     if (!pageStr) return null;
@@ -77,6 +83,7 @@ const loadBook = async () => {
 
 watch(() => props.isOpen, (isOpen) => {
     if (isOpen) {
+        poke();
         loadBook();
     } else {
         book.value = null;
@@ -88,7 +95,10 @@ watch(() => props.isOpen, (isOpen) => {
 <template>
     <Teleport to="body">
         <Transition name="presentation">
-            <div v-if="isOpen && quote" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mono-950 cursor-pointer" :style="{ padding: VERTICAL_MARGIN + 'px' }" @click="emit('close')"> <!-- Close button (mobile) -->
+            <div v-if="isOpen && quote" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mono-950 cursor-pointer" :style="{ paddingTop: VERTICAL_MARGIN + 'px', paddingBottom: VERTICAL_MARGIN + 'px' }" @click="emit('close')" @pointermove="poke" @touchstart.passive="poke">
+                <!-- Auto-fading chrome: close + action buttons hide after inactivity. -->
+                <PresentationChrome :visible="chromeVisible">
+                <!-- Close button (mobile) -->
                 <button @click="emit('close')" class="absolute top-3 right-3 z-10 p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer sm:hidden" aria-label="Close">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18" />
@@ -126,6 +136,7 @@ watch(() => props.isOpen, (isOpen) => {
                         </svg>
                     </button>
                 </div>
+                </PresentationChrome>
 
                 <!-- Content card — shared body component owns the cardless
                      blockquote + right-aligned em-dash attribution. -->
@@ -141,6 +152,7 @@ watch(() => props.isOpen, (isOpen) => {
                         :justified="justified"
                         :hyphenation="hyphenation"
                         :typography-class="typographyClass"
+                        with-quotation-marks
                     />
                 </div>
 
