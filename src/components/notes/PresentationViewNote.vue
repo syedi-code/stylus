@@ -7,7 +7,9 @@ import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP }
 import { useTypography } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
+import { useAutoChrome } from '../../composables/useAutoChrome';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
+import PresentationChrome from '../shared/PresentationChrome.vue';
 import BookAttribution from '../books/BookAttribution.vue';
 
 const props = withDefaults(defineProps<{
@@ -73,8 +75,37 @@ const lineHeight = computed(() => {
 const { justified, toggle: toggleJustify } = usePresentationJustify('note');
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('note');
 
+// Auto-fading chrome (action buttons) — mirrors the essay deck via the shared
+// useAutoChrome timer + PresentationChrome wrapper.
+const { chromeVisible, poke } = useAutoChrome(2800);
+
+// Date footer (a la Thoughts), revealed by the meta toggle alongside the
+// version badge + parent-thread chip.
+const formattedDate = computed(() => {
+    if (!props.note) return '';
+    const date = new Date(props.note.created_at);
+    return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+    });
+});
+
+const formattedTime = computed(() => {
+    if (!props.note) return '';
+    const date = new Date(props.note.created_at);
+    return date.toLocaleTimeString('en-US', {
+        timeZone: 'America/Los_Angeles',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+    });
+});
+
 watch(() => props.isOpen, async (isOpen) => {
     if (isOpen) {
+        poke();
         loadBook();
         loadAuthorConnection();
         if (props.note) {
@@ -142,7 +173,9 @@ const loadAuthorConnection = async () => {
 <template>
     <Teleport to="body">
         <Transition name="presentation">
-            <div v-if="isOpen && note" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mono-950 cursor-pointer" :style="{ padding: VERTICAL_MARGIN + 'px' }" @click="emit('close')">
+            <div v-if="isOpen && note" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mono-950 cursor-pointer" :style="{ paddingTop: VERTICAL_MARGIN + 'px', paddingBottom: VERTICAL_MARGIN + 'px' }" @click="emit('close')" @pointermove="poke" @touchstart.passive="poke">
+                <!-- Auto-fading chrome: close + action buttons hide after inactivity. -->
+                <PresentationChrome :visible="chromeVisible">
                 <!-- Close button (mobile) -->
                 <button @click="emit('close')" class="absolute top-3 right-3 z-10 p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer sm:hidden" aria-label="Close">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -181,8 +214,9 @@ const loadAuthorConnection = async () => {
                         </svg>
                     </button>
 
-                    <!-- Meta toggle: reveals version badge + parent thread name.
-                         Tag icon reads as "show labels/badges". -->
+                    <!-- Meta toggle: reveals version badge + parent thread name
+                         + the created-at date footer. Tag icon reads as
+                         "show labels/badges". -->
                     <button @click.stop="showMeta = !showMeta" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showMeta ? 'text-accent' : ''" :aria-label="showMeta ? 'Hide note metadata' : 'Show note metadata'">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
@@ -190,8 +224,9 @@ const loadAuthorConnection = async () => {
                         </svg>
                     </button>
                 </div>
+                </PresentationChrome>
 
-                <div ref="cardRef" class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-4 -translate-y-[2vh]" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                <div ref="cardRef" class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-8 -translate-y-[2vh]" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
                     <!-- Type badge. Version + parent-thread chip is hidden by
                          default; the tag toggle in the top chrome reveals them.
                          Book attribution below is independent and always shown
@@ -233,6 +268,11 @@ const loadAuthorConnection = async () => {
                         <p v-if="note.work" class="italic">{{ note.work }}</p>
                     </div>
                     <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-white']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(note.content)"></p>
+
+                    <!-- Date footer (a la Thoughts) — revealed by the meta toggle. -->
+                    <div v-show="showMeta" class="mt-4 pt-3 text-xs text-mono-500">
+                        {{ formattedDate }} · {{ formattedTime }}
+                    </div>
                 </div>
 
                 <!-- Font size controls -->
