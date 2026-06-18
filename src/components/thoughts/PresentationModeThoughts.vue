@@ -7,7 +7,9 @@ import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP }
 import { useTypography } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
+import { useAutoChrome } from '../../composables/useAutoChrome';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
+import PresentationChrome from '../shared/PresentationChrome.vue';
 
 const props = defineProps<{
     thought: Thought | null;
@@ -38,6 +40,10 @@ const lineHeight = computed(() => {
 const { justified, toggle: toggleJustify } = usePresentationJustify('thought');
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('thought');
 
+// Auto-fading chrome (action buttons) — mirrors the essay deck via the shared
+// useAutoChrome timer + PresentationChrome wrapper.
+const { chromeVisible, poke } = useAutoChrome(2800);
+
 const formattedContent = computed(() => {
     if (!props.thought) return '';
     return formatMarkdown(props.thought.content);
@@ -67,6 +73,7 @@ const formattedTime = computed(() => {
 
 watch(() => props.isOpen, async (isOpen) => {
     if (isOpen && props.thought) {
+        poke();
         try {
             const threads = await fetchThreadsForEntity('thought', props.thought.id);
             latestThread.value = threads.length
@@ -84,7 +91,9 @@ watch(() => props.isOpen, async (isOpen) => {
 <template>
     <Teleport to="body">
         <Transition name="presentation">
-            <div v-if="isOpen && thought" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mono-950 cursor-pointer" :style="{ padding: VERTICAL_MARGIN + 'px' }" @click="emit('close')">
+            <div v-if="isOpen && thought" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mono-950 cursor-pointer" :style="{ paddingTop: VERTICAL_MARGIN + 'px', paddingBottom: VERTICAL_MARGIN + 'px' }" @click="emit('close')" @pointermove="poke" @touchstart.passive="poke">
+                <!-- Auto-fading chrome: close + action buttons hide after inactivity. -->
+                <PresentationChrome :visible="chromeVisible">
                 <!-- Close button (mobile) -->
                 <button @click="emit('close')" class="absolute top-3 right-3 z-10 p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer sm:hidden" aria-label="Close">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -123,9 +132,10 @@ watch(() => props.isOpen, async (isOpen) => {
                         </svg>
                     </button>
                 </div>
+                </PresentationChrome>
 
                 <!-- Content card -->
-                <div class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-4" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                <div class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-8" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
 
                     <!-- THOUGHT badge -->
                     <div class="mb-4 flex items-center gap-2">
