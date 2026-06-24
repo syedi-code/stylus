@@ -105,8 +105,14 @@ const titleSize = computed(() => {
 
 const metaSize = computed(() => {
     switch (props.variant) {
-        case 'presentation':
+        case 'presentation': {
+            // Scale the author row down for long names so it fits on one line
+            // before wrapping — mirrors the length-bucketing used by `titleSize`.
+            const len = props.author?.length ?? 0;
+            if (len > 40) return 'text-[12px] sm:text-[15px]';
+            if (len > 28) return 'text-[14px] sm:text-[17px]';
             return 'text-[16px] sm:text-[20px]';
+        }
         case 'card':
             // Author bigger than the title — matches the presentation hierarchy.
             return 'text-[15px]';

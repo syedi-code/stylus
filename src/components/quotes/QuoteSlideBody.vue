@@ -58,6 +58,6 @@ const html = computed(() => formatMarkdown(props.text));
 
         <!-- Attribution (right-aligned, em-dash). Free-text and book-backed
              quotes share this rendering — BookAttribution handles either. -->
-        <BookAttribution v-if="creator || work" class="pr-6 sm:pr-10 pb-2 shrink-0 max-w-[92%] ml-auto" variant="presentation" align="end" dash muted-title :author="creator" :title="work" :year="year" :page="page" :title-href="pdfUrl" />
+        <BookAttribution v-if="creator || work" class="pr-4 sm:pr-5 pb-2 shrink-0 ml-auto" variant="presentation" align="end" dash muted-title :author="creator" :title="work" :year="year" :page="page" :title-href="pdfUrl" />
     </div>
 </template>
