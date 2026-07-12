@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted, computed } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { createNote, createConnectionApi } from '../../lib/api';
+import { createNote, type Book } from '../../lib/api';
 import { useDraft } from '../../composables/useDraft';
-import SourceSelector from '../library/SourceSelector.vue';
-import type { SourceAttribution } from '../library/SourceSelector.vue';
+import BookLinePicker from '../library/BookLinePicker.vue';
 
 const emit = defineEmits(['saved']);
 
@@ -12,10 +11,10 @@ const { draft: note, clearDraft, hasDraft } = useDraft('antisocial-capture-draft
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const loading = ref(false);
 const sent = ref(false);
-const sourceSelectorRef = ref<InstanceType<typeof SourceSelector> | null>(null);
 
-// Current attribution from SourceSelector
-const currentAttribution = ref<SourceAttribution>({ mode: 'none' });
+// Book attribution — a note always lives in a book
+const selectedBook = ref<Book | null>(null);
+const pageRef = ref('');
 
 const charCount = computed(() => note.value.length);
 
@@ -41,38 +40,22 @@ const submit = async () => {
   sent.value = false;
 
   try {
-    const attr = currentAttribution.value;
-
     const input: any = {
       content: note.value,
       source: 'web',
     };
 
-    // Dual-write: set book_id for legacy compatibility
-    if (attr.mode === 'book' && attr.bookId) {
-      input.book_id = attr.bookId;
-      if (attr.page) input.page = attr.page;
-    } else if (attr.mode === 'other') {
-      if (attr.creator) input.creator = attr.creator;
-      if (attr.work) input.work = attr.work;
-      if (attr.kind) input.kind = attr.kind;
+    if (selectedBook.value) {
+      input.book_id = selectedBook.value.id;
+      if (pageRef.value) input.page = pageRef.value;
     }
 
-    const result = await createNote(input);
-
-    // Create connections for non-book attributions
-    // (book connections are dual-written server-side via book_id)
-    if (sourceSelectorRef.value && result.note?.id && attr.mode === 'author') {
-      const connections = sourceSelectorRef.value.buildConnections(result.note.id);
-      for (const conn of connections) {
-        await createConnectionApi(conn);
-      }
-    }
+    await createNote(input);
 
     sent.value = true;
     clearDraft();
-    sourceSelectorRef.value?.reset();
-    currentAttribution.value = { mode: 'none' };
+    // Keep the book — the next note is usually from the same one. Page moves on.
+    pageRef.value = '';
 
     setTimeout(() => {
       sent.value = false;
@@ -101,27 +84,24 @@ const submit = async () => {
       <!-- Input Column -->
       <div class="grow flex flex-col gap-2 relative">
 
+        <!-- Book line — attribution lives above the words -->
+        <BookLinePicker v-model:book="selectedBook" v-model:page="pageRef" showPage class="mb-0.5" />
+
         <!-- Textarea Wrapper -->
         <div class="relative group">
-          <textarea ref="textareaRef" v-model="note" @input="autoGrow" :maxlength="MAX_LENGTHS.CONTENT" placeholder="LOG ENTRY..." class="relative w-full bg-mono-900 border border-mono-800 rounded-lg p-4 min-h-30 text-white focus:outline-none focus:border-accent transition-all duration-500 ease-out resize-none text-sm leading-relaxed placeholder:text-mono-600 block shadow-xl z-10 origin-center" :class="[
+          <textarea ref="textareaRef" v-model="note" @input="autoGrow" :maxlength="MAX_LENGTHS.CONTENT" placeholder="Log entry…" class="relative w-full bg-mono-900 border border-mono-800 rounded-xl p-4 min-h-30 text-white focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/40 transition-all duration-500 ease-out resize-none text-sm leading-normal placeholder:text-mono-600 placeholder:italic block shadow-lg shadow-black/20 z-10 origin-center" :class="[
             sent ? 'bg-accent! border-accent-bright! text-white! shadow-[0_0_40px_rgba(41,82,255,0.3)] scale-[0.98] placeholder:text-transparent' : ''
           ]" @keydown.enter.ctrl="submit"></textarea>
         </div>
 
-        <!-- Footer -->
-        <div class="flex justify-between items-center text-xs text-mono-600 uppercase tracking-wider pl-1 z-10 select-none">
-          <span>{{ note.length > 0 ? `${charCount} / ${MAX_LENGTHS.CONTENT}` : 'Web Capture' }}</span>
-          <span class="hidden sm:inline">Ctrl+Enter</span>
-        </div>
-
-        <!-- Source Selector -->
-        <div class="mt-3">
-          <SourceSelector ref="sourceSelectorRef" entityType="note" @update="currentAttribution = $event" />
+        <!-- Footer: char count only while typing -->
+        <div v-if="note.length > 0" class="flex justify-end items-center text-xs text-mono-600 tracking-wider pr-1 z-10 select-none tabular-nums">
+          <span>{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</span>
         </div>
       </div>
 
       <!-- Submit Button -->
-      <button @click="submit" :disabled="loading || !note.trim()" class="h-12 w-12 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-accent-bright active:bg-accent sm:hover:bg-accent text-white transition-all shadow-lg active:shadow-accent/50 sm:hover:shadow-accent/50 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 relative overflow-hidden active:scale-95 mt-9" :class="{ 'scale-110 shadow-accent-bright/50 shadow-xl': sent }">
+      <button @click="submit" :disabled="loading || !note.trim()" class="h-12 w-12 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-accent-bright active:bg-accent sm:hover:bg-accent text-white transition-all shadow-lg active:shadow-accent/50 sm:hover:shadow-accent/50 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 relative overflow-hidden active:scale-95 mt-[70px]" :class="{ 'scale-110 shadow-accent-bright/50 shadow-xl': sent }">
         <transition name="icon-morph" mode="out-in">
           <!-- Loading -->
           <span v-if="loading" class="animate-spin relative z-10">
