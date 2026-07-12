@@ -213,7 +213,8 @@ const titleStyle = computed(() => {
                 :href="titleHref || undefined"
                 :target="titleHref ? '_blank' : undefined"
                 :rel="titleHref ? 'noopener noreferrer' : undefined"
-                :class="[titleSize, 'font-body italic leading-[1.2] tracking-[-0.005em]', mutedTitle ? 'text-mono-200' : 'text-white', titleHref && 'hover:underline decoration-mono-500 transition-colors']"
+                :class="[titleSize, 'font-body italic leading-[1.2] tracking-[-0.005em]', titleHref && 'hover:underline decoration-mono-500 transition-colors']"
+                style="color: #e8d0a8"
                 @click.stop
             >{{ title }}</component>
             <span v-if="page" :class="[yearSize, 'text-mono-500']">p.&nbsp;{{ page }}</span>

@@ -103,20 +103,19 @@ const submit = async () => {
 
         <!-- Textarea Wrapper -->
         <div class="relative group">
-          <textarea ref="textareaRef" v-model="note" @input="autoGrow" :maxlength="MAX_LENGTHS.CONTENT" placeholder="LOG ENTRY..." class="relative w-full bg-mono-900 border border-mono-800 rounded-lg p-4 min-h-30 text-white focus:outline-none focus:border-accent transition-all duration-500 ease-out resize-none text-sm leading-relaxed placeholder:text-mono-600 block shadow-xl z-10 origin-center" :class="[
+          <textarea ref="textareaRef" v-model="note" @input="autoGrow" :maxlength="MAX_LENGTHS.CONTENT" placeholder="Log entry…" class="relative w-full bg-mono-900 border border-mono-800 rounded-xl p-4 min-h-30 text-white focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/40 transition-all duration-500 ease-out resize-none text-sm leading-normal placeholder:text-mono-600 placeholder:italic block shadow-lg shadow-black/20 z-10 origin-center" :class="[
             sent ? 'bg-accent! border-accent-bright! text-white! shadow-[0_0_40px_rgba(41,82,255,0.3)] scale-[0.98] placeholder:text-transparent' : ''
           ]" @keydown.enter.ctrl="submit"></textarea>
         </div>
 
-        <!-- Footer -->
-        <div class="flex justify-between items-center text-xs text-mono-600 uppercase tracking-wider pl-1 z-10 select-none">
-          <span>{{ note.length > 0 ? `${charCount} / ${MAX_LENGTHS.CONTENT}` : 'Web Capture' }}</span>
-          <span class="hidden sm:inline">Ctrl+Enter</span>
+        <!-- Footer: char count only while typing -->
+        <div v-if="note.length > 0" class="flex justify-end items-center text-xs text-mono-600 tracking-wider pr-1 z-10 select-none tabular-nums">
+          <span>{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</span>
         </div>
 
-        <!-- Source Selector -->
+        <!-- Source Selector — defaults to book-linking, the app's primary axis -->
         <div class="mt-3">
-          <SourceSelector ref="sourceSelectorRef" entityType="note" @update="currentAttribution = $event" />
+          <SourceSelector ref="sourceSelectorRef" entityType="note" :initial="{ mode: 'book' }" @update="currentAttribution = $event" />
         </div>
       </div>
 

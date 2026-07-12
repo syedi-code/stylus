@@ -18,6 +18,8 @@ export interface Note {
 	source: string;
 	created_at: string;
 	updated_at: string;
+	/** When shuffle last dealt this note. null/undefined = never surfaced. */
+	last_surfaced_at?: string | null;
 	// Client-side computed (version chain)
 	version?: number;
 	originalCreatedAt?: string;
@@ -390,13 +392,25 @@ export async function fetchNotes(
 		search?: string;
 		posted?: number;
 		book_id?: string;
+		/** All tags must be present (AND semantics). */
+		tags?: string[];
+		sort?: 'newest' | 'oldest' | 'edited';
+		/** ISO date bounds on created_at (inclusive). */
+		from?: string;
+		to?: string;
 	} = {}
 ): Promise<{ data: Note[]; hasMore: boolean }> {
+	const { tags, ...rest } = params;
 	const response = await apiClient.get<{
 		notes: any[];
 		hasMore?: boolean;
 		error?: string;
-	}>('/notes', { params });
+	}>('/notes', {
+		params: {
+			...rest,
+			...(tags && tags.length ? { tags: tags.join(',') } : {}),
+		},
+	});
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
@@ -404,6 +418,67 @@ export async function fetchNotes(
 		data: (response.data.notes || []).map(normalizeNote),
 		hasMore: response.data.hasMore ?? false,
 	};
+}
+
+export interface NoteFacets {
+	total: number;
+	tagCounts: { tag: string; count: number }[];
+	bookCounts: { book_id: string; count: number }[];
+	activity: { week: string; count: number }[];
+}
+
+/** Shuffle mode: a weighted-random deal of notes from the whole corpus. */
+export async function fetchShuffleNotes(
+	count = 5
+): Promise<{ notes: Note[]; total: number }> {
+	const response = await apiClient.get<{
+		notes: unknown[];
+		total?: number;
+		error?: string;
+	}>('/notes/shuffle', { params: { count } });
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return {
+		notes: (response.data.notes || []).map(normalizeNote),
+		total: response.data.total ?? 0,
+	};
+}
+
+export async function fetchNoteById(id: string): Promise<Note> {
+	const response = await apiClient.get<{ note: unknown; error?: string }>(
+		`/notes/${id}`
+	);
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return normalizeNote(response.data.note);
+}
+
+export async function fetchNoteFacets(
+	params: {
+		search?: string;
+		posted?: number;
+		book_id?: string;
+		tags?: string[];
+		from?: string;
+		to?: string;
+	} = {}
+): Promise<NoteFacets> {
+	const { tags, ...rest } = params;
+	const response = await apiClient.get<{
+		facets: NoteFacets;
+		error?: string;
+	}>('/notes/facets', {
+		params: {
+			...rest,
+			...(tags && tags.length ? { tags: tags.join(',') } : {}),
+		},
+	});
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return response.data.facets;
 }
 
 export async function createNote(
@@ -728,10 +803,9 @@ export async function fetchLibraryBooks(
 		sort?: 'author_az' | 'recent' | 'year';
 	} = {}
 ): Promise<LibraryListResponse> {
-	const response = await apiClient.get<LibraryListResponse & { error?: string }>(
-		'/books/library',
-		{ params }
-	);
+	const response = await apiClient.get<
+		LibraryListResponse & { error?: string }
+	>('/books/library', { params });
 	if ((response.data as { error?: string }).error) {
 		throw new Error((response.data as { error: string }).error);
 	}
@@ -749,9 +823,10 @@ export async function fetchBookDetail(id: string): Promise<BookDetail> {
 }
 
 export async function listBookMedia(bookId: string): Promise<BookMedia[]> {
-	const response = await apiClient.get<{ media: BookMedia[]; error?: string }>(
-		`/books/${bookId}/media`
-	);
+	const response = await apiClient.get<{
+		media: BookMedia[];
+		error?: string;
+	}>(`/books/${bookId}/media`);
 	if (response.data.error) throw new Error(response.data.error);
 	return response.data.media;
 }
@@ -765,7 +840,13 @@ export async function listBookMedia(bookId: string): Promise<BookMedia[]> {
 export async function uploadEssayImage(
 	file: File,
 	options: { id?: string; caption?: string; source_url?: string } = {}
-): Promise<{ ok: boolean; id: string; path: string; url: string; image: EssayImage }> {
+): Promise<{
+	ok: boolean;
+	id: string;
+	path: string;
+	url: string;
+	image: EssayImage;
+}> {
 	const formData = new FormData();
 	formData.append('file', file);
 	if (options.id) formData.append('id', options.id);
@@ -783,10 +864,11 @@ export async function updateEssayImage(
 	id: string,
 	patch: { caption?: string | null; source_url?: string | null }
 ): Promise<EssayImage> {
-	const response = await apiClient.patch<{ ok: boolean; image: EssayImage; error?: string }>(
-		`/essay-images/${id}`,
-		patch
-	);
+	const response = await apiClient.patch<{
+		ok: boolean;
+		image: EssayImage;
+		error?: string;
+	}>(`/essay-images/${id}`, patch);
 	if (response.data.error) throw new Error(response.data.error);
 	return response.data.image;
 }
@@ -843,7 +925,9 @@ export async function deleteBookMedia(
 	bookId: string,
 	mediaId: string
 ): Promise<{ ok: boolean }> {
-	const response = await apiClient.delete(`/books/${bookId}/media/${mediaId}`);
+	const response = await apiClient.delete(
+		`/books/${bookId}/media/${mediaId}`
+	);
 	if (response.data.error) throw new Error(response.data.error);
 	return response.data;
 }
@@ -935,6 +1019,32 @@ export async function fetchConnections(
 		connections: Connection[];
 		error?: string;
 	}>('/connections', { params });
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return response.data.connections;
+}
+
+/**
+ * Batched variant of fetchConnections: all connections between the given
+ * entities and connectedType in a single request (max 100 ids).
+ */
+export async function fetchConnectionsForEntities(
+	entityType: EntityType,
+	entityIds: string[],
+	connectedType: EntityType
+): Promise<Connection[]> {
+	if (entityIds.length === 0) return [];
+	const response = await apiClient.get<{
+		connections: Connection[];
+		error?: string;
+	}>('/connections/for-entities', {
+		params: {
+			type: entityType,
+			ids: entityIds.join(','),
+			connected_type: connectedType,
+		},
+	});
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
@@ -1040,6 +1150,32 @@ export async function getSignedFileUrl(
 	}
 	const baseUrl = import.meta.env.VITE_API_URL || '/api';
 	return `${baseUrl}/files/${path}?token=${encodeURIComponent(response.data.token)}`;
+}
+
+// Signed-URL cache: many cards can reference the same book PDF, so share
+// one in-flight/settled promise per path. Entries expire before the signed
+// token does (45 min vs 60 min TTL).
+const signedUrlCache = new Map<
+	string,
+	{ promise: Promise<string>; expiresAt: number }
+>();
+const SIGNED_URL_CACHE_MS = 45 * 60 * 1000;
+
+export function getSignedFileUrlCached(path: string): Promise<string> {
+	const cached = signedUrlCache.get(path);
+	if (cached && cached.expiresAt > Date.now()) {
+		return cached.promise;
+	}
+	const promise = getSignedFileUrl(path).catch((err) => {
+		// Don't cache failures
+		signedUrlCache.delete(path);
+		throw err;
+	});
+	signedUrlCache.set(path, {
+		promise,
+		expiresAt: Date.now() + SIGNED_URL_CACHE_MS,
+	});
+	return promise;
 }
 
 // ============================================================================
@@ -1273,6 +1409,28 @@ export async function fetchThreadsForEntity(
 		error?: string;
 	}>('/threads/for-entity', {
 		params: { type: entityType, id: entityId },
+	});
+	if (response.data.error) {
+		throw new Error(response.data.error);
+	}
+	return response.data.threads;
+}
+
+/**
+ * Batched reverse lookup: threads containing any of the given entities in a
+ * single request (max 100 ids). Returns one row per (thread, entity) pair;
+ * group by entity_id on the client.
+ */
+export async function fetchThreadsForEntities(
+	entityType: string,
+	entityIds: string[]
+): Promise<(Thread & { entity_id: string })[]> {
+	if (entityIds.length === 0) return [];
+	const response = await apiClient.get<{
+		threads: (Thread & { entity_id: string })[];
+		error?: string;
+	}>('/threads/for-entities', {
+		params: { type: entityType, ids: entityIds.join(',') },
 	});
 	if (response.data.error) {
 		throw new Error(response.data.error);
