@@ -161,12 +161,18 @@ const vw = useViewportWidth();
 const dealFontSize = computed(() => {
   const len = props.note.content?.length ?? 0;
   let base: number;
-  if (len <= 200) base = 20;
-  else if (len <= 450) base = 16.5;
-  else base = 14.5;
-  if (vw.value < 640) base *= 0.92; // phone
-  else if (vw.value < 1100) base *= 0.88; // medium browser window
-  else if (vw.value < 1400) base *= 0.94; // laptop
+  if (vw.value < 640) {
+    // Phone: tighter measure — cap the top size and step down sooner.
+    if (len <= 160) base = 17.5;
+    else if (len <= 300) base = 15;
+    else base = 13.5;
+  } else {
+    if (len <= 170) base = 20;
+    else if (len <= 380) base = 16.5;
+    else base = 14.5;
+    if (vw.value < 1100) base *= 0.88; // medium browser window
+    else if (vw.value < 1400) base *= 0.94; // laptop
+  }
   return Math.round(base * 10) / 10;
 });
 
@@ -174,12 +180,21 @@ const bodyClass = computed(() =>
   isDeal.value ? '' : 'text-sm leading-[1.25]'
 );
 
-/** Deal variant: px sizing + the shared presentation line-height curve. */
+/**
+ * Deal cards read tighter than presentation — an extra trim on the shared
+ * curve that grows with font size (−0.02 at 12px → −0.07 at 20px+).
+ */
+const dealLineHeight = (px: number): number => {
+  const t = Math.min(1, Math.max(0, (px - 12) / 8));
+  return +(dynamicLineHeight(px) - 0.02 - t * 0.05).toFixed(2);
+};
+
+/** Deal variant: px sizing + tightened line-height curve. */
 const bodyStyle = computed(() => {
   if (!isDeal.value) return {};
   return {
     fontSize: `${dealFontSize.value}px`,
-    lineHeight: String(dynamicLineHeight(dealFontSize.value)),
+    lineHeight: String(dealLineHeight(dealFontSize.value)),
   };
 });
 
