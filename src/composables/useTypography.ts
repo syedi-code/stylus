@@ -4,6 +4,16 @@ export type EntityType = 'note' | 'quote' | 'thought';
 export type ViewContext = 'card' | 'thread' | 'presentation';
 
 /**
+ * Dynamic line-height that tightens as font size grows.
+ * At 12 px → 1.35, at 24 px → 1.20. Extracted from the Note presentation
+ * view so cards and presentation share the same reading rhythm.
+ */
+export function dynamicLineHeight(fontSizePx: number): number {
+	const t = Math.min(1, Math.max(0, (fontSizePx - 12) / 12));
+	return +(1.35 - t * 0.15).toFixed(2);
+}
+
+/**
  * Content-length-aware font sizing and typographic class selection.
  *
  * Quotes get `.typography-quote` (with hanging-punctuation) and tighter
