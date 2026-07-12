@@ -149,8 +149,8 @@ const alignClass = computed(() =>
     props.align === 'end'
         ? 'items-end text-right'
         : props.align === 'center'
-          ? 'items-center text-center'
-          : 'items-start text-left',
+            ? 'items-center text-center'
+            : 'items-start text-left',
 );
 
 // Tight stacks across the board — wrapped title lines hug, year inline sits
@@ -204,65 +204,38 @@ const titleStyle = computed(() => {
                 <template v-for="(a, i) in authors" :key="a.full + i">
                     <span v-if="i > 0" class="text-mono-500">{{
                         authors.length === 2 ? ' & ' : ' · '
-                    }}</span><span>{{ a.firstParts }}</span><span :style="{ color: a.color }" class="font-medium">{{ a.lastName }}</span><span v-if="a.suffix">{{ a.suffix }}</span><span v-if="i === authors.length - 1">{{ possessiveSuffix(a) }}</span>
+                        }}</span><span>{{ a.firstParts }}</span><span :style="{ color: a.color }" class="font-medium">{{ a.lastName }}</span><span v-if="a.suffix">{{ a.suffix }}</span><span v-if="i === authors.length - 1">{{ possessiveSuffix(a) }}</span>
                 </template>
             </span>
-            <component
-                :is="titleHref ? 'a' : 'span'"
-                v-if="title"
-                :href="titleHref || undefined"
-                :target="titleHref ? '_blank' : undefined"
-                :rel="titleHref ? 'noopener noreferrer' : undefined"
-                :class="[titleSize, 'font-body italic leading-[1.2] tracking-[-0.005em]', titleHref && 'hover:underline decoration-mono-500 transition-colors']"
-                style="color: #e8d0a8"
-                @click.stop
-            >{{ title }}</component>
+            <component :is="titleHref ? 'a' : 'span'" v-if="title" :href="titleHref || undefined" :target="titleHref ? '_blank' : undefined" :rel="titleHref ? 'noopener noreferrer' : undefined" :class="[titleSize, 'font-body italic leading-[1.2] tracking-[-0.005em]', titleHref && 'hover:underline decoration-mono-500 transition-colors']" style="color: #e8d0a8" @click.stop>{{ title }}</component>
             <span v-if="page" :class="[yearSize, 'text-mono-500']">p.&nbsp;{{ page }}</span>
         </span>
         <span v-if="year" :class="[yearSize, 'leading-none']" style="color: #e8d0a8">{{ year }}</span>
     </div>
 
     <!-- Inline (chip) variant: single baseline-aligned row -->
-    <span
-        v-else-if="isInline"
-        class="inline-flex items-baseline gap-1.5 leading-[1.5]"
-    >
+    <span v-else-if="isInline" class="inline-flex items-baseline gap-1.5 leading-[1.5]">
         <span v-if="authors.length" :class="[metaSize, 'font-body text-mono-200']">
             <span v-if="dash" class="text-mono-400">—&nbsp;</span>
             <template v-for="(a, i) in authors" :key="a.full + i">
                 <span v-if="i > 0" class="text-mono-500">{{
                     authors.length === 2 ? ' & ' : ' · '
-                }}</span><span>{{ a.firstParts }}</span><span :style="{ color: a.color }" class="font-medium">{{ a.lastName }}</span><span v-if="a.suffix">{{ a.suffix }}</span>
+                    }}</span><span>{{ a.firstParts }}</span><span :style="{ color: a.color }" class="font-medium">{{ a.lastName }}</span><span v-if="a.suffix">{{ a.suffix }}</span>
             </template>
         </span>
-        <component
-            :is="titleHref ? 'a' : 'span'"
-            v-if="title"
-            :href="titleHref || undefined"
-            :target="titleHref ? '_blank' : undefined"
-            :rel="titleHref ? 'noopener noreferrer' : undefined"
-            :class="titleClass"
-            @click.stop
-        >{{ title }}</component>
+        <component :is="titleHref ? 'a' : 'span'" v-if="title" :href="titleHref || undefined" :target="titleHref ? '_blank' : undefined" :rel="titleHref ? 'noopener noreferrer' : undefined" :class="titleClass" @click.stop>{{ title }}</component>
         <span v-if="page" :class="[metaSize, 'text-mono-500']">p.&nbsp;{{ page }}</span>
     </span>
 
     <!-- Stacked variants -->
-    <div
-        v-else
-        class="flex flex-col font-body"
-        :class="[alignClass, gapClass]"
-    >
+    <div v-else class="flex flex-col font-body" :class="[alignClass, gapClass]">
         <!-- Author row: firstParts in default color, surname colored, suffix default. -->
-        <div
-            v-if="authors.length"
-            :class="[metaSize, 'leading-[1.4] text-mono-200']"
-        >
+        <div v-if="authors.length" :class="[metaSize, 'leading-[1.4] text-mono-200']">
             <span v-if="dash" class="text-mono-400">—&nbsp;</span>
             <template v-for="(a, i) in authors" :key="a.full + i">
                 <span v-if="i > 0" class="text-mono-500">{{
                     authors.length === 2 ? ' & ' : ' · '
-                }}</span><span>{{ a.firstParts }}</span><span :style="{ color: a.color }" class="font-medium">{{ a.lastName }}</span><span v-if="a.suffix">{{ a.suffix }}</span>
+                    }}</span><span>{{ a.firstParts }}</span><span :style="{ color: a.color }" class="font-medium">{{ a.lastName }}</span><span v-if="a.suffix">{{ a.suffix }}</span>
             </template>
         </div>
 
@@ -271,28 +244,11 @@ const titleStyle = computed(() => {
              `prominent` (essay book-cover slide) drops the year onto its own
              line below the title for a more deliberate cover-page layout. -->
         <div v-if="title" class="leading-none">
-            <component
-                :is="titleHref ? 'a' : 'span'"
-                :href="titleHref || undefined"
-                :target="titleHref ? '_blank' : undefined"
-                :rel="titleHref ? 'noopener noreferrer' : undefined"
-                :class="titleClass"
-                :style="{ 'text-wrap': 'balance', ...titleStyle }"
-                @click.stop
-            >{{ title }}</component><span
-                v-if="year && !prominent"
-                :class="[yearSize, 'text-white ml-1.5']"
-            >({{ year }})</span>
+            <component :is="titleHref ? 'a' : 'span'" :href="titleHref || undefined" :target="titleHref ? '_blank' : undefined" :rel="titleHref ? 'noopener noreferrer' : undefined" :class="titleClass" :style="{ 'text-wrap': 'balance', ...titleStyle }" @click.stop>{{ title }}</component><span v-if="year && !prominent" :class="[yearSize, 'text-white ml-1.5']">({{ year }})</span>
         </div>
-        <div
-            v-if="year && prominent"
-            :class="[yearSize, 'leading-[1.4] text-white mt-1.5']"
-        >{{ year }}</div>
+        <div v-if="year && prominent" :class="[yearSize, 'leading-[1.4] text-white mt-1.5']">{{ year }}</div>
 
         <!-- Page on its own line below (omitted when no page). -->
-        <div
-            v-if="page"
-            :class="[pageSize, 'leading-[1.4] text-mono-400']"
-        >p.&nbsp;{{ page }}</div>
+        <div v-if="page" :class="[pageSize, 'leading-[1.4] text-mono-400']">p.&nbsp;{{ page }}</div>
     </div>
 </template>

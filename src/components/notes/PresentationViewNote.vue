@@ -173,54 +173,54 @@ const loadAuthorConnection = async () => {
             <div v-if="isOpen && note" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mono-950 cursor-pointer" :style="{ paddingTop: VERTICAL_MARGIN + 'px', paddingBottom: VERTICAL_MARGIN + 'px' }" @click="emit('close')" @pointermove="poke" @touchstart.passive="poke">
                 <!-- Auto-fading chrome: close + action buttons hide after inactivity. -->
                 <PresentationChrome :visible="chromeVisible">
-                <!-- Close button (mobile) -->
-                <button @click="emit('close')" class="absolute top-3 right-3 z-10 p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer sm:hidden" aria-label="Close">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 6 6 18" />
-                        <path d="m6 6 12 12" />
-                    </svg>
-                </button>
-
-                <!-- Top-left controls -->
-                <div class="absolute top-3 left-3 z-10 flex items-center gap-1">
-                    <!-- Font size toggle button -->
-                    <button @click.stop="showFontControls = !showFontControls" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showFontControls ? 'text-accent' : ''" aria-label="Toggle font size controls">
+                    <!-- Close button (mobile) -->
+                    <button @click="emit('close')" class="absolute top-3 right-3 z-10 p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer sm:hidden" aria-label="Close">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M4 7V4h16v3" />
-                            <path d="M9 20h6" />
-                            <path d="M12 4v16" />
+                            <path d="M18 6 6 18" />
+                            <path d="m6 6 12 12" />
                         </svg>
                     </button>
 
-                    <!-- Justify toggle button -->
-                    <button @click.stop="toggleJustify()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="justified ? 'text-accent' : ''" :aria-label="justified ? 'Disable justified text' : 'Enable justified text'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 6h18" />
-                            <path d="M3 12h18" />
-                            <path d="M3 18h18" />
-                        </svg>
-                    </button>
+                    <!-- Top-left controls -->
+                    <div class="absolute top-3 left-3 z-10 flex items-center gap-1">
+                        <!-- Font size toggle button -->
+                        <button @click.stop="showFontControls = !showFontControls" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showFontControls ? 'text-accent' : ''" aria-label="Toggle font size controls">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 7V4h16v3" />
+                                <path d="M9 20h6" />
+                                <path d="M12 4v16" />
+                            </svg>
+                        </button>
 
-                    <!-- Hyphenation toggle button -->
-                    <button @click.stop="toggleHyphenation()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="hyphenation ? 'text-accent' : ''" :aria-label="hyphenation ? 'Disable hyphenation' : 'Enable hyphenation'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 6h18" />
-                            <path d="M3 12h8" />
-                            <path d="M12 12h1.5" />
-                            <path d="M3 18h18" />
-                        </svg>
-                    </button>
+                        <!-- Justify toggle button -->
+                        <button @click.stop="toggleJustify()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="justified ? 'text-accent' : ''" :aria-label="justified ? 'Disable justified text' : 'Enable justified text'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18" />
+                                <path d="M3 12h18" />
+                                <path d="M3 18h18" />
+                            </svg>
+                        </button>
 
-                    <!-- Meta toggle: reveals version badge + parent thread name
+                        <!-- Hyphenation toggle button -->
+                        <button @click.stop="toggleHyphenation()" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="hyphenation ? 'text-accent' : ''" :aria-label="hyphenation ? 'Disable hyphenation' : 'Enable hyphenation'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18" />
+                                <path d="M3 12h8" />
+                                <path d="M12 12h1.5" />
+                                <path d="M3 18h18" />
+                            </svg>
+                        </button>
+
+                        <!-- Meta toggle: reveals version badge + parent thread name
                          + the created-at date footer. Tag icon reads as
                          "show labels/badges". -->
-                    <button @click.stop="showMeta = !showMeta" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showMeta ? 'text-accent' : ''" :aria-label="showMeta ? 'Hide note metadata' : 'Show note metadata'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
-                            <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
-                        </svg>
-                    </button>
-                </div>
+                        <button @click.stop="showMeta = !showMeta" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showMeta ? 'text-accent' : ''" :aria-label="showMeta ? 'Hide note metadata' : 'Show note metadata'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+                                <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
+                            </svg>
+                        </button>
+                    </div>
                 </PresentationChrome>
 
                 <div ref="cardRef" class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-8 -translate-y-[2vh]" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
@@ -242,17 +242,7 @@ const loadAuthorConnection = async () => {
                     </div>
 
                     <!-- Book Attribution -->
-                    <BookAttribution
-                        v-if="book"
-                        class="mb-5"
-                        variant="note"
-                        muted-title
-                        :author="book.author"
-                        :title="book.title"
-                        :year="book.originally_published"
-                        :page="note.page"
-                        :title-href="pdfUrlWithPage"
-                    />
+                    <BookAttribution v-if="book" class="mb-5" variant="note" muted-title :author="book.author" :title="book.title" :year="book.originally_published" :page="note.page" :title-href="pdfUrlWithPage" />
 
                     <!-- Author Attribution (no book, connected via connections table) -->
                     <div v-else-if="connectedAuthor" class="mb-5 text-xs text-mono-500 leading-relaxed">

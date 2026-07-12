@@ -261,7 +261,9 @@ const toggleExpand = (e: Event) => {
              badge→attribution gap matches the presentation view (mb-1.5). -->
         <button @click="toggleMobileActions" class="sm:hidden p-1.5 -my-1.5 -mr-1 text-mono-600 active:text-mono-300 transition-colors" aria-label="Note actions">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+            <circle cx="5" cy="12" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" />
+            <circle cx="19" cy="12" r="1.6" />
           </svg>
         </button>
 
@@ -282,7 +284,8 @@ const toggleExpand = (e: Event) => {
           <button @click.stop="emit('addToThread', note)" class="flex p-1.5 text-mono-500 hover:text-purple-400 hover:bg-purple-500/10 rounded cursor-pointer transition-all active:scale-95" title="Add to Thread">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" />
-              <path d="M12 8v8" /><path d="M8 12h8" />
+              <path d="M12 8v8" />
+              <path d="M8 12h8" />
             </svg>
           </button>
           <button @click.stop="emit('delete', note)" class="flex p-1.5 text-mono-500 hover:text-red-400 hover:bg-red-500/10 rounded cursor-pointer transition-all active:scale-95" title="Delete Note">
@@ -308,17 +311,7 @@ const toggleExpand = (e: Event) => {
         <SkeletonBlock widthClass="w-48" heightClass="h-3" />
       </div>
       <!-- Book Attribution -->
-      <BookAttribution
-        v-else-if="book"
-        class="mb-3.5"
-        variant="note"
-        muted-title
-        :author="book.author"
-        :title="book.title"
-        :year="book.originally_published"
-        :page="note.page"
-        :title-href="pdfUrlWithPage"
-      />
+      <BookAttribution v-else-if="book" class="mb-3.5" variant="note" muted-title :author="book.author" :title="book.title" :year="book.originally_published" :page="note.page" :title-href="pdfUrlWithPage" />
       <!-- Author Attribution (no book, connected via connections table) -->
       <div v-else-if="connectedAuthor" class="mb-3.5 text-xs text-mono-500 leading-relaxed relative">
         <button @click="toggleAuthorPopover" class="underline decoration-mono-600 underline-offset-2 hover:text-accent hover:decoration-accent transition-colors cursor-pointer">{{ connectedAuthor.name }}</button>
@@ -341,19 +334,37 @@ const toggleExpand = (e: Event) => {
     <!-- Mobile action row — revealed by ⋯, inline, thumb-height -->
     <div v-if="showMobileActions" class="sm:hidden flex gap-2 pt-2.5 mt-0.5 border-t border-mono-800">
       <button @click.stop="emit('present', note)" class="flex-1 h-8 rounded-md bg-mono-800 text-mono-300 flex items-center justify-center active:bg-mono-700 transition-colors" title="Present">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="6 3 20 12 6 21 6 3" />
+        </svg>
       </button>
       <button @click.stop="emit('edit', note)" class="flex-1 h-8 rounded-md bg-mono-800 text-mono-300 flex items-center justify-center active:bg-mono-700 transition-colors" title="Edit">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+          <path d="m15 5 4 4" />
+        </svg>
       </button>
       <button @click.stop="emit('copy', note)" class="flex-1 h-8 rounded-md bg-mono-800 text-mono-300 flex items-center justify-center active:bg-mono-700 transition-colors" title="Copy">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+        </svg>
       </button>
       <button @click.stop="emit('addToThread', note)" class="flex-1 h-8 rounded-md bg-mono-800 text-mono-300 flex items-center justify-center active:bg-mono-700 transition-colors" title="Add to Thread">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" /><path d="M12 8v8" /><path d="M8 12h8" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" />
+          <path d="M12 8v8" />
+          <path d="M8 12h8" />
+        </svg>
       </button>
       <button @click.stop="emit('delete', note)" class="flex-1 h-8 rounded-md bg-mono-800 text-mono-500 flex items-center justify-center active:bg-red-500/10 active:text-red-400 transition-colors" title="Delete">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18" />
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          <line x1="10" x2="10" y1="11" y2="17" />
+          <line x1="14" x2="14" y1="11" y2="17" />
+        </svg>
       </button>
     </div>
 
