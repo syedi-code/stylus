@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, computed, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { createNote, createConnectionApi } from '../../lib/api';
-import SourceSelector from '../library/SourceSelector.vue';
-import type { SourceAttribution } from '../library/SourceSelector.vue';
+import { createNote, type Book } from '../../lib/api';
+import BookLinePicker from '../library/BookLinePicker.vue';
 
 const props = defineProps<{
     isOpen: boolean;
@@ -15,8 +14,10 @@ const draft = ref('');
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const loading = ref(false);
 const sent = ref(false);
-const sourceSelectorRef = ref<InstanceType<typeof SourceSelector> | null>(null);
-const currentAttribution = ref<SourceAttribution>({ mode: 'none' });
+
+// Book attribution — a note always lives in a book
+const selectedBook = ref<Book | null>(null);
+const pageRef = ref('');
 
 // Character count
 const charCount = computed(() => draft.value.length);
@@ -43,36 +44,22 @@ const submit = async () => {
     sent.value = false;
 
     try {
-        const attr = currentAttribution.value;
         const input: any = {
             content: draft.value.trim(),
             source: 'web',
         };
 
-        // Dual-write: set book_id for legacy compatibility
-        if (attr.mode === 'book' && attr.bookId) {
-            input.book_id = attr.bookId;
-            if (attr.page) input.page = attr.page;
-        } else if (attr.mode === 'other') {
-            if (attr.creator) input.creator = attr.creator;
-            if (attr.work) input.work = attr.work;
-            if (attr.kind) input.kind = attr.kind;
+        if (selectedBook.value) {
+            input.book_id = selectedBook.value.id;
+            if (pageRef.value) input.page = pageRef.value;
         }
 
-        const result = await createNote(input);
-
-        // Create connections for non-book attributions
-        if (sourceSelectorRef.value && result.note?.id && attr.mode === 'author') {
-            const connections = sourceSelectorRef.value.buildConnections(result.note.id);
-            for (const conn of connections) {
-                await createConnectionApi(conn);
-            }
-        }
+        await createNote(input);
 
         sent.value = true;
         draft.value = '';
-        sourceSelectorRef.value?.reset();
-        currentAttribution.value = { mode: 'none' };
+        // Keep the book — the next note is usually from the same one. Page moves on.
+        pageRef.value = '';
 
         // Brief success feedback then close
         setTimeout(() => {
@@ -91,8 +78,7 @@ const submit = async () => {
 
 const handleClose = () => {
     draft.value = '';
-    sourceSelectorRef.value?.reset();
-    currentAttribution.value = { mode: 'none' };
+    pageRef.value = '';
     emit('close');
 };
 </script>
@@ -117,14 +103,9 @@ const handleClose = () => {
                     </button>
                 </div>
 
-                <!-- Source Selector -->
-                <div class="px-4 py-3 border-b border-mono-800 shrink-0">
-                    <SourceSelector
-                        ref="sourceSelectorRef"
-                        entityType="note"
-                        :compact="true"
-                        @update="currentAttribution = $event"
-                    />
+                <!-- Book line — attribution lives above the words -->
+                <div class="px-4 py-2.5 border-b border-mono-800 shrink-0">
+                    <BookLinePicker v-model:book="selectedBook" v-model:page="pageRef" showPage />
                 </div>
 
                 <!-- Content -->

@@ -21,6 +21,7 @@ import { usePagination } from '../../composables/usePagination';
 import NoteCard from './NoteCard.vue';
 import NoteCardSkeleton from './NoteCardSkeleton.vue';
 import CaptureForm from '../shared/CaptureForm.vue';
+import BookLinePicker from '../library/BookLinePicker.vue';
 
 const props = defineProps<{
     isAdmin?: boolean;
@@ -135,7 +136,6 @@ const onModeEntered = () => {
 
 const cancelSearch = () => {
     mode.value = 'shuffle';
-    bookMenuOpen.value = false;
     searchQuery.value = '';
     bookFilter.value = 'all';
     searchTotal.value = null;
@@ -166,21 +166,14 @@ const searchNotes = computed(() => {
 });
 
 // ============================================================================
-// Book menu — searchable, most-noted first, counts from facets
+// Book filter — BookLinePicker fed with the shared list + facet counts
 // ============================================================================
 
-const bookMenuOpen = ref(false);
-const bookMenuSearch = ref('');
-const bookMenuRef = ref<HTMLElement | null>(null);
 const bookCounts = ref<Map<string, number>>(new Map());
 const unattachedCount = ref(0);
 
-const openBookMenu = async () => {
-    if (mode.value !== 'search') {
-        mode.value = 'search';
-        if (pagination.items.value.length === 0) runSearch();
-    }
-    bookMenuOpen.value = true;
+/** Called when the picker popover opens — ensures books + counts are loaded. */
+const loadBookMeta = async () => {
     await ensureFilterBooks();
     try {
         const facets = await fetchNoteFacets({});
@@ -192,36 +185,18 @@ const openBookMenu = async () => {
     }
 };
 
-const menuBooks = computed(() => {
-    const q = bookMenuSearch.value.toLowerCase();
-    return filterBooks.value
-        .map((b) => ({ book: b, count: bookCounts.value.get(b.id) ?? 0 }))
-        .filter(
-            ({ book }) =>
-                !q ||
-                book.title.toLowerCase().includes(q) ||
-                book.author.toLowerCase().includes(q)
-        )
-        .sort((a, b) => b.count - a.count || a.book.title.localeCompare(b.book.title));
-});
+const onFilterBook = (b: Book | null) => {
+    bookFilter.value = b ? b.id : 'all';
+};
 
-const selectBook = (id: string) => {
-    bookFilter.value = id;
-    bookMenuOpen.value = false;
-    bookMenuSearch.value = '';
+const onFilterUnattached = (v: boolean) => {
+    bookFilter.value = v ? 'none' : 'all';
 };
 
 const selectedBook = computed(() => {
     if (bookFilter.value === 'all' || bookFilter.value === 'none') return null;
     return booksById.value.get(bookFilter.value) ?? null;
 });
-
-const handleClickOutside = (event: MouseEvent) => {
-    if (bookMenuOpen.value && bookMenuRef.value && !bookMenuRef.value.contains(event.target as Node)) {
-        bookMenuOpen.value = false;
-        bookMenuSearch.value = '';
-    }
-};
 
 // ============================================================================
 // Settings popover (presentation options)
@@ -423,13 +398,11 @@ onMounted(() => {
         { rootMargin: '200px' }
     );
 
-    document.addEventListener('click', handleClickOutside);
     document.addEventListener('click', handleSettingsClickOutside);
 });
 
 onUnmounted(() => {
     observer?.disconnect();
-    document.removeEventListener('click', handleClickOutside);
     document.removeEventListener('click', handleSettingsClickOutside);
 });
 
@@ -443,7 +416,7 @@ defineExpose({
 </script>
 
 <template>
-    <div class="w-full max-w-2xl xl:max-w-3xl mx-auto px-4 mt-4 sm:mt-6 pb-20">
+    <div class="w-full max-w-2xl xl:max-w-3xl mx-auto px-4 mt-1 sm:mt-6 pb-20">
         <transition name="mode" mode="out-in" @after-enter="onModeEntered">
             <!-- ══════════════ SHUFFLE ══════════════ -->
             <div v-if="mode === 'shuffle'" key="shuffle">
@@ -458,10 +431,10 @@ defineExpose({
                 </div>
 
                 <!-- Header: Notes wordmark + action cluster, count beneath — centered -->
-                <div class="pt-1 flex flex-col items-center text-center">
+                <div class="pt-0 sm:pt-1 flex flex-col items-center text-center">
                     <div class="flex items-center gap-4">
                         <h2 class="font-display text-white tracking-tight select-none" style="font-weight: 600; font-size: 26px; letter-spacing: -0.025em;">Notes</h2>
-                        <div class="flex items-center gap-1">
+                        <div class="flex items-center gap-1 -translate-y-px">
                             <button @click="dealAgain" class="p-2 rounded-lg text-mono-500 hover:text-accent-bright hover:bg-accent/10 transition-colors cursor-pointer" title="Shuffle — deal a new hand" aria-label="Shuffle notes">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21 12a9 9 0 1 1-2.64-6.36" />
@@ -556,49 +529,9 @@ defineExpose({
                     </div>
                 </div>
 
-                <!-- Book filter — its own area, inline and composable with search -->
-                <div ref="bookMenuRef" class="mt-1 border rounded-xl overflow-hidden transition-colors" :class="selectedBook || bookFilter === 'none' ? 'border-gold/35' : 'border-mono-800'">
-                    <div role="button" tabindex="0" @click="bookMenuOpen ? (bookMenuOpen = false) : openBookMenu()" @keydown.enter="bookMenuOpen ? (bookMenuOpen = false) : openBookMenu()" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left cursor-pointer hover:bg-mono-900/70 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0" :class="selectedBook || bookFilter === 'none' ? 'text-gold' : 'text-gold/60'">
-                            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
-                        </svg>
-                        <span v-if="selectedBook" class="text-sm italic text-gold-soft truncate" style="color: #e8d0a8">{{ selectedBook.title }}</span>
-                        <span v-else-if="bookFilter === 'none'" class="text-sm text-mono-200">Unattached notes</span>
-                        <span v-else class="text-sm text-mono-500">All books</span>
-                        <button v-if="bookFilter !== 'all'" @click.stop="bookFilter = 'all'" class="p-1 rounded text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" title="Clear book filter">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M18 6 6 18" />
-                                <path d="m6 6 12 12" />
-                            </svg>
-                        </button>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-auto shrink-0 text-mono-600 transition-transform duration-200" :class="bookMenuOpen ? 'rotate-180' : ''">
-                            <path d="m6 9 6 6 6-6" />
-                        </svg>
-                    </div>
-
-                    <!-- Expanding panel — grid-rows trick animates height without JS hooks -->
-                    <div class="grid transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" :class="bookMenuOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                        <div class="overflow-hidden min-h-0">
-                            <div class="border-t border-mono-800">
-                                <div class="p-2.5">
-                                    <input v-model="bookMenuSearch" type="text" :placeholder="`Search ${filterBooks.length} books…`" class="w-full px-3 py-2 bg-mono-950 border border-mono-800 rounded-lg text-sm text-mono-100 placeholder-mono-600 placeholder:italic focus:outline-none focus:border-gold/50" @click.stop />
-                                </div>
-                                <div class="max-h-72 overflow-y-auto overscroll-contain">
-                                    <button v-for="{ book, count } in menuBooks" :key="book.id" @click="selectBook(book.id)" class="w-full flex items-baseline gap-2 px-4 py-2.5 hover:bg-mono-800 active:bg-mono-800 transition-colors text-left cursor-pointer border-b border-mono-800/50">
-                                        <span class="text-sm italic truncate" :style="bookFilter === book.id ? undefined : { color: '#e8d0a8' }" :class="bookFilter === book.id ? 'text-gold' : ''">{{ book.title }}</span>
-                                        <span class="flex-1 text-xs truncate"><span class="text-mono-500">{{ book.author }}</span><span v-if="book.originally_published" class="text-mono-600"> · </span><span v-if="book.originally_published" style="color: #e8d0a8">{{ book.originally_published }}</span></span>
-                                        <span class="text-[11px] text-mono-600 tabular-nums shrink-0">{{ count }}</span>
-                                        <span v-if="bookFilter === book.id" class="text-gold text-xs shrink-0">✓</span>
-                                    </button>
-                                    <button @click="selectBook('none')" class="w-full flex items-baseline gap-2 px-4 py-2.5 hover:bg-mono-800 active:bg-mono-800 transition-colors text-left cursor-pointer text-sm" :class="bookFilter === 'none' ? 'text-gold' : 'text-mono-400'">
-                                        <span class="flex-1">Unattached notes</span>
-                                        <span class="text-[11px] text-mono-600 tabular-nums">{{ unattachedCount }}</span>
-                                        <span v-if="bookFilter === 'none'" class="text-gold text-xs">✓</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Book filter — compact line + popover, composable with search -->
+                <div class="mt-2 px-0.5">
+                    <BookLinePicker :book="selectedBook" placeholder="filter by book…" :books="filterBooks" :counts="bookCounts" allowUnattached :unattached="bookFilter === 'none'" :unattachedCount="unattachedCount" @update:book="onFilterBook" @update:unattached="onFilterUnattached" @open="loadBookMeta" />
                 </div>
 
                 <!-- Result count -->
