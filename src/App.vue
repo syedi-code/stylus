@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { fetchNotes, fetchBooks, fetchBookById, deleteNote, fetchQuotes, deleteQuote, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
+import { fetchBookById, deleteQuote, fetchQuotes, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
 import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';
-import NoteCard from './components/notes/NoteCard.vue';
-import NoteCardSkeleton from './components/notes/NoteCardSkeleton.vue';
+import NotesPage from './components/notes/NotesPage.vue';
 import QuoteCard from './components/quotes/QuoteCard.vue';
-import FilterBar from './components/shared/FilterBar.vue';
-import CaptureForm from './components/shared/CaptureForm.vue';
 import AppHeader from './components/shared/AppHeader.vue';
 import EditNoteModal from './components/notes/EditNoteModal.vue';
 import EditQuoteModal from './components/quotes/EditQuoteModal.vue';
@@ -38,11 +35,7 @@ import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
 
 const { isAdmin, user: authUser, init: initAuth, logout } = useAuth();
 
-const notesPagination = usePagination<Note, { search?: string }>({
-  fetchFn: (params) => fetchNotes({ ...params }),
-  pageSize: 30,
-});
-const { loading, error } = notesPagination;
+const notesPageRef = ref<InstanceType<typeof NotesPage> | null>(null);
 
 const essaysPagination = usePagination<Essay, { search?: string }>({ 
   fetchFn: (params) => fetchEssays({ ...params }),
@@ -50,10 +43,6 @@ const essaysPagination = usePagination<Essay, { search?: string }>({
 });
 
 const currentTab = ref('notes');
-
-// Infinite scroll sentinel
-const notesScrollSentinel = ref<HTMLElement | null>(null);
-let notesObserver: IntersectionObserver | null = null;
 
 // Mobile detection
 const isMobile = ref(false);
@@ -69,25 +58,18 @@ onMounted(async () => {
   // Worker's JWKS cache so subsequent data requests don't get 401s.
   await initAuth();
 
-  // Load initial data based on default tab
-  if (currentTab.value === 'notes') loadNotes();
+  // NotesPage loads its own data on mount; other tabs load via the tab watcher.
+  authReady.value = true;
   if (currentTab.value === 'quotes') loadQuotes();
-
-  // Set up infinite scroll observer for notes
-  notesObserver = new IntersectionObserver(
-    (entries) => {
-      if (entries[0]?.isIntersecting && notesPagination.hasMore.value && !notesPagination.loadingMore.value) {
-        notesPagination.loadMore();
-      }
-    },
-    { rootMargin: '200px' }
-  );
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile);
-  notesObserver?.disconnect();
 });
+
+// NotesPage is only mounted after auth resolves so its initial load
+// doesn't race the JWKS warm-up.
+const authReady = ref(false);
 
 // Mobile quick capture
 const mobileNoteOpen = ref(false);
@@ -164,12 +146,6 @@ const handleEditQuote = (quote: Quote) => {
   editingQuote.value = quote;
 };
 
-const handleCopyNote = async (note: Note) => {
-  if (note.content) {
-    await navigator.clipboard.writeText(note.content);
-  }
-};
-
 const handleCopyQuote = async (quote: Quote) => {
   if (quote.quote) {
     await navigator.clipboard.writeText(quote.quote);
@@ -179,7 +155,7 @@ const handleCopyQuote = async (quote: Quote) => {
 const handleNoteSaved = async () => {
   const scrollY = window.scrollY;
   editingNote.value = null;
-  await loadNotes();
+  await notesPageRef.value?.reload();
   await reloadEditingThread();
   requestAnimationFrame(() => {
     window.scrollTo(0, scrollY);
@@ -218,19 +194,6 @@ const handleBookSaved = () => {
   libraryPageRef.value?.reload();
 };
 
-const handleDeleteNote = async (note: Note) => {
-  if (!confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
-    return;
-  }
-
-  try {
-    await deleteNote(note.id);
-    notesPagination.removeItem((n) => n.id === note.id);
-  } catch (err) {
-    console.error('Failed to delete note:', err);
-  }
-};
-
 const handleDeleteQuote = async (quote: Quote) => {
   if (!confirm('Are you sure you want to delete this quote? This action cannot be undone.')) {
     return;
@@ -244,12 +207,15 @@ const handleDeleteQuote = async (quote: Quote) => {
   }
 };
 
-// Filters
-const search = ref('');
-const postedFilter = ref<'all' | 'posted' | 'unposted'>('all');
+// Presentation settings (shared between NotesPage filter bar and the modal)
 const showVersionBadgeInPresentation = ref(true);
-const bookFilter = ref('all');
-const filterBooks = ref<Book[]>([]);
+
+const handleThreadModalUpdated = () => {
+  threadModalOpen.value = false;
+  if (threadModalEntityType.value === 'note' && threadModalEntityId.value) {
+    notesPageRef.value?.refreshNoteThread(threadModalEntityId.value);
+  }
+};
 
 // Threads tab state
 const threads = ref<Thread[]>([]);
@@ -270,72 +236,6 @@ const quotes = ref<Quote[]>([]);
 const quotesLoading = ref(false);
 const quotesError = ref<string | null>(null);
 const quotesSearch = ref('');
-
-// Computed
-const filteredNotes = computed(() => {
-  const allNotes = notesPagination.items.value;
-  if (!allNotes.length) return [];
-
-  const noteMap = new Map(allNotes.map(n => [n.id, n]));
-  const replacedIds = new Set<string>();
-
-  allNotes.forEach(n => {
-    if (n.replaces) replacedIds.add(n.replaces);
-  });
-
-  let processed = allNotes
-    .filter(n => !replacedIds.has(n.id))
-    .map(n => {
-      let version = 1;
-      let current = n;
-      while (current.replaces && noteMap.has(current.replaces)) {
-        version++;
-        current = noteMap.get(current.replaces)!;
-      }
-      return {
-        ...n,
-        version,
-        originalCreatedAt: current.created_at
-      };
-    });
-
-  // Apply posted filter
-  if (postedFilter.value === 'posted') {
-    processed = processed.filter(n => n.posted === true);
-  } else if (postedFilter.value === 'unposted') {
-    processed = processed.filter(n => !n.posted);
-  }
-
-  // Apply book filter
-  if (bookFilter.value === 'no-book') {
-    processed = processed.filter(n => !n.book_id);
-  } else if (bookFilter.value !== 'all') {
-    processed = processed.filter(n => n.book_id === bookFilter.value);
-  }
-
-  // Sort by original creation date (newest first)
-  return processed.sort((a, b) =>
-    new Date(b.originalCreatedAt!).getTime() - new Date(a.originalCreatedAt!).getTime()
-  );
-});
-
-// Debounce timer
-let debounceTimer: ReturnType<typeof setTimeout>;
-
-const loadNotes = async () => {
-  const params: any = {};
-  if (search.value) params.search = search.value;
-
-  await notesPagination.reset(params);
-
-  if (filterBooks.value.length === 0) {
-    try {
-      filterBooks.value = await fetchBooks({ limit: 500 });
-    } catch (err) {
-      console.error('Failed to load books for filter:', err);
-    }
-  }
-};
 
 // Quotes filtered computed
 const filteredQuotes = computed(() => {
@@ -397,23 +297,7 @@ watch([quotesSearch], () => {
   }, 300);
 });
 
-watch([search], () => {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    if (currentTab.value === 'notes') loadNotes();
-  }, 300);
-});
-
-// Watch the sentinel element and connect/disconnect the observer
-watch(notesScrollSentinel, (el, oldEl) => {
-  if (oldEl) notesObserver?.unobserve(oldEl);
-  if (el) notesObserver?.observe(el);
-});
-
 watch(currentTab, (newTab) => {
-  if (newTab === 'notes') {
-    loadNotes();
-  }
   if (newTab === 'quotes') {
     loadQuotes();
   }
@@ -567,55 +451,22 @@ watch([threadsSearch], () => {
     <AppHeader v-model:currentTab="currentTab" :userEmail="authUser?.email ?? null" @logout="logout" />
 
     <main class="w-full">
-      <div v-if="currentTab !== 'library'" class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20">
+      <!-- Notes Tab — rendered outside the narrow wrapper so the masonry grid can go full-width -->
+      <transition name="fade" mode="out-in">
+        <NotesPage
+          v-if="currentTab === 'notes' && authReady"
+          ref="notesPageRef"
+          :isAdmin="isAdmin"
+          v-model:showVersionBadge="showVersionBadgeInPresentation"
+          @edit="handleEditNote"
+          @present="presentingNote = $event"
+          @addToThread="handleAddNoteToThread"
+          @navigateToThread="handleNavigateToThread"
+          @viewInLibrary="handleViewInLibrary"
+        />
+      </transition>
 
-        <!-- Notes Tab -->
-        <transition name="fade" mode="out-in">
-          <div v-if="currentTab === 'notes'" class="space-y-8">
-            <!-- Desktop Capture Form -->
-            <div class="hidden sm:block">
-              <CaptureForm @saved="loadNotes" />
-            </div>
-
-            <!-- Divider -->
-            <div class="hidden sm:block border-t border-accent/20"></div>
-
-            <FilterBar v-model:search="search" v-model:showVersionBadge="showVersionBadgeInPresentation" v-model:bookFilter="bookFilter" :books="filterBooks" />
-
-            <div class="space-y-4">
-              <!-- Skeleton Loading -->
-              <div v-if="loading" class="space-y-3">
-                <NoteCardSkeleton v-for="i in 5" :key="i" />
-              </div>
-
-              <!-- Error -->
-              <div v-else-if="error" class="p-6 border border-red-900 bg-red-950/20 text-center">
-                <p class="text-red-500 font-bold uppercase text-sm mb-4">{{ error }}</p>
-                <button @click="loadNotes" class="px-4 py-2 bg-red-900 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wide transition-colors">
-                  Retry Connection
-                </button>
-              </div>
-
-              <!-- Empty -->
-              <div v-else-if="filteredNotes.length === 0" class="py-20 text-center text-mono-600 border border-dashed border-mono-800">
-                <p class="text-sm uppercase tracking-wide">No logs found matching criteria.</p>
-              </div>
-
-              <!-- List -->
-              <div v-else class="space-y-3">
-                <NoteCard v-for="note in filteredNotes" :key="note.id" :note="note" :searchQuery="search" :isAdmin="isAdmin" @edit="handleEditNote" @copy="handleCopyNote" @present="presentingNote = $event" @delete="handleDeleteNote" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddNoteToThread" @navigateToThread="handleNavigateToThread" />
-
-                <!-- Scroll sentinel for infinite scroll -->
-                <div ref="notesScrollSentinel" class="h-1"></div>
-
-                <!-- Loading more spinner -->
-                <div v-if="notesPagination.loadingMore.value" class="py-6 text-center">
-                  <div class="inline-block animate-spin h-5 w-5 border-2 border-accent border-t-transparent rounded-full"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </transition>
+      <div v-if="currentTab !== 'library' && currentTab !== 'notes'" class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20">
 
         <!-- Quotes Tab -->
         <transition name="fade" mode="out-in">
@@ -779,12 +630,12 @@ watch([threadsSearch], () => {
 
       <PresentationViewEssay :isOpen="!!presentingEssay" :essay="presentingEssay" @close="presentingEssay = null" />
 
-      <AddToThreadModal :isOpen="threadModalOpen" :entityType="threadModalEntityType" :entityId="threadModalEntityId" @close="threadModalOpen = false" @updated="threadModalOpen = false" @navigateToThread="handleNavigateToThread" />
+      <AddToThreadModal :isOpen="threadModalOpen" :entityType="threadModalEntityType" :entityId="threadModalEntityId" @close="threadModalOpen = false" @updated="handleThreadModalUpdated" @navigateToThread="handleNavigateToThread" />
 
       <ConfirmModal :isOpen="!!deletingThread" title="Delete thread" :message="`Delete thread &quot;${deletingThread?.name}&quot;? Items will not be deleted.`" confirmLabel="Delete" @confirm="confirmDeleteThread" @cancel="deletingThread = null" />
 
       <!-- Mobile Quick Capture FAB -->
-      <MobileNoteCapture :isOpen="mobileNoteOpen" @close="mobileNoteOpen = false" @saved="currentTab === 'notes' && loadNotes()" />
+      <MobileNoteCapture :isOpen="mobileNoteOpen" @close="mobileNoteOpen = false" @saved="notesPageRef?.reload()" />
 
       <!-- Mobile Quote Capture -->
       <MobileQuoteCapture :isOpen="mobileQuoteOpen" @close="mobileQuoteOpen = false" @saved="loadQuotes()" />

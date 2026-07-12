@@ -164,7 +164,9 @@ function buildConnections(entityId: string): ConnectionInput[] {
 
 /** Reset all state */
 function reset() {
-  mode.value = 'none';
+  // Return to the configured default mode (not hard 'none') so capture
+  // surfaces that default to book-linking stay in book mode after a save.
+  mode.value = props.initial?.mode ?? 'none';
   selectedBookId.value = null;
   selectedBook.value = null;
   pageRef.value = '';
@@ -189,10 +191,13 @@ defineExpose({ attribution, buildConnections, reset, mode, selectedBook, selecte
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
       </svg>
 
-      <!-- Mode pills -->
-      <div class="flex items-center gap-1">
-        <button type="button" @click="mode = 'none'" class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide transition-all duration-200 cursor-pointer border" :class="mode === 'none' ? 'bg-mono-700 text-mono-200 border-mono-600' : 'text-mono-500 border-transparent hover:text-mono-400 hover:bg-mono-800/50'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Mode selector — one contained segmented control: joined options
+           read as a single mutually-exclusive choice (common region), and the
+           selected segment is a fill, not just an outline, so state is
+           legible without comparing borders. Sentence case for readability. -->
+      <div class="inline-flex items-stretch rounded-lg border border-mono-800 bg-mono-900/60 overflow-hidden">
+        <button type="button" @click="mode = 'none'" class="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold leading-none transition-colors duration-150 cursor-pointer" :class="mode === 'none' ? 'bg-mono-700 text-white' : 'text-mono-500 hover:text-mono-300 hover:bg-mono-800/60'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71" />
             <path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71" />
             <line x1="8" x2="8" y1="2" y2="5" />
@@ -202,21 +207,21 @@ defineExpose({ attribution, buildConnections, reset, mode, selectedBook, selecte
           </svg>
           None
         </button>
-        <button type="button" @click="mode = 'book'" class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide transition-all duration-200 cursor-pointer border" :class="mode === 'book' ? 'bg-accent/15 text-accent border-accent/30' : 'text-mono-500 border-transparent hover:text-mono-400 hover:bg-mono-800/50'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <button type="button" @click="mode = 'book'" class="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold leading-none transition-colors duration-150 cursor-pointer border-l border-mono-800" :class="mode === 'book' ? 'bg-mono-700 text-white' : 'text-mono-500 hover:text-mono-300 hover:bg-mono-800/60'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :class="mode === 'book' ? 'text-gold' : ''">
             <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
           </svg>
           Book
         </button>
-        <button type="button" @click="mode = 'author'" class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide transition-all duration-200 cursor-pointer border" :class="mode === 'author' ? 'bg-accent/15 text-accent border-accent/30' : 'text-mono-500 border-transparent hover:text-mono-400 hover:bg-mono-800/50'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <button type="button" @click="mode = 'author'" class="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold leading-none transition-colors duration-150 cursor-pointer border-l border-mono-800" :class="mode === 'author' ? 'bg-mono-700 text-white' : 'text-mono-500 hover:text-mono-300 hover:bg-mono-800/60'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :class="mode === 'author' ? 'text-accent-bright' : ''">
             <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
           Author
         </button>
-        <button type="button" @click="mode = 'other'" class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide transition-all duration-200 cursor-pointer border" :class="mode === 'other' ? 'bg-accent/15 text-accent border-accent/30' : 'text-mono-500 border-transparent hover:text-mono-400 hover:bg-mono-800/50'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <button type="button" @click="mode = 'other'" class="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold leading-none transition-colors duration-150 cursor-pointer border-l border-mono-800" :class="mode === 'other' ? 'bg-mono-700 text-white' : 'text-mono-500 hover:text-mono-300 hover:bg-mono-800/60'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="1" />
             <circle cx="19" cy="12" r="1" />
             <circle cx="5" cy="12" r="1" />

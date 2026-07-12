@@ -4,7 +4,7 @@ import type { Note, Book, Author, Thread } from '../../lib/api';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../../composables/usePresentationFontSize';
-import { useTypography } from '../../composables/useTypography';
+import { useTypography, dynamicLineHeight } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
 import { useAutoChrome } from '../../composables/useAutoChrome';
@@ -67,10 +67,7 @@ const { baseFontSize, typographyClass } = useTypography('note', 'presentation', 
 const { finalFontSize, setFontSize, reset } = usePresentationFontSize('note', baseFontSize);
 
 // Dynamic line-height: tightens as font size grows (12px → 1.35, 24px → 1.20)
-const lineHeight = computed(() => {
-    const t = Math.min(1, Math.max(0, (finalFontSize.value - 12) / 12));
-    return +(1.35 - t * 0.15).toFixed(2);
-});
+const lineHeight = computed(() => dynamicLineHeight(finalFontSize.value));
 
 const { justified, toggle: toggleJustify } = usePresentationJustify('note');
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('note');
