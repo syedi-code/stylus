@@ -174,10 +174,6 @@ const html = computed(() => formatMarkdown(props.text));
 	background-size: cover;
 	background-position: center;
 	background-repeat: no-repeat;
-	/* darken the texture client-side (tunable, no re-bake). NB: the texture is
-	   already very dark (~2.6% mean luminance), so values below ~0.4 crush it to
-	   black and it reads as "missing" — keep it in the ~0.4–0.7 range. */
-	filter: brightness(0.60);
 }
 .qsb-fullbleed::after {
 	content: '';

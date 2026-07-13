@@ -229,9 +229,6 @@ const loadAuthorConnection = async () => {
                         <span class="bg-accent text-accent-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
                             note
                         </span>
-                        <span v-show="showMeta && showVersionBadge && note.version && note.version > 1" class="bg-gold text-gold-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
-                            v{{ note.version }}
-                        </span>
                         <button v-show="showMeta && latestThread" @click.stop="latestThread && emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread">
                             <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
                             <span class="text-[11.5px] font-medium text-thread-muted group-hover/thread:text-thread transition-colors max-w-[240px] truncate">{{ latestThread?.name }}</span>
