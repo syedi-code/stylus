@@ -109,7 +109,8 @@ watch(() => props.isOpen, (open) => {
       tagInput.value = '';
     }
     // Quotes / books resolve their display text via the shared library.
-    ensureLoaded();
+    // Force-refresh so foils reflect quote edits made since the last load.
+    ensureLoaded(true);
   }
 });
 

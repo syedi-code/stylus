@@ -6,6 +6,7 @@ import {
 	isEmbedBlock,
 	type EmbedBlockKind,
 } from '../../composables/useEssayBlocks';
+import { usePresentationQuoteMode } from '../../composables/usePresentationQuoteMode';
 import EssayBlock from './EssayBlock.vue';
 import BlockDeleteConfirm from './blocks/BlockDeleteConfirm.vue';
 
@@ -40,6 +41,11 @@ const {
 	split,
 	merge,
 } = useEssayBlocks(content);
+
+// Writing-view quote surface toggle (textured → fullbleed → plain), shared
+// across every quote foil in every essay currently open — mirrors the same
+// global-preference pattern the Presentation deck already uses.
+const { mode: quoteMode, cycle: cycleQuoteMode } = usePresentationQuoteMode('essay-write');
 
 const activeBid = ref<string | null>(null);
 const editingBid = ref<string | null>(null);
@@ -431,6 +437,16 @@ function endDrag() {
 						<span class="rv">{{ sizeOf(block.bid) }}</span>
 						<button type="button" class="rs" title="Larger" @click.stop="stepSize(block.bid, 1)">+</button>
 					</div>
+					<button
+						v-if="block.kind === 'quote'"
+						type="button"
+						class="ra"
+						:class="{ active: quoteMode !== 'textured' }"
+						:title="`Quote surface (${quoteMode}) — tap to change`"
+						@click.stop="cycleQuoteMode()"
+					>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.6" fill="currentColor" stroke="none" /><path d="m21 15-4.5-4.5L7 20" /></svg>
+					</button>
 					<button type="button" class="ra danger" title="Delete" @click.stop="railDelete(block.bid)">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" /></svg>
 					</button>
@@ -566,6 +582,9 @@ function endDrag() {
 .ra.danger:hover {
 	color: var(--color-rose);
 	background: rgba(244, 63, 94, 0.12);
+}
+.ra.active {
+	color: var(--color-essay);
 }
 .ra-size {
 	display: inline-flex;
