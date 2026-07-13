@@ -9,6 +9,7 @@ import {
 } from '../../composables/usePresentationFontSize';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
+import { usePresentationQuoteMode } from '../../composables/usePresentationQuoteMode';
 import { useEssaySlides } from '../../composables/useEssaySlides';
 import { useSwipeNavigation } from '../../composables/useSwipeNavigation';
 import { useAutoChrome } from '../../composables/useAutoChrome';
@@ -49,6 +50,15 @@ const baseFontSize = ref(12);
 const { finalFontSize, setFontSize, reset } = usePresentationFontSize('essay', baseFontSize);
 const { justified, toggle: toggleJustify } = usePresentationJustify('essay');
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('essay');
+const { mode: quoteMode, cycle: cycleQuoteMode, reshuffle: reshuffleTextures, variantForIndex } = usePresentationQuoteMode('essay');
+
+// Resolve the texture asset for a quote slide: card modes use tex-*, full-bleed
+// uses the larger fb-*; foil has no texture.
+function quoteTextureUrl(i: number): string {
+    if (quoteMode.value === 'foil') return '';
+    const prefix = quoteMode.value === 'fullbleed' ? 'fb' : 'tex';
+    return `/textures/${prefix}-${variantForIndex(i)}.png`;
+}
 
 const showFontControls = ref(false);
 const { chromeVisible, poke, show: showChrome } = useAutoChrome(2800);
@@ -144,6 +154,7 @@ watch(() => props.isOpen, (isOpen) => {
         currentIndex.value = 0;
         showChrome();
         poke();
+        if (quoteMode.value !== 'foil') reshuffleTextures();
         document.body.style.overflow = 'hidden';
     } else {
         showFontControls.value = false;
@@ -285,6 +296,19 @@ function openFontControls() {
                                 </svg>
                             </button>
                             <button
+                                v-if="slides[currentIndex]?.kind === 'quote'"
+                                @click.stop="cycleQuoteMode(); poke()"
+                                class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer"
+                                :class="quoteMode !== 'foil' ? 'text-essay' : ''"
+                                :aria-label="`Quote surface (${quoteMode}) — tap to change`"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                                    <circle cx="9" cy="9" r="1.6" fill="currentColor" stroke="none" />
+                                    <path d="m21 15-4.5-4.5L7 20" />
+                                </svg>
+                            </button>
+                            <button
                                 v-if="slides[currentIndex]?.kind === 'paragraph'"
                                 @click.stop="handleSaveImage(); poke()"
                                 :disabled="exporting"
@@ -344,6 +368,8 @@ function openFontControls() {
                                 :preferred-font-size="finalFontSize"
                                 :justified="justified"
                                 :hyphenation="hyphenation"
+                                :mode="quoteMode"
+                                :texture-url="quoteTextureUrl(slide.index)"
                             />
                             <EssayBookCoverSlide
                                 v-else-if="slide.kind === 'bookCover'"

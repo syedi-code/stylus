@@ -28,7 +28,7 @@ const hasYear = computed(() => props.year !== undefined && props.year !== null &
 <template>
 	<div class="qcite" :class="{ pres: presentation }">
 		<div v-if="authors.length" class="name">
-			<span class="conn">by </span><template v-for="(a, i) in authors" :key="i">
+			<span class="conn">&mdash;&nbsp;</span><template v-for="(a, i) in authors" :key="i">
 				<span v-if="i > 0"> &amp; </span><span class="given">{{ a.firstParts }}</span><span class="surname" :style="{ color: a.color }">{{ a.lastName }}</span><span v-if="a.suffix" class="given">{{ a.suffix }}</span>
 			</template>
 		</div>
@@ -65,6 +65,7 @@ const hasYear = computed(() => props.year !== undefined && props.year !== null &
 }
 .yr {
 	color: #fff;
+	margin-left: 0.15em;
 	font-variant-numeric: lining-nums;
 }
 .pg {
