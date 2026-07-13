@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from '@antisocial/core';
-import { createNote, createConnectionApi, fetchConnections, type Note } from '../../lib/api';
-import SourceSelector from '../library/SourceSelector.vue';
-import type { SourceAttribution } from '../library/SourceSelector.vue';
+import { createNote, createConnectionApi, fetchConnections, fetchBookById, type Note, type Book } from '../../lib/api';
+import BookLinePicker from '../library/BookLinePicker.vue';
 
 const props = defineProps<{
   note: Note | null;
@@ -16,9 +15,12 @@ const content = ref('');
 const loading = ref(false);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const isMobile = ref(false);
-const sourceSelectorRef = ref<InstanceType<typeof SourceSelector> | null>(null);
-const currentAttribution = ref<SourceAttribution>({ mode: 'none' });
-const initialAttribution = ref<Partial<SourceAttribution>>({});
+
+// Book attribution — a note always lives in a book
+const selectedBook = ref<Book | null>(null);
+const pageRef = ref('');
+/** Author connection carried over from the old version (legacy attribution). */
+const preservedAuthorId = ref<string | null>(null);
 
 // Detect mobile viewport
 const checkMobile = () => {
@@ -38,33 +40,25 @@ onUnmounted(() => {
 watch(() => props.note, async (newNote) => {
   if (newNote && newNote.content) {
     content.value = newNote.content;
-    // Pre-populate SourceSelector based on existing data
+    pageRef.value = newNote.page || '';
+    selectedBook.value = null;
+    preservedAuthorId.value = null;
     if (newNote.book_id) {
-      initialAttribution.value = {
-        mode: 'book',
-        bookId: newNote.book_id,
-        page: newNote.page || undefined,
-      };
-    } else if (newNote.creator || newNote.work) {
-      initialAttribution.value = {
-        mode: 'other',
-        creator: newNote.creator || undefined,
-        work: newNote.work || undefined,
-        kind: newNote.kind || undefined,
-      };
-    } else {
-      // Check for author connection
+      try {
+        selectedBook.value = await fetchBookById(newNote.book_id);
+      } catch (err) {
+        console.error('Failed to load book for note:', err);
+      }
+    } else if (!newNote.creator && !newNote.work) {
+      // Legacy author attribution — carry it over to the new version on save
       try {
         const conns = await fetchConnections('note', newNote.id, 'author');
         if (conns.length > 0) {
           const conn = conns[0];
-          const authorId = conn.a_type === 'author' ? conn.a_id : conn.b_id;
-          initialAttribution.value = { mode: 'author', authorId };
-        } else {
-          initialAttribution.value = { mode: 'none' };
+          preservedAuthorId.value = conn.a_type === 'author' ? conn.a_id : conn.b_id;
         }
       } catch {
-        initialAttribution.value = { mode: 'none' };
+        preservedAuthorId.value = null;
       }
     }
   }
@@ -83,9 +77,9 @@ watch(() => props.isOpen, async (isOpen) => {
 const close = () => {
   emit('close');
   content.value = '';
-  sourceSelectorRef.value?.reset();
-  currentAttribution.value = { mode: 'none' };
-  initialAttribution.value = {};
+  selectedBook.value = null;
+  pageRef.value = '';
+  preservedAuthorId.value = null;
 };
 
 const save = async () => {
@@ -93,7 +87,6 @@ const save = async () => {
 
   loading.value = true;
   try {
-    const attr = currentAttribution.value;
     const input: any = {
       content: content.value,
       source: 'web',
@@ -102,27 +95,29 @@ const save = async () => {
       tags: props.note.tags,
     };
 
-    // Dual-write: set book_id for legacy compatibility
-    if (attr.mode === 'book' && attr.bookId) {
-      input.book_id = attr.bookId;
-      if (attr.page) input.page = attr.page;
-    } else if (attr.mode === 'other') {
-      if (attr.creator) input.creator = attr.creator;
-      if (attr.work) input.work = attr.work;
-      if (attr.kind) input.kind = attr.kind;
+    if (selectedBook.value) {
+      input.book_id = selectedBook.value.id;
+      if (pageRef.value) input.page = pageRef.value;
+    } else if (props.note.creator || props.note.work) {
+      // Preserve legacy non-book attribution when no book is chosen
+      if (props.note.creator) input.creator = props.note.creator;
+      if (props.note.work) input.work = props.note.work;
+      if (props.note.kind) input.kind = props.note.kind;
     }
 
     const result = await createNote(input);
 
-    // Create connections for non-book attributions
-    if (sourceSelectorRef.value && result.note?.id && attr.mode === 'author') {
-      const connections = sourceSelectorRef.value.buildConnections(result.note.id);
-      for (const conn of connections) {
-        await createConnectionApi(conn);
-      }
+    // Carry over the legacy author connection when no book is chosen
+    if (result.note?.id && !selectedBook.value && preservedAuthorId.value) {
+      await createConnectionApi({
+        a_type: 'author',
+        a_id: preservedAuthorId.value,
+        b_type: 'note',
+        b_id: result.note.id,
+      });
     }
 
-    emit('saved');
+    emit('saved', { oldId: props.note.id, note: result.note });
     close();
   } catch (e) {
     console.error(e);
@@ -151,11 +146,15 @@ const charCount = computed(() => content.value.length);
           </button>
         </div>
 
+        <!-- Book line — attribution lives above the words -->
+        <div class="px-4 py-2.5 border-b border-mono-800 shrink-0">
+          <BookLinePicker v-model:book="selectedBook" v-model:page="pageRef" showPage />
+        </div>
+
         <!-- Content -->
         <div class="flex-1 p-4 overflow-y-auto">
-          <div class="relative h-full flex flex-col gap-4">
-            <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full flex-1 min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="Edit your note..." :disabled="loading"></textarea>
-            <SourceSelector ref="sourceSelectorRef" entityType="note" :initial="initialAttribution" @update="currentAttribution = $event" />
+          <div class="relative h-full">
+            <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full h-full min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="Edit your note..." :disabled="loading"></textarea>
           </div>
         </div>
 
@@ -177,15 +176,12 @@ const charCount = computed(() => content.value.length);
 
       <h3 class="text-base font-semibold text-white uppercase tracking-wide">Edit Note</h3>
 
+      <!-- Book line — attribution lives above the words -->
+      <BookLinePicker v-model:book="selectedBook" v-model:page="pageRef" showPage class="mb-0.5" />
+
       <div class="relative">
         <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-50 max-h-100 text-mono-100 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none text-sm leading-relaxed" placeholder="Edit your note..." @keydown.ctrl.enter="save"></textarea>
         <div class="absolute bottom-3 right-3 text-xs text-mono-600">{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</div>
-      </div>
-
-      <!-- Source Selector -->
-      <div class="mt-1">
-        <label class="text-xs text-mono-400 uppercase tracking-wide mb-1.5 block">Attribution</label>
-        <SourceSelector ref="sourceSelectorRef" entityType="note" :initial="initialAttribution" @update="currentAttribution = $event" />
       </div>
 
       <div class="flex items-center justify-between mt-2">

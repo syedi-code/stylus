@@ -4,6 +4,9 @@ import { ref, watch, onUnmounted } from 'vue';
 const props = defineProps<{
     isOpen: boolean;
     title?: string;
+    /** Override the panel surface classes (bg / border / radius). Defaults to
+     *  the standard mono-900 sheet. */
+    panelClass?: string;
 }>();
 
 const emit = defineEmits(['close']);
@@ -77,7 +80,7 @@ onUnmounted(() => {
                 <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="emit('close')"></div>
 
                 <!-- Sheet -->
-                <div ref="sheetRef" class="absolute inset-x-0 bottom-0 bg-mono-900 rounded-t-2xl shadow-2xl max-h-[90vh] flex flex-col">
+                <div ref="sheetRef" class="absolute inset-x-0 bottom-0 max-h-[90vh] flex flex-col" :class="panelClass || 'bg-mono-900 rounded-t-2xl shadow-2xl'">
                     <!-- Drag Handle - only this area handles swipe to dismiss -->
                     <div class="flex justify-center py-3 cursor-grab active:cursor-grabbing touch-none select-none" @touchstart.passive="handleDragStart" @touchmove.passive="handleDragMove" @touchend="handleDragEnd">
                         <div class="w-10 h-1 bg-mono-600 rounded-full"></div>

@@ -67,14 +67,11 @@ export const formatMarkdown = (text: string): string => {
 		'<code class="bg-mono-800 border border-mono-700 mx-0.5 px-1.5 py-0.5 rounded font-mono text-accent-bright" style="font-size: 0.875em">$1</code>'
 	);
 
-	// {name} → soft gold tint. Keep at the surrounding font-weight so the run
-	// stays in the same Tiempos cut as its neighbors — mixing weight 400 and
-	// 500 on one line pulled in a taller font-metric and added phantom space
-	// above the line in Presentation views.
-	result = result.replace(
-		/\{([^}]+)\}/g,
-		'<span style="color: #e8d0a8">$1</span>'
-	);
+	// {name} → highlight. A class (not an inline style) so context can restyle
+	// it — on a gold foil the default gold tint would be gold-on-gold, so the
+	// `.foil-text .md-hl` override turns it into a dark chip. Keep the run at the
+	// surrounding font-weight so it stays in the same Tiempos cut as neighbors.
+	result = result.replace(/\{([^}]+)\}/g, '<span class="md-hl">$1</span>');
 
 	return result;
 };

@@ -1,6 +1,7 @@
 import { computed, type Ref } from 'vue';
 import type { Essay, EssayReference } from '../lib/api';
-import { parseEssayToken } from '@antisocial/core';
+import { parseEssayToken, type ParsedToken } from '@antisocial/core';
+import { useSourceLibrary } from './useSourceLibrary';
 
 /**
  * Slide kinds in an essay deck.
@@ -26,6 +27,56 @@ export type EssaySlide =
 const HEADER_RE = /^#\s+(.+)$/;
 
 export function useEssaySlides(essay: Ref<Essay | null>) {
+	// Fallback resolver: an essay presented from a list (or one whose
+	// server-side reference derivation is stale/missing) may carry no
+	// `references`, which would silently drop its quote / book slides. We
+	// resolve those tokens client-side from the shared source library — the
+	// same catalogue the editor foils read — so the deck is never missing an
+	// embed just because the join didn't come along.
+	const { quoteById, bookById, imageUrl, ensureLoaded } = useSourceLibrary();
+	ensureLoaded();
+
+	function synthReference(parsed: ParsedToken): EssayReference | undefined {
+		const base = { id: '', entity_id: parsed.id, position: 0, params: parsed.params } as const;
+		if (parsed.kind === 'quote') {
+			const q = quoteById.value.get(parsed.id);
+			if (!q) return undefined;
+			const book = q.book_id ? bookById.value.get(q.book_id) : undefined;
+			return {
+				...base,
+				entity_type: 'quote',
+				quote_text: q.quote,
+				quote_creator: q.creator,
+				quote_work: q.work,
+				quote_page: q.page,
+				book_id: q.book_id,
+				book_title: book?.title,
+				book_author: book?.author,
+				book_originally_published: book?.originally_published,
+			} as unknown as EssayReference;
+		}
+		if (parsed.kind === 'book') {
+			const b = bookById.value.get(parsed.id);
+			if (!b) return undefined;
+			return {
+				...base,
+				entity_type: 'book_cover',
+				book_title: b.title,
+				book_author: b.author,
+				book_originally_published: b.originally_published,
+				book_cover_url: b.cover_url,
+			} as unknown as EssayReference;
+		}
+		const url = imageUrl(parsed.id);
+		if (!url) return undefined;
+		return {
+			...base,
+			entity_type: 'image',
+			image_url: url,
+			image_caption: typeof parsed.params.caption === 'string' ? parsed.params.caption : undefined,
+		} as unknown as EssayReference;
+	}
+
 	const slides = computed<EssaySlide[]>(() => {
 		const e = essay.value;
 		if (!e) return [];
@@ -56,8 +107,8 @@ export function useEssaySlides(essay: Ref<Essay | null>) {
 						: parsed.kind === 'image'
 							? `image:${parsed.id}`
 							: `book_cover:${parsed.id}`;
-				const reference = refByKey.get(refKey);
-				if (!reference) continue; // token without resolved ref — skip silently
+				const reference = refByKey.get(refKey) ?? synthReference(parsed);
+				if (!reference) continue; // unresolved even via the library — skip
 				if (parsed.kind === 'quote') {
 					result.push({ kind: 'quote', reference, index: cursor++ });
 				} else if (parsed.kind === 'image') {
