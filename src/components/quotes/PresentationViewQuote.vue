@@ -108,7 +108,7 @@ watch(() => props.isOpen, (isOpen) => {
 <template>
     <Teleport to="body">
         <Transition name="presentation">
-            <div v-if="isOpen && quote" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mono-950 cursor-pointer" :style="{ paddingTop: VERTICAL_MARGIN + 'px', paddingBottom: VERTICAL_MARGIN + 'px' }" @click="emit('close')" @pointermove="poke" @touchstart.passive="poke">
+            <div v-if="isOpen && quote" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mono-950 cursor-pointer" :style="{ paddingTop: (quoteMode === 'fullbleed' ? 0 : VERTICAL_MARGIN) + 'px', paddingBottom: (quoteMode === 'fullbleed' ? 0 : VERTICAL_MARGIN) + 'px' }" @click="emit('close')" @pointermove="poke" @touchstart.passive="poke">
                 <!-- Auto-fading chrome: close + action buttons hide after inactivity. -->
                 <PresentationChrome :visible="chromeVisible">
                 <!-- Close button (mobile) -->
@@ -161,8 +161,19 @@ watch(() => props.isOpen, (isOpen) => {
                 </PresentationChrome>
 
                 <!-- Content card — shared body component owns the cardless
-                     blockquote + right-aligned em-dash attribution. -->
-                <div ref="cardRef" class="w-full sm:max-w-2xl flex flex-col overflow-y-auto" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
+                     blockquote + right-aligned em-dash attribution.
+                     Full-bleed renders an absolute inset:0 texture, so its host
+                     must be positioned. It fills the entire fixed root (edge to
+                     edge, ignoring the vertical margin) so the texture truly
+                     bleeds; the font slider floats on top of it. Textured/plain
+                     size to content and sit centered. -->
+                <div
+                    ref="cardRef"
+                    class="flex flex-col"
+                    :class="quoteMode === 'fullbleed' ? 'absolute inset-0 overflow-hidden' : 'w-full sm:max-w-2xl overflow-y-auto'"
+                    :style="quoteMode === 'fullbleed' ? undefined : { maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }"
+                    @click.stop
+                >
                     <QuoteSlideBody
                         :text="quote.quote || ''"
                         :creator="book ? book.author : (quote.creator || undefined)"
@@ -180,8 +191,13 @@ watch(() => props.isOpen, (isOpen) => {
                     />
                 </div>
 
-                <!-- Font size controls -->
-                <PresentationFontControls v-show="showFontControls" :fontSize="finalFontSize" :min="FONT_SIZE_MIN" :max="FONT_SIZE_MAX" :step="FONT_SIZE_STEP" color="quote" @change="setFontSize" @reset="reset" />
+                <!-- Font size controls. In full-bleed the texture fills the
+                     whole root, so the slider floats over it at the bottom
+                     (above the texture, with a safe bottom inset); in other
+                     modes it flows below the centered card. -->
+                <div :class="quoteMode === 'fullbleed' ? 'absolute inset-x-0 bottom-0 z-20 flex justify-center pb-8' : 'contents'" @click.stop>
+                    <PresentationFontControls v-show="showFontControls" :fontSize="finalFontSize" :min="FONT_SIZE_MIN" :max="FONT_SIZE_MAX" :step="FONT_SIZE_STEP" color="quote" @change="setFontSize" @reset="reset" />
+                </div>
             </div>
         </Transition>
     </Teleport>
