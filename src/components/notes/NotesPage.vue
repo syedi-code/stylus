@@ -407,7 +407,17 @@ onUnmounted(() => {
 });
 
 defineExpose({
-    reload: async () => {
+    reload: async (replaced?: { oldId: string; note: Note }) => {
+        // An edit creates a new note that supersedes the old id — swap it into
+        // the deal in place so the card updates (refreshDeal fetches by id and
+        // would otherwise re-read the stale, superseded version).
+        if (replaced) {
+            dealNotes.value = dealNotes.value.map((n) =>
+                n.id === replaced.oldId
+                    ? { ...replaced.note, last_surfaced_at: n.last_surfaced_at }
+                    : n
+            );
+        }
         if (mode.value === 'search') await runSearch();
         await refreshDeal();
     },

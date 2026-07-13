@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   createEssay,
   uploadEssayImage,
+  getFileUrl,
   type Essay,
   type EssayInput,
   type EssayReferenceInput,
 } from '../../lib/api';
 import { useEssayDraft } from '../../composables/useEssayDraft';
-import { useEditorTokenContext } from '../../composables/useEditorTokenContext';
+import { useSourceLibrary } from '../../composables/useSourceLibrary';
 import { useKeyboardAnchor } from '../../composables/useKeyboardAnchor';
 import EssayEmbedSheet from './EssayEmbedSheet.vue';
-import EssayParamBar from './EssayParamBar.vue';
+import EssayBlockEditor from './EssayBlockEditor.vue';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -21,16 +22,40 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'saved'): void;
+  (e: 'present', essay: Essay): void;
 }>();
 
 const content = ref('');
 const tagInput = ref('');
 const tags = ref<string[]>([]);
 const submitting = ref(false);
-const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const editorRef = ref<InstanceType<typeof EssayBlockEditor> | null>(null);
+const { ensureLoaded, registerImage } = useSourceLibrary();
 
 const sheetOpen = ref(false);
 const sheetInitialKind = ref<'quote' | 'book'>('quote');
+const showTags = ref(false);
+const { keyboardOffset } = useKeyboardAnchor();
+
+// Present the LIVE draft — build an essay from the current content so an
+// unsaved quote/book/image shows immediately. References are left empty; the
+// presentation deck resolves those tokens client-side via the shared source
+// library (useEssaySlides fallback). Handled by the parent.
+function handlePresent() {
+  const base = props.essay;
+  emit('present', {
+    id: base?.id ?? '',
+    content: content.value,
+    posted: base?.posted ?? false,
+    tags: [...tags.value],
+    replaces: base?.replaces,
+    source: base?.source ?? '',
+    created_at: base?.created_at ?? '',
+    updated_at: base?.updated_at ?? '',
+    references: [],
+    version: base?.version,
+  } as Essay);
+}
 
 const imageFileInput = ref<HTMLInputElement | null>(null);
 const imageUploading = ref(false);
@@ -59,6 +84,7 @@ const isEditMode = computed(() => !!props.essay);
 
 watch(() => props.isOpen, (open) => {
   if (open) {
+    showTags.value = false;
     restoreDraft();
     if (props.essay) {
       // Prefer cached draft (from a previous accidental close); fall back to
@@ -69,21 +95,28 @@ watch(() => props.isOpen, (open) => {
         draftTags.value.length > 0
           ? [...draftTags.value]
           : [...(props.essay.tags || [])];
+      // Seed image URLs from the essay's already-resolved references so
+      // [[image:UUID]] blocks render immediately (the server won't re-derive
+      // them until save).
+      for (const r of props.essay.references) {
+        if (r.entity_type === 'image' && r.image_url) {
+          registerImage(r.entity_id, resolveRefImageUrl(r.image_url));
+        }
+      }
     } else {
       content.value = draftContent.value;
       tags.value = [...draftTags.value];
       tagInput.value = '';
     }
-    // Skip auto-focus on touch / coarse-pointer devices so the soft keyboard
-    // doesn't pop up the moment the modal opens.
-    const isCoarse =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(pointer: coarse)').matches;
-    if (!isCoarse) {
-      nextTick(() => textareaRef.value?.focus());
-    }
+    // Quotes / books resolve their display text via the shared library.
+    ensureLoaded();
   }
 });
+
+function resolveRefImageUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  return getFileUrl(url.replace(/^\/files\//, ''));
+}
 
 // Mirror local refs into the draft regardless of mode — accidental closes
 // (drag-out, backdrop click) shouldn't destroy in-flight work.
@@ -99,63 +132,31 @@ const canSubmit = computed(() =>
   !submitting.value
 );
 
-// ─── Cursor-aware insertion ───
-function insertAtCursor(insert: string, selectInsertedRange?: { start: number; length: number }) {
-  const ta = textareaRef.value;
-  if (!ta) {
-    content.value += insert;
-    return;
-  }
-  const { selectionStart, selectionEnd, value } = ta;
-  const before = value.slice(0, selectionStart);
-  const after = value.slice(selectionEnd);
-  content.value = `${before}${insert}${after}`;
-  nextTick(() => {
-    ta.focus();
-    if (selectInsertedRange) {
-      const start = before.length + selectInsertedRange.start;
-      ta.setSelectionRange(start, start + selectInsertedRange.length);
-    } else {
-      const cursor = before.length + insert.length;
-      ta.setSelectionRange(cursor, cursor);
-    }
-  });
-}
-
-/**
- * Insert text on its own paragraph at the cursor — guarantees `\n\n` padding
- * so the inserted token sits as a paragraph-isolated unit (matches the
- * paragraph-token grammar consumed by useEssaySlides + parseEssayTokens).
- */
-function insertAsParagraph(token: string) {
-  const ta = textareaRef.value;
-  const value = ta?.value ?? content.value;
-  const cursor = ta?.selectionStart ?? value.length;
-  const before = value.slice(0, cursor);
-  const after = value.slice(cursor);
-  const prefix =
-    before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';
-  const suffix =
-    after === '' || after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
-  insertAtCursor(`${prefix}${token}${suffix}`);
-}
-
+// ─── Insertion — the block editor owns the array; the modal just drives it ───
 function openSheet(kind: 'quote' | 'book') {
   sheetInitialKind.value = kind;
   sheetOpen.value = true;
 }
 
 function handleEmbedSelect(ref: EssayReferenceInput) {
-  const token =
-    ref.entity_type === 'quote'
-      ? `[[quote:${ref.entity_id}]]`
-      : `[[book:${ref.entity_id}]]`;
-  insertAsParagraph(token);
+  const kind = ref.entity_type === 'quote' ? 'quote' : 'book';
+  editorRef.value?.insertEmbed(kind, ref.entity_id);
 }
 
-// Image upload: pick a file, mint the ref id client-side, insert the
-// [[image:UUID]] token immediately, then upload. Token resolves once the
-// upload settles and the references reload on save.
+function insertHeader() {
+  editorRef.value?.insertHeaderBlock();
+}
+
+// The block editor's ＋ Add-block picker (and foil "replace") ask the modal to
+// raise the right source UI.
+function handleRequestInsert(kind: 'quote' | 'book' | 'image') {
+  if (kind === 'image') triggerImageUpload();
+  else openSheet(kind);
+}
+
+// Image upload: mint the id client-side, insert the image block immediately,
+// upload, then register the resolved URL so the block resolves. On failure,
+// strip the token so the author isn't left with a dead embed.
 function triggerImageUpload() {
   imageFileInput.value?.click();
 }
@@ -167,62 +168,18 @@ async function handleImageSelected(e: Event) {
   if (!file) return;
 
   const id = crypto.randomUUID();
-  insertAsParagraph(`[[image:${id}]]`);
+  editorRef.value?.insertEmbed('image', id);
 
   imageUploading.value = true;
   try {
-    await uploadEssayImage(file, { id });
+    const res = await uploadEssayImage(file, { id });
+    registerImage(id, res.url);
   } catch (err) {
     console.error('Failed to upload essay image:', err);
-    // Strip the unresolved token so the user isn't left with a dead embed.
     content.value = content.value.replace(`[[image:${id}]]`, '').replace(/\n{3,}/g, '\n\n').trim();
   } finally {
     imageUploading.value = false;
   }
-}
-
-/**
- * Wrap the current selection with `before…after` (e.g. `**…**`, `<…>`, `{…}`).
- * If nothing is selected, inserts the delimiters and places the cursor between
- * them so the user can type into the wrap.
- */
-function wrapSelection(before: string, after: string) {
-  const ta = textareaRef.value;
-  if (!ta) return;
-  const { selectionStart, selectionEnd, value } = ta;
-  const selected = value.slice(selectionStart, selectionEnd);
-  const pre = value.slice(0, selectionStart);
-  const post = value.slice(selectionEnd);
-  content.value = `${pre}${before}${selected}${after}${post}`;
-  nextTick(() => {
-    ta.focus();
-    if (selected.length > 0) {
-      const start = pre.length + before.length;
-      ta.setSelectionRange(start, start + selected.length);
-    } else {
-      const cursor = pre.length + before.length;
-      ta.setSelectionRange(cursor, cursor);
-    }
-  });
-}
-
-function insertHeader() {
-  const placeholder = 'Section title';
-  const ta = textareaRef.value;
-  const value = ta?.value ?? content.value;
-  const cursor = ta?.selectionStart ?? value.length;
-  const before = value.slice(0, cursor);
-  const after = value.slice(cursor);
-  const prefix =
-    before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';
-  const suffix =
-    after === '' || after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
-  const insert = `${prefix}# ${placeholder}${suffix}`;
-  // Select the placeholder so the user can type over it.
-  insertAtCursor(insert, {
-    start: prefix.length + 2, // skip "# "
-    length: placeholder.length,
-  });
 }
 
 const handleTagKeydown = (e: KeyboardEvent) => {
@@ -271,39 +228,6 @@ const handleKeydown = (e: KeyboardEvent) => {
     handleSubmit();
   }
 };
-
-// ─── Embed param bar wiring ───
-const { tokenContext } = useEditorTokenContext(textareaRef, content);
-const { keyboardOffset } = useKeyboardAnchor();
-
-function handleParamReplace(payload: {
-  range: [number, number];
-  next: string;
-  selection?: [number, number];
-}) {
-  const ta = textareaRef.value;
-  const value = content.value;
-  const [start, end] = payload.range;
-  content.value = `${value.slice(0, start)}${payload.next}${value.slice(end)}`;
-  nextTick(() => {
-    if (!ta) return;
-    ta.focus();
-    if (payload.selection) {
-      ta.setSelectionRange(payload.selection[0], payload.selection[1]);
-    } else {
-      const cursor = start + payload.next.length;
-      ta.setSelectionRange(cursor, cursor);
-    }
-  });
-}
-
-function handleTextareaFocus() {
-  // iOS Safari sometimes leaves the focused field under the keyboard;
-  // nudge it into view.
-  nextTick(() => {
-    textareaRef.value?.scrollIntoView({ block: 'nearest' });
-  });
-}
 </script>
 
 <template>
@@ -317,156 +241,79 @@ function handleTextareaFocus() {
         @mouseup="onBackdropMouseUp"
       >
       <div
-        class="flex flex-col bg-mono-950 w-full h-[100dvh] max-h-[100dvh] sm:h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-3rem)] sm:max-w-4xl sm:rounded-lg sm:border sm:border-mono-800 overflow-hidden"
+        class="writing-room flex flex-col w-full h-[100dvh] max-h-[100dvh] sm:h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-3rem)] sm:max-w-4xl sm:rounded-2xl overflow-hidden"
       >
-        <!-- Top bar — Cancel left, Publish right (always above keyboard) -->
-        <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-mono-800 bg-mono-900/95 backdrop-blur supports-[backdrop-filter]:bg-mono-900/85">
-          <button
-            type="button"
-            @click="emit('close')"
-            class="px-3 py-1.5 text-mono-300 hover:text-mono-100 text-sm transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <span class="font-mono text-[10.5px] text-mono-500 hidden sm:inline tracking-[0.06em]">
-            {{ isEditMode ? 'Editing essay' : 'New essay' }}
-          </span>
-          <button
-            type="button"
-            @click="handleSubmit"
-            :disabled="!canSubmit"
-            class="py-1.5 px-4 bg-essay border-none rounded-md font-body text-xs font-semibold text-black cursor-pointer transition-colors hover:bg-essay-bright disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {{ isEditMode ? 'Publish New Version' : 'Publish' }}
-          </button>
+        <!-- Top bar — Close left; tags / present / save right. -->
+        <div class="edtop shrink-0 flex items-center justify-between gap-3 px-4 py-2.5">
+          <button type="button" @click="emit('close')" class="wr-btn">‹ Close</button>
+          <div class="relative flex items-center gap-2">
+            <button type="button" class="itg" :class="{ on: tags.length }" title="Tags" @click="showTags = !showTags">#</button>
+            <button v-if="content.trim().length > 0" type="button" class="itg" title="Present" @click="handlePresent" aria-label="Present essay">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            </button>
+            <button
+              type="button"
+              @click="handleSubmit"
+              :disabled="!canSubmit"
+              class="wr-btn gold icon"
+              :title="isEditMode ? 'Save' : 'Publish'"
+              :aria-label="isEditMode ? 'Save' : 'Publish'"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+            </button>
+
+            <!-- Tags popover -->
+            <div v-if="showTags" class="tagpop">
+              <div class="tp-chips">
+                <span v-for="tag in tags" :key="tag" class="tp-chip">
+                  #{{ tag }}
+                  <button type="button" class="tp-x" @click="tags = tags.filter((t) => t !== tag)">×</button>
+                </span>
+                <span v-if="!tags.length" class="tp-empty">No tags yet</span>
+              </div>
+              <input
+                v-model="tagInput"
+                @keydown="handleTagKeydown"
+                placeholder="add tag…"
+                class="tp-input"
+              />
+            </div>
+          </div>
         </div>
 
-        <!-- Action row — embed insert chips + char count -->
-        <div class="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-mono-800 bg-mono-900/95 backdrop-blur supports-[backdrop-filter]:bg-mono-900/85 overflow-x-auto">
-          <button
-            type="button"
-            @click="openSheet('quote')"
-            class="flex items-center gap-1.5 px-3 py-1.5 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-body text-xs text-mono-200 cursor-pointer transition-colors shrink-0"
-          >
-            <span class="text-mono-400">＋</span> Quote
-          </button>
-          <button
-            type="button"
-            @click="openSheet('book')"
-            class="flex items-center gap-1.5 px-3 py-1.5 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-body text-xs text-mono-200 cursor-pointer transition-colors shrink-0"
-          >
-            <span class="text-mono-400">＋</span> Book
-          </button>
-          <button
-            type="button"
-            @click="triggerImageUpload"
-            :disabled="imageUploading"
-            class="flex items-center gap-1.5 px-3 py-1.5 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-body text-xs text-mono-200 cursor-pointer transition-colors shrink-0 disabled:opacity-50 disabled:cursor-wait"
-          >
-            <span class="text-mono-400">＋</span> {{ imageUploading ? 'Uploading…' : 'Image' }}
-          </button>
-          <input
-            ref="imageFileInput"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            class="hidden"
-            @change="handleImageSelected"
-          />
-          <button
-            type="button"
-            @click="insertHeader"
-            class="flex items-center gap-1.5 px-3 py-1.5 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-body text-xs text-mono-200 cursor-pointer transition-colors shrink-0"
-          >
-            <span class="text-mono-400 font-mono">＃</span> Header
-          </button>
-          <span
-            class="ml-auto font-mono text-[10.5px] tracking-[0.03em] shrink-0 tabular-nums"
-            :class="charCount > MAX_CHARS ? 'text-red-400' : 'text-mono-500'"
-          >
+        <!-- Toolbar — insert tiles + char count. Formatting lives on the
+             bottom bar (thumb-reachable + above the keyboard). -->
+        <div class="wr-tools shrink-0 flex items-center gap-1.5 px-4 py-2 overflow-x-auto">
+          <button type="button" @click="insertHeader" class="ttile" title="Section header"><span class="g">＃</span>Header</button>
+          <button type="button" @click="openSheet('quote')" class="ttile" title="Insert quote"><span class="g">❝</span>Quote</button>
+          <button type="button" @click="openSheet('book')" class="ttile" title="Insert book"><span class="g">▤</span>Book</button>
+          <button type="button" @click="triggerImageUpload" :disabled="imageUploading" class="ttile" title="Insert image"><span class="g">▦</span>{{ imageUploading ? '…' : 'Image' }}</button>
+          <input ref="imageFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="handleImageSelected" />
+
+          <span class="ml-auto shrink-0 tabular-nums text-[10.5px]" :class="charCount > MAX_CHARS ? 'text-red-400' : 'text-mono-600'">
             {{ charCount.toLocaleString() }} / {{ MAX_CHARS.toLocaleString() }}
           </span>
         </div>
 
-        <!-- Format row — wrap selection with markdown delimiters -->
-        <div class="shrink-0 flex items-center gap-2 px-4 py-1.5 border-b border-mono-800 bg-mono-900/95 backdrop-blur supports-[backdrop-filter]:bg-mono-900/85 overflow-x-auto">
-          <button
-            type="button"
-            @click="wrapSelection('**', '**')"
-            title="Bold (**text**)"
-            class="px-2.5 py-1 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-mono text-xs font-bold text-mono-200 cursor-pointer transition-colors shrink-0"
-          >
-            B
-          </button>
-          <button
-            type="button"
-            @click="wrapSelection('*', '*')"
-            title="Italics (*text*)"
-            class="px-2.5 py-1 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-mono text-xs italic text-mono-200 cursor-pointer transition-colors shrink-0"
-          >
-            I
-          </button>
-          <button
-            type="button"
-            @click="wrapSelection('&lt;', '&gt;')"
-            title="Underline (&lt;text&gt;)"
-            class="px-2.5 py-1 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-mono text-xs text-mono-200 cursor-pointer transition-colors shrink-0"
-            style="text-decoration: underline; text-decoration-color: rgba(232, 200, 130, 0.85); text-underline-offset: 2px; text-decoration-thickness: 1.5px;"
-          >
-            U
-          </button>
-          <button
-            type="button"
-            @click="wrapSelection('{', '}')"
-            title="Highlight ({text})"
-            class="px-2.5 py-1 bg-mono-800 hover:bg-mono-700 border border-mono-700 hover:border-mono-600 rounded-md font-mono text-xs cursor-pointer transition-colors shrink-0"
-            style="color: #e8d0a8;"
-          >
-            H
-          </button>
+        <!-- Writing area: the block surface, fills remaining height -->
+        <div class="wr-scroll flex-1 min-h-0 overflow-y-auto">
+          <EssayBlockEditor ref="editorRef" v-model:content="content" @request-insert="handleRequestInsert" />
         </div>
 
-        <!-- Context-aware embed param strip. Renders only when the caret sits
-             inside an embed token paragraph. On mobile with a visible soft
-             keyboard, the strip pins itself above the keyboard via fixed
-             positioning; otherwise it sits inline above the textarea. -->
-        <EssayParamBar
-          v-if="tokenContext"
-          :context="tokenContext"
-          :keyboard-offset="keyboardOffset"
-          @replace="handleParamReplace"
-        />
-
-        <!-- Writing area: single textarea, fills remaining height -->
-        <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <textarea
-            ref="textareaRef"
-            v-model="content"
-            @focus="handleTextareaFocus"
-            placeholder="Begin writing… `# Header` for a section title. Ctrl+Enter to publish."
-            class="flex-1 min-h-0 w-full bg-transparent border-none outline-none resize-none font-body text-base sm:text-[15px] leading-[1.55] text-mono-100 placeholder:text-mono-600 px-5 py-4"
-            style="text-wrap: pretty; font-kerning: normal; font-variant-ligatures: common-ligatures; font-variant-numeric: oldstyle-nums;"
-          ></textarea>
-        </div>
-
-        <!-- Footer: tags only -->
+        <!-- Bottom bar: text formatting — thumb-reachable, pinned above the
+             soft keyboard on mobile. Acts on the active block's selection. -->
         <div
-          class="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-mono-800 border-t border-mono-700 overflow-x-auto"
-          style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));"
+          class="wr-foot fmtbar shrink-0 flex items-center gap-1 px-4 py-2"
+          :style="{
+            paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+            transform: keyboardOffset ? `translateY(-${keyboardOffset}px)` : undefined,
+          }"
         >
-          <span
-            v-for="tag in tags"
-            :key="tag"
-            class="inline-flex items-center py-0.5 px-2 bg-mono-700 rounded-sm font-mono text-[10px] text-mono-300 whitespace-nowrap shrink-0"
-          >
-            #{{ tag }}
-          </span>
-          <input
-            v-model="tagInput"
-            @keydown="handleTagKeydown"
-            placeholder="add tag…"
-            class="py-1 px-2 bg-transparent border-none font-mono text-[10px] text-mono-200 outline-none min-w-[100px] flex-1 placeholder:text-mono-500"
-          />
-          <span class="font-mono text-[10px] text-mono-500 hidden sm:inline shrink-0">Ctrl+Enter</span>
+          <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('**', '**')" title="Bold (**text**)" class="fmt font-bold">B</button>
+          <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('*', '*')" title="Italics (*text*)" class="fmt italic">I</button>
+          <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('&lt;', '&gt;')" title="Underline (&lt;text&gt;)" class="fmt" style="text-decoration: underline; text-decoration-color: rgba(232,200,130,0.85); text-underline-offset: 2px; text-decoration-thickness: 1.5px;">U</button>
+          <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('{', '}')" title="Highlight ({text})" class="fmt" style="color:#e8d0a8;">H</button>
+          <span class="ml-auto text-[10px] text-mono-600 hidden sm:inline shrink-0">Ctrl+Enter to save</span>
         </div>
 
         <!-- Embed picker sheet -->
@@ -490,5 +337,287 @@ function handleTextareaFocus() {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* ── The near-black writing room ── */
+.writing-room {
+  --gold: var(--color-essay);
+  --gold-hi: #f8d38a;
+  --ink: #140d03;
+  --line: #241d12;
+  --ink-bg: #060504;
+  background: var(--ink-bg);
+  border: 1px solid var(--line);
+}
+.writing-room.is-focus {
+  background: #040302;
+}
+
+/* top bar */
+.edtop {
+  border-bottom: 1px solid var(--line);
+}
+.edtop .mid {
+  font-size: 13px;
+  color: var(--color-mono-300);
+}
+.edtop .mid .nm {
+  color: var(--color-mono-200);
+}
+.edtop .sv {
+  font-size: 11px;
+  color: var(--color-mono-600);
+  font-style: italic;
+}
+
+.wr-btn {
+  padding: 6px 13px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  background: var(--color-mono-800);
+  border: 1px solid var(--line);
+  color: var(--color-mono-200);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.wr-btn:hover {
+  border-color: var(--color-mono-600);
+  color: var(--color-mono-50);
+}
+.wr-btn.gold {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: transparent;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 245, 220, 0.5);
+}
+.wr-btn.gold:hover {
+  background: var(--gold-hi);
+}
+.wr-btn.gold:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.wr-btn.icon {
+  padding: 7px 10px;
+  display: grid;
+  place-items: center;
+}
+
+.itg {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: var(--color-mono-900);
+  border: 1px solid var(--line);
+  color: var(--color-mono-400);
+  cursor: pointer;
+  font-size: 15px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.itg:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.itg.ghost {
+  background: transparent;
+  border-color: transparent;
+}
+.itg.on {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+/* tags popover */
+.tagpop {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  z-index: 30;
+  width: 230px;
+  background: #0d0b08;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 11px 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+.tp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 9px;
+}
+.tp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px 2px 7px;
+  background: var(--color-mono-800);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--color-mono-200);
+}
+.tp-x {
+  border: none;
+  background: transparent;
+  color: var(--color-mono-500);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.tp-x:hover {
+  color: var(--color-rose);
+}
+.tp-empty {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-mono-600);
+}
+.tp-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--line);
+  padding: 8px 2px 2px;
+  font-size: 12px;
+  color: var(--color-mono-100);
+  outline: none;
+}
+.tp-input::placeholder {
+  color: var(--color-mono-600);
+}
+
+/* toolbar */
+.wr-tools {
+  border-bottom: 1px solid var(--line);
+}
+.ttile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 11px;
+  background: var(--color-mono-900);
+  border: 1px solid var(--line);
+  color: var(--color-mono-200);
+  font-size: 12px;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.ttile .g {
+  font-size: 14px;
+  color: var(--color-mono-500);
+  line-height: 1;
+}
+.ttile:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--color-mono-800);
+}
+.ttile:hover .g {
+  color: var(--gold);
+}
+.ttile:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.wr-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  flex: 0 0 auto;
+  margin: 0 3px;
+}
+.fmt {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--color-mono-900);
+  border: 1px solid var(--line);
+  color: var(--color-mono-200);
+  font-size: 13px;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: border-color 0.15s, background 0.15s;
+}
+.fmt:hover {
+  border-color: var(--color-mono-600);
+  background: var(--color-mono-800);
+}
+
+/* textarea */
+.wr-text {
+  line-height: 1.55;
+  padding: 18px 20px;
+  transition: line-height 0.3s, padding 0.3s;
+}
+@media (min-width: 640px) {
+  .wr-text {
+    max-width: 680px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 26px 24px;
+  }
+}
+.is-focus .wr-text {
+  line-height: 1.35;
+  padding: 28px 22px;
+}
+@media (min-width: 640px) {
+  .is-focus .wr-text {
+    padding: 40px 24px;
+  }
+}
+
+/* footer / tags */
+.wr-foot {
+  background: #0d0b08;
+  border-top: 1px solid var(--line);
+}
+
+/* focus chrome */
+.fedtop .ftitle {
+  font-size: 11px;
+  color: var(--color-mono-500);
+}
+.fbar .wc {
+  font-size: 10px;
+  color: var(--color-mono-600);
+  font-variant-numeric: lining-nums;
+  letter-spacing: 0.14em;
+}
+.ft {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--color-mono-900);
+  border: 1px solid var(--line);
+  color: var(--color-mono-400);
+  font-size: 16px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.ft:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.ft.done {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  font-weight: 700;
+  font-size: 13px;
+  width: auto;
+  padding: 0 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 245, 220, 0.5);
 }
 </style>

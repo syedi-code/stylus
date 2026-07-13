@@ -27,8 +27,7 @@ import ThreadDetail from './components/threads/ThreadDetail.vue';
 import ThreadList from './components/threads/ThreadList.vue';
 import EditThoughtModal from './components/thoughts/EditThoughtModal.vue';
 import ConfirmModal from './components/shared/ConfirmModal.vue';
-import EssayCard from './components/essays/EssayCard.vue';
-import EssayCardSkeleton from './components/essays/EssayCardSkeleton.vue';
+import EssaysIndex from './components/essays/EssaysIndex.vue';
 import EditEssayModal from './components/essays/EditEssayModal.vue';
 import PresentationViewEssay from './components/essays/PresentationViewEssay.vue';
 import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
@@ -152,10 +151,10 @@ const handleCopyQuote = async (quote: Quote) => {
   }
 };
 
-const handleNoteSaved = async () => {
+const handleNoteSaved = async (replaced?: { oldId: string; note: Note }) => {
   const scrollY = window.scrollY;
   editingNote.value = null;
-  await notesPageRef.value?.reload();
+  await notesPageRef.value?.reload(replaced);
   await reloadEditingThread();
   requestAnimationFrame(() => {
     window.scrollTo(0, scrollY);
@@ -466,7 +465,7 @@ watch([threadsSearch], () => {
         />
       </transition>
 
-      <div v-if="currentTab !== 'library' && currentTab !== 'notes'" class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20">
+      <div v-if="currentTab !== 'library' && currentTab !== 'notes' && currentTab !== 'essays'" class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20">
 
         <!-- Quotes Tab -->
         <transition name="fade" mode="out-in">
@@ -528,56 +527,6 @@ watch([threadsSearch], () => {
           </div>
         </transition>
 
-        <!-- Essays Tab -->
-        <transition name="fade" mode="out-in">
-          <div v-if="currentTab === 'essays'" class="space-y-4">
-            <!-- New Essay button (desktop only, mobile uses FAB) -->
-            <div class="hidden sm:flex justify-center">
-              <button @click="showNewEssayModal = true" class="px-4 py-1.5 bg-essay hover:bg-essay-bright text-black text-xs font-semibold rounded-md transition-colors cursor-pointer">
-                New Essay
-              </button>
-            </div>
-
-            <!-- Skeleton Loading -->
-            <div v-if="essaysPagination.loading.value" class="space-y-3">
-              <EssayCardSkeleton v-for="i in 4" :key="i" />
-            </div>
-
-            <!-- Error -->
-            <div v-else-if="essaysPagination.error.value" class="p-6 border border-red-900 bg-red-950/20 text-center">
-              <p class="text-red-500 font-bold uppercase text-sm mb-4">{{ essaysPagination.error.value }}</p>
-              <button @click="essaysPagination.loadInitial()" class="px-4 py-2 bg-red-900 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer">
-                Retry Connection
-              </button>
-            </div>
-
-            <!-- Empty state (per mockup 03 empty state) -->
-            <div v-else-if="essaysPagination.items.value.length === 0" class="py-20 flex flex-col items-center gap-2.5 text-center border border-dashed border-mono-700 rounded-lg">
-              <div class="w-10 h-10 rounded-[10px] bg-essay-muted flex items-center justify-center text-essay">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                  <path d="m15 5 4 4" />
-                </svg>
-              </div>
-              <p class="text-[15px] font-medium text-mono-200">No essays yet</p>
-              <p class="text-xs text-mono-500 max-w-xs leading-relaxed">Essays are short reflections that reference one or more books from your library.</p>
-              <button @click="showNewEssayModal = true" class="mt-1 py-[7px] px-4 bg-essay border-none rounded-md font-body text-xs font-semibold text-black cursor-pointer hover:bg-essay-bright transition-colors">
-                Write your first essay
-              </button>
-            </div>
-
-            <!-- Essay List -->
-            <div v-else class="space-y-3">
-              <EssayCard v-for="essay in essaysPagination.items.value" :key="essay.id" :essay="essay" :isAdmin="isAdmin" @edit="handleEditEssay" @copy="handleCopyEssay" @present="handlePresentEssay" @delete="handleDeleteEssay" @addToThread="handleAddEssayToThread" @navigateToThread="handleNavigateToThread" />
-
-              <!-- Loading more spinner -->
-              <div v-if="essaysPagination.loadingMore.value" class="py-6 text-center">
-                <div class="inline-block animate-spin h-5 w-5 border-2 border-essay border-t-transparent rounded-full"></div>
-              </div>
-            </div>
-          </div>
-        </transition>
-
         <!-- Threads Tab -->
         <transition name="fade" mode="out-in">
           <div v-if="currentTab === 'threads'">
@@ -610,13 +559,33 @@ watch([threadsSearch], () => {
         </div>
       </transition>
 
+      <!-- Essays Tab — "the gilded index", rendered edge-to-edge on black. -->
+      <transition name="fade" mode="out-in">
+        <EssaysIndex
+          v-if="currentTab === 'essays'"
+          :essays="essaysPagination.items.value"
+          :loading="essaysPagination.loading.value"
+          :loadingMore="essaysPagination.loadingMore.value"
+          :error="essaysPagination.error.value"
+          :isAdmin="isAdmin"
+          @new="showNewEssayModal = true"
+          @edit="handleEditEssay"
+          @copy="handleCopyEssay"
+          @present="handlePresentEssay"
+          @delete="handleDeleteEssay"
+          @addToThread="handleAddEssayToThread"
+          @navigateToThread="handleNavigateToThread"
+          @retry="essaysPagination.loadInitial()"
+        />
+      </transition>
+
       <EditNoteModal :isOpen="!!editingNote" :note="editingNote" @close="editingNote = null" @saved="handleNoteSaved" />
 
       <EditQuoteModal :isOpen="!!editingQuote" :quote="editingQuote" @close="editingQuote = null" @saved="handleQuoteSaved" />
 
       <EditThoughtModal :isOpen="!!editingThought" :thought="editingThought" @close="editingThought = null" @saved="handleThreadThoughtSaved" />
 
-      <EditEssayModal :isOpen="showNewEssayModal || !!editingEssay" :essay="editingEssay" @close="showNewEssayModal = false; editingEssay = null" @saved="handleEssaySaved" />
+      <EditEssayModal :isOpen="showNewEssayModal || !!editingEssay" :essay="editingEssay" @close="showNewEssayModal = false; editingEssay = null" @saved="handleEssaySaved" @present="handlePresentEssay" />
 
       <EditBookModal :isOpen="showBookModal" :book="editingBook" @close="showBookModal = false; editingBook = null" @saved="handleBookSaved" />
 
