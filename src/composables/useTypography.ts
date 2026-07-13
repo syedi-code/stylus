@@ -4,21 +4,11 @@ export type EntityType = 'note' | 'quote' | 'thought';
 export type ViewContext = 'card' | 'thread' | 'presentation';
 
 /**
- * Dynamic line-height that tightens as font size grows.
- * At 12 px → 1.35, at 24 px → 1.20. Extracted from the Note presentation
- * view so cards and presentation share the same reading rhythm.
- */
-export function dynamicLineHeight(fontSizePx: number): number {
-	const t = Math.min(1, Math.max(0, (fontSizePx - 12) / 12));
-	return +(1.35 - t * 0.15).toFixed(2);
-}
-
-/**
  * Content-length-aware font sizing and typographic class selection.
  *
- * Quotes get `.typography-quote` (with hanging-punctuation) and tighter
- * leading; Notes and Thoughts share `.typography-prose` and the same tight
- * leading (`leading-[1.45]`) for visual consistency.
+ * Quotes get `.typography-quote` (with hanging-punctuation); Notes and
+ * Thoughts share `.typography-prose`. All content prose uses the shared
+ * `--content-leading` (1.08) line-height, applied at the call site.
  *
  * Font-size tiers are tuned per entity × view context:
  *   - Card:         Quotes scale 12–18 px; Notes/Thoughts stay fixed 14 px
@@ -28,27 +18,11 @@ export function dynamicLineHeight(fontSizePx: number): number {
 export function useTypography(
 	entityType: EntityType,
 	viewContext: ViewContext,
-	contentLength: Ref<number> | ComputedRef<number>,
-	/** Override font size (e.g. after user offset) for line-height scaling */
-	effectiveFontSize?: Ref<number> | ComputedRef<number>
+	contentLength: Ref<number> | ComputedRef<number>
 ) {
 	const baseFontSize = computed(() =>
 		getFontSize(entityType, viewContext, contentLength.value)
 	);
-
-	const lineHeightClass = 'leading-[1.25]';
-
-	/**
-	 * Computed line-height that tightens as font size grows.
-	 * At 12 px → 1.50, at 24 px → 1.30. Falls back to 1.45 when
-	 * no effective font size is provided.
-	 */
-	const lineHeight = computed(() => {
-		const size = effectiveFontSize?.value ?? baseFontSize.value;
-		// Linear interpolation: 12px → 1.50, 24px → 1.30
-		const t = Math.min(1, Math.max(0, (size - 12) / 12));
-		return +(1.5 - t * 0.2).toFixed(2);
-	});
 
 	const typographyClass =
 		entityType === 'quote' ? 'typography-quote' : 'typography-prose';
@@ -56,10 +30,6 @@ export function useTypography(
 	return {
 		/** Recommended font-size in px (feed into usePresentationFontSize for user offset) */
 		baseFontSize,
-		/** Tailwind line-height utility class (static fallback) */
-		lineHeightClass,
-		/** Computed line-height value that scales with font size */
-		lineHeight,
 		/** Global CSS class for typographic refinements */
 		typographyClass,
 	};

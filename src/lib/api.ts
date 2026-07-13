@@ -1213,10 +1213,11 @@ export interface GetMoodsResponse {
 }
 
 export async function fetchThoughts(
-	params: { limit?: number; offset?: number } = {}
+	params: { limit?: number; offset?: number; q?: string } = {}
 ): Promise<{ data: Thought[]; hasMore: boolean }> {
+	const { q, ...rest } = params;
 	const response = await apiClient.get<GetThoughtsResponse>('/thoughts', {
-		params,
+		params: q?.trim() ? { ...rest, q } : rest,
 	});
 	if (response.data.error) {
 		throw new Error(response.data.error);

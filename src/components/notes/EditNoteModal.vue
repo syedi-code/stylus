@@ -154,7 +154,7 @@ const charCount = computed(() => content.value.length);
         <!-- Content -->
         <div class="flex-1 p-4 overflow-y-auto">
           <div class="relative h-full">
-            <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full h-full min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="Edit your note..." :disabled="loading"></textarea>
+            <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full h-full min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-[var(--content-leading)] placeholder:text-mono-600" placeholder="Edit your note..." :disabled="loading"></textarea>
           </div>
         </div>
 
@@ -180,7 +180,7 @@ const charCount = computed(() => content.value.length);
       <BookLinePicker v-model:book="selectedBook" v-model:page="pageRef" showPage class="mb-0.5" />
 
       <div class="relative">
-        <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-50 max-h-100 text-mono-100 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none text-sm leading-relaxed" placeholder="Edit your note..." @keydown.ctrl.enter="save"></textarea>
+        <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-50 max-h-100 text-mono-100 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none text-sm leading-[var(--content-leading)]" placeholder="Edit your note..." @keydown.ctrl.enter="save"></textarea>
         <div class="absolute bottom-3 right-3 text-xs text-mono-600">{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</div>
       </div>
 

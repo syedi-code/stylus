@@ -188,7 +188,7 @@ function resolveImageUrl(reference: EssayReference): string | null {
         <!-- Paragraph: prose -->
         <p
           v-else-if="block.kind === 'paragraph'"
-          class="typography-prose whitespace-pre-wrap leading-[1.4] text-sm text-mono-100"
+          class="typography-prose whitespace-pre-wrap leading-[var(--content-leading)] text-sm text-mono-100"
           v-html="block.html"
         ></p>
 
@@ -201,7 +201,7 @@ function resolveImageUrl(reference: EssayReference): string | null {
           class="my-2 flex flex-col gap-1.5"
         >
           <blockquote
-            class="typography-quote text-mono-100 border-l-4 border-accent pl-4 py-1 text-[14px] leading-[1.45] whitespace-pre-wrap"
+            class="typography-quote text-mono-100 border-l-4 border-accent pl-4 py-1 text-[14px] leading-[var(--content-leading)] whitespace-pre-wrap"
           >{{ block.reference.quote_text }}</blockquote>
           <BookAttribution
             class="pl-5"

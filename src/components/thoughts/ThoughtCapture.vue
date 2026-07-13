@@ -195,7 +195,7 @@ const submit = async () => {
 			<div class="grow flex flex-col gap-3 relative">
 				<!-- Textarea Wrapper -->
 				<div class="relative group">
-					<textarea ref="textareaRef" v-model="content" @input="autoGrow" placeholder="What's on your mind?" class="thought-textarea relative w-full bg-mono-900 border-2 border-rose/30 rounded-xl p-4 min-h-30 text-white focus:outline-none focus:border-rose transition-all duration-300 ease-out resize-none text-sm leading-relaxed placeholder:text-mono-500 block shadow-xl z-10 origin-center" :class="[
+					<textarea ref="textareaRef" v-model="content" @input="autoGrow" placeholder="What's on your mind?" class="thought-textarea relative w-full bg-mono-900 border-2 border-rose/30 rounded-xl p-4 min-h-30 text-white focus:outline-none focus:border-rose transition-all duration-300 ease-out resize-none text-sm leading-[var(--content-leading)] placeholder:text-mono-500 block shadow-xl z-10 origin-center" :class="[
 						sent ? 'bg-rose/20! border-rose! text-white! shadow-[0_0_40px_rgba(244,63,94,0.4)] scale-[0.98]' : '',
 						content ? 'border-rose/50' : ''
 					]" @keydown.enter.ctrl="submit"></textarea>

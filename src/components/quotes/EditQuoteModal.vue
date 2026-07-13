@@ -178,7 +178,7 @@ const charCount = computed(() => quoteText.value.length);
         <!-- Content -->
         <div class="flex-1 p-4 overflow-y-auto">
           <div class="relative h-full flex flex-col gap-4">
-            <textarea ref="textareaRef" v-model="quoteText" class="w-full flex-1 min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="Enter the quote..." :disabled="loading"></textarea>
+            <textarea ref="textareaRef" v-model="quoteText" class="w-full flex-1 min-h-50 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-[var(--content-leading)] placeholder:text-mono-600" placeholder="Enter the quote..." :disabled="loading"></textarea>
             <div class="flex flex-col gap-1.5">
               <label class="text-xs text-mono-400 uppercase tracking-wide">Attribution</label>
               <SourceSelector ref="sourceSelectorRef" entityType="quote" :initial="initialAttribution" @update="currentAttribution = $event" />
@@ -208,7 +208,7 @@ const charCount = computed(() => quoteText.value.length);
       <div class="flex flex-col gap-1.5">
         <label class="text-xs text-mono-400 uppercase tracking-wide">Quote <span class="text-quote">*</span></label>
         <div class="relative">
-          <textarea ref="textareaRef" v-model="quoteText" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-32 max-h-100 text-mono-100 focus:outline-none focus:border-quote focus:ring-1 focus:ring-quote resize-none text-sm leading-relaxed" placeholder="Enter the quote..." @keydown.ctrl.enter="save"></textarea>
+          <textarea ref="textareaRef" v-model="quoteText" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-32 max-h-100 text-mono-100 focus:outline-none focus:border-quote focus:ring-1 focus:ring-quote resize-none text-sm leading-[var(--content-leading)]" placeholder="Enter the quote..." @keydown.ctrl.enter="save"></textarea>
           <div class="absolute bottom-3 right-3 text-xs text-mono-600">{{ charCount }}</div>
         </div>
       </div>

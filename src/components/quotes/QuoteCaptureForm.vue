@@ -129,7 +129,7 @@ const submit = async () => {
 
         <!-- Textarea Wrapper -->
         <div class="relative group">
-          <textarea ref="textareaRef" v-model="quote" @input="autoGrow" :maxlength="MAX_LENGTHS.CONTENT" placeholder="QUOTE..." class="relative w-full bg-mono-900 border border-mono-800 rounded-lg p-4 min-h-30 text-white italic focus:outline-none focus:border-quote transition-all duration-500 ease-out resize-none text-sm leading-relaxed placeholder:text-mono-600 block shadow-xl z-10 origin-center" :class="[
+          <textarea ref="textareaRef" v-model="quote" @input="autoGrow" :maxlength="MAX_LENGTHS.CONTENT" placeholder="QUOTE..." class="relative w-full bg-mono-900 border border-mono-800 rounded-lg p-4 min-h-30 text-white italic focus:outline-none focus:border-quote transition-all duration-500 ease-out resize-none text-sm leading-[var(--content-leading)] placeholder:text-mono-600 block shadow-xl z-10 origin-center" :class="[
             sent ? 'bg-quote! border-quote-bright! text-quote-text! shadow-[0_0_40px_rgba(95,194,148,0.3)] scale-[0.98] placeholder:text-transparent' : ''
           ]" @keydown.enter.ctrl="submit"></textarea>
         </div>
