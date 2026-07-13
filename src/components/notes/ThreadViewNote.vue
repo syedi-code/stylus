@@ -82,7 +82,7 @@ watch(() => props.note.book_id, () => {
 const formattedContent = computed(() => formatMarkdown(props.note.content || ''));
 
 const contentLength = computed(() => props.note.content?.length ?? 0);
-const { baseFontSize, lineHeightClass, typographyClass } = useTypography('note', 'thread', contentLength);
+const { baseFontSize, typographyClass } = useTypography('note', 'thread', contentLength);
 </script>
 
 <template>
@@ -120,7 +120,7 @@ const { baseFontSize, lineHeightClass, typographyClass } = useTypography('note',
     </div>
 
     <!-- Content -->
-    <p v-if="note.content" :class="[typographyClass, lineHeightClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedContent"></p>
+    <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-mono-100']" :style="{ fontSize: baseFontSize + 'px', lineHeight: 'var(--content-leading)' }" v-html="formattedContent"></p>
 
     <!-- Tags -->
     <div v-if="note.tags && note.tags.length" class="flex flex-wrap gap-2 mt-1">

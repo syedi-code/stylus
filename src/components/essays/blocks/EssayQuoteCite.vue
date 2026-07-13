@@ -82,7 +82,7 @@ const hasYear = computed(() => props.year !== undefined && props.year !== null &
 	line-height: 1.2;
 }
 .pres .row {
-	font-size: 15px;
+	font-size: 13px;
 	line-height: 1.3;
 }
 </style>
