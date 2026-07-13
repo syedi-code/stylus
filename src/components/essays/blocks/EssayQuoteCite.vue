@@ -19,6 +19,8 @@ const props = defineProps<{
 	page?: string;
 	/** Larger type for presentation slides. */
 	presentation?: boolean;
+	/** When set, the work title becomes a clickable link to the source PDF. */
+	titleHref?: string;
 }>();
 
 const authors = computed(() => parseAuthors(props.author));
@@ -32,7 +34,7 @@ const hasYear = computed(() => props.year !== undefined && props.year !== null &
 				<span v-if="i > 0"> &amp; </span><span class="given">{{ a.firstParts }}</span><span class="surname" :style="{ color: a.color }">{{ a.lastName }}</span><span v-if="a.suffix" class="given">{{ a.suffix }}</span>
 			</template>
 		</div>
-		<div v-if="title" class="row"><span class="conn">in </span><span class="work">{{ title }}</span><template v-if="page"><span class="pg">, p.&nbsp;</span><span class="pgn">{{ page }}</span></template></div>
+		<div v-if="title" class="row"><span class="conn">in </span><a v-if="titleHref" :href="titleHref" target="_blank" rel="noopener noreferrer" class="work" @click.stop>{{ title }}</a><span v-else class="work">{{ title }}</span><template v-if="page"><span class="pg">, p.&nbsp;</span><span class="pgn">{{ page }}</span></template></div>
 		<div v-if="hasYear" class="row"><span class="conn">published </span><span class="yr">{{ year }}</span></div>
 	</div>
 </template>
@@ -62,6 +64,10 @@ const hasYear = computed(() => props.year !== undefined && props.year !== null &
 .work {
 	font-style: italic;
 	color: #e8d0a8;
+	text-decoration: none;
+}
+.work[href]:hover {
+	text-decoration: underline;
 }
 .yr {
 	color: #fff;

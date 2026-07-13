@@ -53,9 +53,9 @@ const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('e
 const { mode: quoteMode, cycle: cycleQuoteMode, reshuffle: reshuffleTextures, variantForIndex } = usePresentationQuoteMode('essay');
 
 // Resolve the texture asset for a quote slide: card modes use tex-*, full-bleed
-// uses the larger fb-*; foil has no texture.
+// uses the larger fb-*; plain has no texture.
 function quoteTextureUrl(i: number): string {
-    if (quoteMode.value === 'foil') return '';
+    if (quoteMode.value === 'plain') return '';
     const prefix = quoteMode.value === 'fullbleed' ? 'fb' : 'tex';
     return `/textures/${prefix}-${variantForIndex(i)}.png`;
 }
@@ -154,7 +154,7 @@ watch(() => props.isOpen, (isOpen) => {
         currentIndex.value = 0;
         showChrome();
         poke();
-        if (quoteMode.value !== 'foil') reshuffleTextures();
+        if (quoteMode.value !== 'plain') reshuffleTextures();
         document.body.style.overflow = 'hidden';
     } else {
         showFontControls.value = false;
@@ -299,7 +299,7 @@ function openFontControls() {
                                 v-if="slides[currentIndex]?.kind === 'quote'"
                                 @click.stop="cycleQuoteMode(); poke()"
                                 class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer"
-                                :class="quoteMode !== 'foil' ? 'text-essay' : ''"
+                                :class="quoteMode !== 'textured' ? 'text-essay' : ''"
                                 :aria-label="`Quote surface (${quoteMode}) — tap to change`"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

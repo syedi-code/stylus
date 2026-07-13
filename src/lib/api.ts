@@ -525,6 +525,8 @@ export async function fetchQuotes(
 		search?: string;
 		posted?: number;
 		book_id?: string;
+		/** 1 = exclude superseded versions (rows another quote `replaces`). */
+		latest_only?: number;
 	} = {}
 ): Promise<Quote[]> {
 	const response = await apiClient.get<{ quotes: any[]; error?: string }>(
