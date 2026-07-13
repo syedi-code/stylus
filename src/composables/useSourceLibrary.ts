@@ -58,7 +58,9 @@ async function ensureLoaded(force = false): Promise<void> {
 	inflight = (async () => {
 		try {
 			const [q, b, a] = await Promise.all([
-				fetchQuotes({ limit: 500 }),
+				// latest_only: superseded quote versions (rows another quote
+				// `replaces`) must never surface in the insert picker.
+				fetchQuotes({ limit: 500, latest_only: 1 }),
 				fetchBooks({ limit: 500 }),
 				fetchAuthors({ limit: 500 }),
 			]);

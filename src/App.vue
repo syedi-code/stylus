@@ -505,7 +505,7 @@ watch([threadsSearch], () => {
 
               <!-- Quotes List -->
               <div v-else class="space-y-4">
-                <QuoteCard v-for="quote in filteredQuotes" :key="quote.id" :quote="quote" :searchQuery="quotesSearch" :isAdmin="isAdmin" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
+                <QuoteCard v-for="(quote, i) in filteredQuotes" :key="quote.id" :quote="quote" :index="i" :searchQuery="quotesSearch" :isAdmin="isAdmin" @edit="handleEditQuote" @copy="handleCopyQuote" @present="presentingQuote = $event" @viewInLibrary="handleViewInLibrary" @addToThread="handleAddQuoteToThread" @delete="handleDeleteQuote" />
               </div>
             </div>
           </div>
