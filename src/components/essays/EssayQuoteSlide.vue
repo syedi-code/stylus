@@ -9,6 +9,10 @@ const props = defineProps<{
     preferredFontSize: number;
     justified: boolean;
     hyphenation: boolean;
+    /** Quote surface mode; defaults to the gold foil card. */
+    mode?: 'foil' | 'textured' | 'fullbleed';
+    /** Resolved texture asset for textured / fullbleed modes. */
+    textureUrl?: string;
 }>();
 
 // Pull the shared `useTypography('quote', 'presentation', length)` styling
@@ -35,7 +39,7 @@ const effectiveFontSize = computed(() => props.preferredFontSize);
 </script>
 
 <template>
-    <div class="w-full h-full flex items-center justify-center overflow-y-auto overscroll-contain py-6">
-        <QuoteSlideBody :text="text" :creator="creator || undefined" :work="work || undefined" :year="year || undefined" :page="page || undefined" :font-size="effectiveFontSize" :justified="justified" :hyphenation="hyphenation" :typography-class="typographyClass" with-quotation-marks foil />
+    <div class="relative w-full h-full flex items-center justify-center overflow-y-auto overscroll-contain py-6">
+        <QuoteSlideBody :text="text" :creator="creator || undefined" :work="work || undefined" :year="year || undefined" :page="page || undefined" :font-size="effectiveFontSize" :justified="justified" :hyphenation="hyphenation" :typography-class="typographyClass" with-quotation-marks :mode="mode ?? 'foil'" :texture-url="textureUrl" />
     </div>
 </template>
