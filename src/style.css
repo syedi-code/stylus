@@ -12,9 +12,10 @@
 	--radius-md: 8px;
 	--radius-sm: 4px;
 
-	/* Line height - standardized leading for quote text (essay writing +
-	   presentation, foil / textured / standalone). Change here, changes everywhere. */
-	--leading-quote: 1.08;
+	/* Line height - standardized leading for reading content across tabs:
+	   essay quotes + prose, and notes — in both card/writing and presentation
+	   views. Change here, changes everywhere. */
+	--content-leading: 1.08;
 
 	/* Colors - Sleek Black/Dark Grey + Sharp Blue */
 	--color-mono-50: #f4f4f5;

@@ -167,7 +167,7 @@ defineExpose({ focus, el: () => taRef.value });
 .para-view {
 	width: 100%;
 	font: inherit;
-	line-height: 1.55;
+	line-height: var(--content-leading);
 	color: var(--color-mono-100);
 	padding: 4px 2px;
 }

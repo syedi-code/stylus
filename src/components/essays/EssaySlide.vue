@@ -22,11 +22,6 @@ const textRef = ref<HTMLElement | null>(null);
 const preferred = computed(() => props.preferredFontSize);
 const { fittedSize } = useAutoFitFontSize(containerRef, textRef, preferred);
 
-const lineHeight = computed(() => {
-    const t = Math.min(1, Math.max(0, (fittedSize.value - 12) / 12));
-    return +(1.35 - t * 0.15).toFixed(2);
-});
-
 const html = computed(() => formatMarkdown(props.text));
 </script>
 
@@ -57,7 +52,7 @@ const html = computed(() => formatMarkdown(props.text));
                 :class="{ 'opacity-100': active, 'opacity-95': !active }"
                 :style="{
                     fontSize: fittedSize + 'px',
-                    lineHeight: lineHeight,
+                    lineHeight: 'var(--content-leading)',
                     textAlign: justified ? 'justify' : 'left',
                     hyphens: hyphenation ? 'auto' : 'none',
                 }"
