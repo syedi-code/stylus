@@ -18,20 +18,20 @@ const moodEmoji = computed(() => {
 const formattedContent = computed(() => formatMarkdown(props.thought.content));
 
 const contentLength = computed(() => props.thought.content?.length ?? 0);
-const { baseFontSize, lineHeightClass, typographyClass } = useTypography('thought', 'thread', contentLength);
+const { baseFontSize, typographyClass } = useTypography('thought', 'thread', contentLength);
 </script>
 
 <template>
   <div class="flex flex-col gap-1.5 p-3 sm:p-4 bg-mono-900 border border-rose/20 rounded-lg">
     <!-- Type badge -->
     <div class="flex items-center gap-1.5 mb-1">
-      <span class="bg-rose text-white px-1.5 py-px text-[10px] font-bold uppercase tracking-wider">
+      <span class="bg-rose text-white px-1.5 py-px text-[10px] font-bold uppercase tracking-wider rounded-sm">
         thought
       </span>
     </div>
 
     <!-- Content -->
-    <p :class="[typographyClass, lineHeightClass, 'text-mono-100 whitespace-pre-wrap wrap-break-word']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedContent"></p>
+    <p :class="[typographyClass, 'text-mono-100 whitespace-pre-wrap wrap-break-word']" :style="{ fontSize: baseFontSize + 'px', lineHeight: 'var(--content-leading)' }" v-html="formattedContent"></p>
 
     <!-- Mood Display -->
     <div v-if="moodEmoji || (thought.mood_tags && thought.mood_tags.length > 0)" class="flex items-center gap-2 flex-wrap">

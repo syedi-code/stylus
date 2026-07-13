@@ -125,7 +125,7 @@ const quoteFontSize = computed(() => {
 });
 
 const contentLength = computed(() => props.quote.quote?.length ?? 0);
-const { lineHeightClass, typographyClass } = useTypography('quote', 'card', contentLength);
+const { typographyClass } = useTypography('quote', 'card', contentLength);
 </script>
 
 <template>
@@ -175,7 +175,7 @@ const { lineHeightClass, typographyClass } = useTypography('quote', 'card', cont
 
     <!-- Content -->
     <div class="mt-1 text-mono-100">
-      <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-white py-1 whitespace-pre-wrap']" :style="{ fontSize: quoteFontSize + 'px' }" v-html="highlightText(quote.quote)"></blockquote>
+      <blockquote lang="en" :class="[typographyClass, 'text-white py-1 whitespace-pre-wrap']" :style="{ fontSize: quoteFontSize + 'px', lineHeight: 'var(--content-leading)' }" v-html="highlightText(quote.quote)"></blockquote>
       <!-- Book attribution (when linked to book) -->
       <BookAttribution
         v-if="book"
