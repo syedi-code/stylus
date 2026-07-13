@@ -256,7 +256,7 @@ const stateLabel = computed(() => (props.essay.posted ? 'posted' : 'still writin
 }
 .peek .pp {
   font-size: 14px;
-  line-height: 1.6;
+  line-height: var(--content-leading);
   color: var(--color-mono-200);
   padding-top: 2px;
 }

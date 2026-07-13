@@ -31,12 +31,6 @@ const { baseFontSize, typographyClass } = useTypography('thought', 'presentation
 
 const { finalFontSize, setFontSize, reset } = usePresentationFontSize('thought', baseFontSize);
 
-// Dynamic line-height: tightens as font size grows (12px → 1.35, 24px → 1.20)
-const lineHeight = computed(() => {
-    const t = Math.min(1, Math.max(0, (finalFontSize.value - 12) / 12));
-    return +(1.35 - t * 0.15).toFixed(2);
-});
-
 const { justified, toggle: toggleJustify } = usePresentationJustify('thought');
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('thought');
 
@@ -150,7 +144,7 @@ watch(() => props.isOpen, async (isOpen) => {
 
                     <!-- Content -->
                     <div class="flex-1 min-h-0">
-                        <p :class="[typographyClass, 'whitespace-pre-wrap text-mono-100 wrap-break-word']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formattedContent"></p>
+                        <p :class="[typographyClass, 'whitespace-pre-wrap text-mono-100 wrap-break-word']" :style="{ fontSize: finalFontSize + 'px', lineHeight: 'var(--content-leading)', textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formattedContent"></p>
                     </div>
 
                     <!-- Date footer -->

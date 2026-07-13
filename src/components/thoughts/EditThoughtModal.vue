@@ -207,7 +207,7 @@ const charCount = computed(() => content.value.length);
                 <!-- Content -->
                 <div class="flex-1 p-4 overflow-y-auto">
                     <div class="relative h-full flex flex-col gap-4">
-                        <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full flex-1 min-h-40 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="What's on your mind?" :disabled="loading"></textarea>
+                        <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full flex-1 min-h-40 bg-transparent text-mono-100 focus:outline-none resize-none text-base leading-[var(--content-leading)] placeholder:text-mono-600" placeholder="What's on your mind?" :disabled="loading"></textarea>
 
                         <!-- Mood Score Slider -->
                         <div class="flex items-center gap-3">
@@ -263,7 +263,7 @@ const charCount = computed(() => content.value.length);
             <h3 class="text-base font-semibold text-white uppercase tracking-wide">Edit Thought</h3>
 
             <div class="relative">
-                <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-40 max-h-80 text-mono-100 focus:outline-none focus:border-rose focus:ring-1 focus:ring-rose resize-none text-sm leading-relaxed" placeholder="What's on your mind?" @keydown.ctrl.enter="save"></textarea>
+                <textarea ref="textareaRef" v-model="content" :maxlength="MAX_LENGTHS.CONTENT" class="w-full bg-mono-950 border border-mono-800 rounded-lg p-4 min-h-40 max-h-80 text-mono-100 focus:outline-none focus:border-rose focus:ring-1 focus:ring-rose resize-none text-sm leading-[var(--content-leading)]" placeholder="What's on your mind?" @keydown.ctrl.enter="save"></textarea>
                 <div class="absolute bottom-3 right-3 text-xs text-mono-600">{{ charCount }} / {{ MAX_LENGTHS.CONTENT }}</div>
             </div>
 

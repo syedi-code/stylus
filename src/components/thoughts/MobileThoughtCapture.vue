@@ -197,7 +197,7 @@ const handleClose = () => {
 				<!-- Content -->
 				<div class="flex-1 p-4 overflow-y-auto">
 					<div class="relative h-full">
-						<textarea ref="textareaRef" v-model="draft" class="w-full h-full min-h-40 bg-transparent text-mono-100 focus:outline-none resize-none text-lg leading-relaxed placeholder:text-mono-500" placeholder="What's on your mind? 💭" :disabled="loading"></textarea>
+						<textarea ref="textareaRef" v-model="draft" class="w-full h-full min-h-40 bg-transparent text-mono-100 focus:outline-none resize-none text-lg leading-[var(--content-leading)] placeholder:text-mono-500" placeholder="What's on your mind? 💭" :disabled="loading"></textarea>
 					</div>
 				</div>
 

@@ -82,13 +82,13 @@ watch(() => props.quote.book_id, () => {
 const formattedQuote = computed(() => formatMarkdown(props.quote.quote || ''));
 
 const contentLength = computed(() => props.quote.quote?.length ?? 0);
-const { baseFontSize, lineHeightClass, typographyClass } = useTypography('quote', 'thread', contentLength);
+const { baseFontSize, typographyClass } = useTypography('quote', 'thread', contentLength);
 </script>
 
 <template>
   <div class="flex flex-col gap-1.5 p-3 sm:p-4 border border-quote/20 bg-mono-900 rounded-lg">
     <!-- Content -->
-    <blockquote lang="en" :class="[typographyClass, lineHeightClass, 'text-mono-100 border-l-4 border-quote pl-4 sm:pr-2 py-2 whitespace-pre-wrap']" :style="{ fontSize: baseFontSize + 'px' }" v-html="formattedQuote"></blockquote>
+    <blockquote lang="en" :class="[typographyClass, 'text-mono-100 border-l-4 border-quote pl-4 sm:pr-2 py-2 whitespace-pre-wrap']" :style="{ fontSize: baseFontSize + 'px', lineHeight: 'var(--content-leading)' }" v-html="formattedQuote"></blockquote>
 
     <!-- Book attribution -->
     <BookAttribution
