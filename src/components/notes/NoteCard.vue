@@ -30,6 +30,7 @@ const emit = defineEmits<{
   (e: 'delete', note: Note): void;
   (e: 'viewInLibrary', authorId: string): void;
   (e: 'addToThread', note: Note): void;
+  (e: 'convertToThought', note: Note): void;
   (e: 'navigateToThread', threadId: string): void;
 }>();
 
@@ -293,6 +294,13 @@ const toggleExpand = (e: Event) => {
               <path d="M8 12h8" />
             </svg>
           </button>
+          <button @click.stop="emit('convertToThought', note)" class="flex p-1.5 text-mono-500 hover:text-rose-400 hover:bg-rose-500/10 rounded cursor-pointer transition-all active:scale-95" title="Convert to Thought">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18h6" />
+              <path d="M10 22h4" />
+              <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+            </svg>
+          </button>
           <button @click.stop="emit('delete', note)" class="flex p-1.5 text-mono-500 hover:text-red-400 hover:bg-red-500/10 rounded cursor-pointer transition-all active:scale-95" title="Delete Note">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 6h18" />
@@ -360,6 +368,13 @@ const toggleExpand = (e: Event) => {
           <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" />
           <path d="M12 8v8" />
           <path d="M8 12h8" />
+        </svg>
+      </button>
+      <button @click.stop="emit('convertToThought', note)" class="flex-1 h-8 rounded-md bg-mono-800 text-mono-300 flex items-center justify-center active:bg-rose-500/10 active:text-rose-400 transition-colors" title="Convert to Thought">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18h6" />
+          <path d="M10 22h4" />
+          <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
         </svg>
       </button>
       <button @click.stop="emit('delete', note)" class="flex-1 h-8 rounded-md bg-mono-800 text-mono-500 flex items-center justify-center active:bg-red-500/10 active:text-red-400 transition-colors" title="Delete">
