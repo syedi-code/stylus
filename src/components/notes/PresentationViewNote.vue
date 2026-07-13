@@ -4,7 +4,7 @@ import type { Note, Book, Author, Thread } from '../../lib/api';
 import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../../composables/usePresentationFontSize';
-import { useTypography, dynamicLineHeight } from '../../composables/useTypography';
+import { useTypography } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
 import { useAutoChrome } from '../../composables/useAutoChrome';
@@ -65,9 +65,6 @@ const contentLength = computed(() => props.note?.content?.length ?? 0);
 const { baseFontSize, typographyClass } = useTypography('note', 'presentation', contentLength);
 
 const { finalFontSize, setFontSize, reset } = usePresentationFontSize('note', baseFontSize);
-
-// Dynamic line-height: tightens as font size grows (12px → 1.35, 24px → 1.20)
-const lineHeight = computed(() => dynamicLineHeight(finalFontSize.value));
 
 const { justified, toggle: toggleJustify } = usePresentationJustify('note');
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('note');
@@ -254,7 +251,7 @@ const loadAuthorConnection = async () => {
                         <p v-if="note.creator" class="font-medium text-mono-400">{{ note.creator }}</p>
                         <p v-if="note.work" class="italic">{{ note.work }}</p>
                     </div>
-                    <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-white']" :style="{ fontSize: finalFontSize + 'px', lineHeight: lineHeight, textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(note.content)"></p>
+                    <p v-if="note.content" :class="[typographyClass, 'whitespace-pre-wrap text-white']" :style="{ fontSize: finalFontSize + 'px', lineHeight: 'var(--content-leading)', textAlign: justified ? 'justify' : 'left', hyphens: hyphenation ? 'auto' : 'none' }" v-html="formatMarkdown(note.content)"></p>
 
                     <!-- Date footer (a la Thoughts) — revealed by the meta toggle. -->
                     <div v-show="showMeta" class="mt-4 pt-3 text-xs text-mono-500">
