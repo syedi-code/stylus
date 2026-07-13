@@ -8,6 +8,7 @@ import {
     fetchBooks,
     fetchBookById,
     deleteNote,
+    createThought,
     fetchThreadsForEntities,
     fetchThreadsForEntity,
     fetchConnectionsForEntities,
@@ -369,6 +370,33 @@ const handleDelete = async (note: Note) => {
     }
 };
 
+// Card whose exit animation is currently playing on conversion.
+const convertingId = ref<string | null>(null);
+
+const handleConvertToThought = async (note: Note) => {
+    if (!confirm('Convert this note to a thought? The original note will be deleted.')) {
+        return;
+    }
+    try {
+        await createThought({
+            content: note.content,
+            created_at: note.originalCreatedAt || note.created_at, // preserve date
+        });
+        await deleteNote(note.id);
+        // Let the card play its exit animation (mirrors the deal-in on edit)
+        // before it's removed from the deal.
+        convertingId.value = note.id;
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        dealNotes.value = dealNotes.value.filter((n) => n.id !== note.id);
+        pagination.removeItem((n) => n.id === note.id);
+        dealTotal.value = Math.max(0, dealTotal.value - 1);
+    } catch (err) {
+        console.error('Failed to convert note to thought:', err);
+    } finally {
+        convertingId.value = null;
+    }
+};
+
 // ============================================================================
 // Infinite scroll (search mode only)
 // ============================================================================
@@ -504,7 +532,7 @@ defineExpose({
 
                     <!-- Dealt cards -->
                     <template v-else>
-                        <NoteCard v-for="(note, i) in dealNotes" :key="`${dealKey}-${note.id}`" :note="note" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" :latestThread="noteThreads.get(note.id) ?? null" variant="deal" class="deal-in" :style="{ animationDelay: `${i * 60}ms` }" @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @addToThread="emit('addToThread', $event)" @navigateToThread="emit('navigateToThread', $event)" />
+                        <NoteCard v-for="(note, i) in dealNotes" :key="`${dealKey}-${note.id}`" :note="note" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" :latestThread="noteThreads.get(note.id) ?? null" variant="deal" class="deal-in" :class="{ 'convert-out': note.id === convertingId }" :style="{ animationDelay: `${i * 60}ms` }" @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @addToThread="emit('addToThread', $event)" @convertToThought="handleConvertToThought" @navigateToThread="emit('navigateToThread', $event)" />
 
                         <!-- End of the deal — finite by design -->
                         <div class="flex flex-col items-center gap-3 pt-2 pb-4">
@@ -572,7 +600,7 @@ defineExpose({
                     </div>
 
                     <template v-else>
-                        <NoteCard v-for="note in searchNotes" :key="note.id" :note="note" :searchQuery="searchQuery" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" :latestThread="noteThreads.get(note.id) ?? null" clamp @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @addToThread="emit('addToThread', $event)" @navigateToThread="emit('navigateToThread', $event)" />
+                        <NoteCard v-for="note in searchNotes" :key="note.id" :note="note" :class="{ 'convert-out': note.id === convertingId }" :searchQuery="searchQuery" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" :latestThread="noteThreads.get(note.id) ?? null" clamp @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @addToThread="emit('addToThread', $event)" @convertToThought="handleConvertToThought" @navigateToThread="emit('navigateToThread', $event)" />
 
                         <!-- Infinite scroll sentinel -->
                         <div ref="scrollSentinel" class="h-1"></div>
@@ -605,6 +633,25 @@ defineExpose({
     }
 }
 
+/* Conversion to a thought: the card lifts away and fades — a mirror of the
+   deal-in, reusing the same easing so it feels of a piece. */
+.convert-out {
+    animation: convert-away 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    pointer-events: none;
+}
+
+@keyframes convert-away {
+    from {
+        opacity: 1;
+        transform: none;
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-14px) scale(0.985);
+    }
+}
+
 /* Mode switch: outgoing view blurs away, incoming rises into focus */
 .mode-enter-active {
     transition:
@@ -633,7 +680,8 @@ defineExpose({
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .deal-in {
+    .deal-in,
+    .convert-out {
         animation: none;
     }
 
