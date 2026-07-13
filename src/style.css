@@ -234,8 +234,15 @@ body {
 	display: block;
 	background: var(--color-essay);
 	/* a slight gradient — subtle warmth, not the full foil sheen */
-	background-image: linear-gradient(152deg, #edbb69 0%, var(--color-essay) 56%, #d28f37 128%);
-	box-shadow: inset 0 1px 0 rgba(255, 245, 220, 0.4), inset 0 -1.5px 0 rgba(120, 70, 20, 0.35);
+	background-image: linear-gradient(
+		152deg,
+		#edbb69 0%,
+		var(--color-essay) 56%,
+		#d28f37 128%
+	);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 245, 220, 0.4),
+		inset 0 -1.5px 0 rgba(120, 70, 20, 0.35);
 	color: #140d03;
 	border-radius: 20px;
 }
@@ -252,6 +259,139 @@ body {
 	color: var(--color-essay);
 	padding: 0 0.26em;
 	border-radius: 4px;
+}
+
+/* ── Quote surface system (shared: writing-view foil, presentation quote
+   slides/standalone, and Quotes-tab list cards) ──
+   Three modes toggled by usePresentationQuoteMode: 'textured' (dark gilt-
+   bordered card over a baked grain texture, the default), 'fullbleed' (the
+   texture fills the whole host), and 'plain' (no surface at all — quote text
+   directly on the page's dark ground). `.quote-card` supplies shared padding;
+   `.qc-body`/`.qc-mark` the shared text treatment; `.is-textured` /
+   `.qsb-fullbleed` / `.fb-inner` / `.fb-quote` the two textured surfaces. */
+.quote-card {
+	margin: 0;
+	padding: 1.15em 1.4em;
+	text-wrap: pretty;
+}
+.qc-body {
+	position: relative;
+	z-index: 2;
+	color: var(--color-mono-100);
+}
+.qc-mark {
+	color: #e8d0a8;
+}
+
+/* Noir grit textured surface — a gilt-bevel border over a baked film-grain
+   texture (a decoded PNG, no live filter). A vertical scrim darkens the text
+   band; a text-shadow adds the last lift. */
+.is-textured {
+	position: relative;
+	z-index: 1;
+	border-radius: 16px;
+	/* Flat gold outline (not the graded bevel) — dim, receding antique gold.
+	   No `overflow: hidden` here: clipping a hard-edged texture fill to the
+	   rounded border box leaves a jagged AA seam at the corners on desktop.
+	   Instead each texture layer rounds its OWN background (backgrounds clip to
+	   border-radius for free), so the gilt border's corners stay crisp. */
+	border: 1px solid #8a7548;
+	background: #050505;
+	background-clip: padding-box;
+	box-shadow: 0 22px 52px -28px rgba(0, 0, 0, 0.88);
+}
+.is-textured::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	border-radius: inherit;
+	background-image: var(--tex);
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+.is-textured::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	border-radius: inherit;
+	background: linear-gradient(
+		180deg,
+		rgba(5, 5, 5, 0.1) 0%,
+		rgba(5, 5, 5, 0.42) 50%,
+		rgba(5, 5, 5, 0.12) 100%
+	);
+}
+.is-textured .qc-body {
+	color: #ededed;
+	text-shadow: 0 1px 9px rgba(0, 0, 0, 0.6);
+}
+
+/* Full-bleed surface — the texture fills the whole (relative/positioned)
+   host; quote + credit float on it with a legibility wash. */
+.qsb-fullbleed {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+}
+.qsb-fullbleed::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	background-image: var(--tex);
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+/* Presentation views (Quotes tab + Essays deck, via QuoteSlideBody) dim the
+   full-bleed texture to 80% so the floated quote reads better on it. The
+   writing-view foil (FoilQuote) keeps full brightness — it isn't tagged. */
+.qsb-fullbleed--dim::before {
+	filter: brightness(0.8);
+}
+.qsb-fullbleed::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	background:
+		radial-gradient(
+			120% 78% at 50% 44%,
+			rgba(5, 5, 5, 0.5),
+			rgba(5, 5, 5, 0) 60%
+		),
+		linear-gradient(
+			180deg,
+			rgba(5, 5, 5, 0.32) 0%,
+			rgba(5, 5, 5, 0) 24%,
+			rgba(5, 5, 5, 0) 70%,
+			rgba(5, 5, 5, 0.46) 100%
+		);
+}
+.fb-inner {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow-y: auto;
+}
+.fb-quote {
+	font-weight: 400;
+}
+.fb-quote .qc-body {
+	color: #ededed;
+	text-shadow: 0 1px 14px rgba(0, 0, 0, 0.7);
+}
+/* the floating credit needs a shadow to read on the open texture */
+.qsb-fullbleed .qcite {
+	text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
 }
 
 /* Search Highlight */

@@ -2,7 +2,7 @@
 import { computed, ref, watch, nextTick, onMounted } from 'vue';
 import { getSignedFileUrlCached, type Note, type Book, type Author, type Thread } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
-import { useViewportWidth } from '../../composables/useViewportWidth';
+import { useDynamicContentFontSize } from '../../composables/useDynamicContentFontSize';
 import AuthorPopover from '../library/AuthorPopover.vue';
 import SkeletonBlock from '../shared/SkeletonBlock.vue';
 import BookAttribution from '../books/BookAttribution.vue';
@@ -157,24 +157,26 @@ const distanceColor = computed(() => {
  * the window — medium-width browser windows get a smaller cut so the
  * measure stays sensible.
  */
-const vw = useViewportWidth();
-const dealFontSize = computed(() => {
-  const len = props.note.content?.length ?? 0;
-  let base: number;
-  if (vw.value < 640) {
+const dealFontSize = useDynamicContentFontSize(
+  computed(() => props.note.content?.length ?? 0),
+  {
     // Phone: tighter measure — cap the top size and step down sooner.
-    if (len <= 160) base = 17.5;
-    else if (len <= 300) base = 15;
-    else base = 13.5;
-  } else {
-    if (len <= 170) base = 20;
-    else if (len <= 380) base = 16.5;
-    else base = 14.5;
-    if (vw.value < 1100) base *= 0.88; // medium browser window
-    else if (vw.value < 1400) base *= 0.94; // laptop
+    mobile: [
+      { maxLength: 160, size: 17.5 },
+      { maxLength: 300, size: 15 },
+      { maxLength: Infinity, size: 13.5 },
+    ],
+    desktop: [
+      { maxLength: 170, size: 20 },
+      { maxLength: 380, size: 16.5 },
+      { maxLength: Infinity, size: 14.5 },
+    ],
+    desktopScaleBreaks: [
+      { width: 1100, factor: 0.88 }, // medium browser window
+      { width: 1400, factor: 0.94 }, // laptop
+    ],
   }
-  return Math.round(base * 10) / 10;
-});
+);
 
 const bodyClass = computed(() =>
   isDeal.value ? '' : 'text-sm leading-[var(--content-leading)]'

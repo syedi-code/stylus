@@ -29,7 +29,9 @@ watch(
         if (!open) return;
         activeTab.value = props.initialKind ?? 'quote';
         search.value = '';
-        await ensureLoaded();
+        // Force-refresh: quotes captured or edited since the catalogue first
+        // loaded must show up in the picker (concurrent opens share a flight).
+        await ensureLoaded(true);
         if (authors.value.length && !selectedAuthorId.value) {
             selectedAuthorId.value = authors.value[0].id;
         }
