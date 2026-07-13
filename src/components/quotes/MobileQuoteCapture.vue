@@ -152,7 +152,7 @@ const handleClose = () => {
                 <!-- Content -->
                 <div class="flex-1 p-4 overflow-y-auto">
                     <div class="relative h-full">
-                        <textarea ref="textareaRef" v-model="draft" :maxlength="MAX_LENGTHS.CONTENT" class="w-full h-full min-h-50 bg-transparent text-mono-100 italic focus:outline-none resize-none text-base leading-relaxed placeholder:text-mono-600" placeholder="Enter quote..." :disabled="loading"></textarea>
+                        <textarea ref="textareaRef" v-model="draft" :maxlength="MAX_LENGTHS.CONTENT" class="w-full h-full min-h-50 bg-transparent text-mono-100 italic focus:outline-none resize-none text-base leading-[var(--content-leading)] placeholder:text-mono-600" placeholder="Enter quote..." :disabled="loading"></textarea>
                     </div>
                 </div>
 

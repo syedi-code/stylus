@@ -16,12 +16,21 @@ const emit = defineEmits<{
 	(e: 'navigateToThread', threadId: string): void;
 }>();
 
-const pagination = usePagination<Thought>({
+const pagination = usePagination<Thought, { q?: string }>({
 	fetchFn: (params) => fetchThoughts(params),
 	pageSize: 50,
 });
 
 const search = ref('');
+
+// Server-side search: debounce, then restart pagination with the query
+let searchDebounce: ReturnType<typeof setTimeout>;
+watch(search, () => {
+	clearTimeout(searchDebounce);
+	searchDebounce = setTimeout(() => {
+		pagination.reset({ q: search.value.trim() || undefined });
+	}, 300);
+});
 
 // Infinite scroll sentinel
 const thoughtsScrollSentinel = ref<HTMLElement | null>(null);
@@ -34,22 +43,15 @@ const editingThought = ref<Thought | null>(null);
 // Presentation modal state
 const presentingThought = ref<Thought | null>(null);
 
-// Group thoughts by date
+// Group thoughts by date (server already applied the search filter)
 const groupedThoughts = computed(() => {
-	const filtered = pagination.items.value.filter(t => {
-		if (!search.value.trim()) return true;
-		const q = search.value.toLowerCase();
-		return t.content.toLowerCase().includes(q) ||
-			t.mood_tags?.some(tag => tag.toLowerCase().includes(q));
-	});
-
 	const groups: { date: string; label: string; thoughts: Thought[] }[] = [];
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
 	const yesterday = new Date(today);
 	yesterday.setDate(yesterday.getDate() - 1);
 
-	for (const thought of filtered) {
+	for (const thought of pagination.items.value) {
 		const thoughtDate = new Date(thought.created_at);
 		thoughtDate.setHours(0, 0, 0, 0);
 		const dateKey = thoughtDate.toISOString().split('T')[0];
@@ -79,7 +81,7 @@ const groupedThoughts = computed(() => {
 });
 
 const loadThoughts = async () => {
-	await pagination.reset();
+	await pagination.reset({ q: search.value.trim() || undefined });
 };
 
 const handleDelete = async (id: string) => {

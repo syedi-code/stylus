@@ -82,7 +82,7 @@ const handleCopy = async () => {
 			<span class="text-[11.5px] font-medium text-thread-muted group-hover/thread:text-thread transition-colors max-w-[240px] truncate">{{ latestThread.name }}</span>
 		</button>
 		<!-- Content -->
-		<p class="typography-prose text-mono-100 text-sm leading-[1.25] whitespace-pre-wrap wrap-break-word" v-html="formattedContent"></p>
+		<p class="typography-prose text-mono-100 text-sm leading-[var(--content-leading)] whitespace-pre-wrap wrap-break-word" v-html="formattedContent"></p>
 
 		<!-- Mood Display -->
 		<div v-if="moodEmoji || (thought.mood_tags && thought.mood_tags.length > 0)" class="flex items-center gap-2 mt-3 flex-wrap">

@@ -30,7 +30,7 @@ const gradient = computed(() => {
     </div>
 
     <!-- Text -->
-    <p class="typography-prose whitespace-pre-wrap leading-[1.25] text-sm text-mono-100" v-html="formatMarkdown(essay.content)"></p>
+    <p class="typography-prose whitespace-pre-wrap leading-[var(--content-leading)] text-sm text-mono-100" v-html="formatMarkdown(essay.content)"></p>
 
     <!-- References -->
     <EssayReferenceChips v-if="essay.references.length" :references="essay.references" />
