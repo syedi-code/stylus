@@ -2,7 +2,6 @@
 import { computed, ref, watch, nextTick, onMounted } from 'vue';
 import { getSignedFileUrlCached, type Note, type Book, type Author, type Thread } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
-import { dynamicLineHeight } from '../../composables/useTypography';
 import { useViewportWidth } from '../../composables/useViewportWidth';
 import AuthorPopover from '../library/AuthorPopover.vue';
 import SkeletonBlock from '../shared/SkeletonBlock.vue';
@@ -177,24 +176,15 @@ const dealFontSize = computed(() => {
 });
 
 const bodyClass = computed(() =>
-  isDeal.value ? '' : 'text-sm leading-[1.25]'
+  isDeal.value ? '' : 'text-sm leading-[var(--content-leading)]'
 );
 
-/**
- * Deal cards read tighter than presentation — an extra trim on the shared
- * curve that grows with font size (−0.02 at 12px → −0.07 at 20px+).
- */
-const dealLineHeight = (px: number): number => {
-  const t = Math.min(1, Math.max(0, (px - 12) / 8));
-  return +(dynamicLineHeight(px) - 0.02 - t * 0.05).toFixed(2);
-};
-
-/** Deal variant: px sizing + tightened line-height curve. */
+/** Deal variant: px sizing only — line-height is the shared 1.08 (--content-leading). */
 const bodyStyle = computed(() => {
   if (!isDeal.value) return {};
   return {
     fontSize: `${dealFontSize.value}px`,
-    lineHeight: String(dealLineHeight(dealFontSize.value)),
+    lineHeight: 'var(--content-leading)',
   };
 });
 

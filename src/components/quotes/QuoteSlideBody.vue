@@ -52,7 +52,7 @@ const html = computed(() => formatMarkdown(props.text));
     <div v-if="mode === 'foil' || mode === 'textured'" class="w-full sm:max-w-2xl mx-auto px-6 sm:px-4">
         <blockquote lang="en" :class="[typographyClass, 'quote-card whitespace-pre-wrap', mode === 'foil' ? 'foil-bubble foil-text' : 'is-textured']" :style="{
             fontSize: fontSize + 'px',
-            lineHeight: 'var(--leading-quote)',
+            lineHeight: 'var(--content-leading)',
             fontWeight: mode === 'foil' ? 500 : 400,
             textAlign: justified ? 'justify' : 'left',
             hyphens: hyphenation ? 'auto' : 'none',
@@ -72,7 +72,7 @@ const html = computed(() => formatMarkdown(props.text));
             <div class="w-full sm:max-w-2xl mx-auto px-6 sm:px-4">
                 <blockquote lang="en" :class="[typographyClass, 'quote-card fb-quote whitespace-pre-wrap']" :style="{
                     fontSize: fontSize + 'px',
-                    lineHeight: 'var(--leading-quote)',
+                    lineHeight: 'var(--content-leading)',
                     textAlign: justified ? 'justify' : 'left',
                     hyphens: hyphenation ? 'auto' : 'none',
                 }">
@@ -88,7 +88,7 @@ const html = computed(() => formatMarkdown(props.text));
         <div class="pl-2 pr-4 pt-4 pb-0 sm:pl-3 sm:pr-5 sm:pt-5 sm:pb-0 min-h-0 overflow-y-auto scrollbar-hide flex-1">
             <blockquote lang="en" :class="[typographyClass, 'text-white py-2 whitespace-pre-wrap']" :style="{
                 fontSize: fontSize + 'px',
-                lineHeight: 'var(--leading-quote)',
+                lineHeight: 'var(--content-leading)',
                 textAlign: justified ? 'justify' : 'left',
                 hyphens: hyphenation ? 'auto' : 'none',
             }">
@@ -138,7 +138,6 @@ const html = computed(() => formatMarkdown(props.text));
 	background-size: cover;
 	background-position: center;
 	background-repeat: no-repeat;
-	filter: brightness(0.82);
 }
 /* legibility scrim — darkens the middle band the text sits in */
 .is-textured::after {
@@ -175,8 +174,10 @@ const html = computed(() => formatMarkdown(props.text));
 	background-size: cover;
 	background-position: center;
 	background-repeat: no-repeat;
-	/* darken the texture client-side (tunable, no re-bake) */
-	filter: brightness(0.25);
+	/* darken the texture client-side (tunable, no re-bake). NB: the texture is
+	   already very dark (~2.6% mean luminance), so values below ~0.4 crush it to
+	   black and it reads as "missing" — keep it in the ~0.4–0.7 range. */
+	filter: brightness(0.60);
 }
 .qsb-fullbleed::after {
 	content: '';
