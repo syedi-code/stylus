@@ -46,7 +46,7 @@ const page = computed(() => quote.value?.page ?? '');
 	padding: 14px 18px;
 	font-size: 15px;
 	font-weight: 500;
-	line-height: 1.2;
+	line-height: var(--leading-quote);
 	text-wrap: pretty;
 }
 .qbody .missing {
