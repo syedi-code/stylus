@@ -1,0 +1,87 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import { parseAuthors } from '../../../lib/bookAttribution';
+
+/**
+ * Quote credit (mockup 06/09 · variant V2), shared by the writing-view foil and
+ * the presentation slide so they read identically:
+ *
+ *   {Author}
+ *   in {Book} published {Year}
+ *
+ * Author surname takes the app's deterministic color-hash; "in" / "published"
+ * are quiet italic connectives; the book title is gold, the year white.
+ */
+const props = defineProps<{
+	author?: string;
+	title?: string;
+	year?: string | number;
+	page?: string;
+	/** Larger type for presentation slides. */
+	presentation?: boolean;
+}>();
+
+const authors = computed(() => parseAuthors(props.author));
+const hasYear = computed(() => props.year !== undefined && props.year !== null && `${props.year}` !== '');
+</script>
+
+<template>
+	<div class="qcite" :class="{ pres: presentation }">
+		<div v-if="authors.length" class="name">
+			<span class="conn">by </span><template v-for="(a, i) in authors" :key="i">
+				<span v-if="i > 0"> &amp; </span><span class="given">{{ a.firstParts }}</span><span class="surname" :style="{ color: a.color }">{{ a.lastName }}</span><span v-if="a.suffix" class="given">{{ a.suffix }}</span>
+			</template>
+		</div>
+		<div v-if="title" class="row"><span class="conn">in </span><span class="work">{{ title }}</span><template v-if="page"><span class="pg">, p.&nbsp;</span><span class="pgn">{{ page }}</span></template></div>
+		<div v-if="hasYear" class="row"><span class="conn">published </span><span class="yr">{{ year }}</span></div>
+	</div>
+</template>
+
+<style scoped>
+.qcite {
+	text-align: right;
+}
+.name {
+	font-size: 12.5px;
+	line-height: 1.2;
+}
+.given {
+	color: var(--color-mono-300);
+}
+.surname {
+	font-weight: 600;
+}
+.row {
+	font-size: 12px;
+	line-height: 1.25;
+}
+.conn {
+	font-style: italic;
+	color: var(--color-mono-500);
+}
+.work {
+	font-style: italic;
+	color: #e8d0a8;
+}
+.yr {
+	color: #fff;
+	font-variant-numeric: lining-nums;
+}
+.pg {
+	color: var(--color-mono-500);
+}
+.pgn {
+	color: #fff;
+	font-variant-numeric: lining-nums;
+}
+
+/* presentation scale */
+.pres .name {
+	font-size: 17px;
+	line-height: 1.2;
+}
+.pres .row {
+	font-size: 15px;
+	line-height: 1.3;
+}
+</style>
