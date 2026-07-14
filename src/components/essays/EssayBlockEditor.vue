@@ -441,11 +441,13 @@ function endDrag() {
 						v-if="block.kind === 'quote'"
 						type="button"
 						class="ra"
-						:class="{ active: quoteMode !== 'textured' }"
-						:title="`Quote surface (${quoteMode}) — tap to change`"
+						:class="{ active: quoteMode !== 'plain' }"
+						:title="`Surface: ${quoteMode} — tap to change`"
 						@click.stop="cycleQuoteMode()"
 					>
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.6" fill="currentColor" stroke="none" /><path d="m21 15-4.5-4.5L7 20" /></svg>
+						<svg v-if="quoteMode === 'textured'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.6" fill="currentColor" stroke="none" /><path d="m21 15-4.5-4.5L7 20" /></svg>
+						<svg v-else-if="quoteMode === 'fullbleed'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M16 3h3a2 2 0 0 1 2 2v3" /><path d="M21 16v3a2 2 0 0 1-2 2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /></svg>
+						<svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h10" /></svg>
 					</button>
 					<button type="button" class="ra danger" title="Delete" @click.stop="railDelete(block.bid)">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" /></svg>
