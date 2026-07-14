@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useSourceLibrary } from '../../../composables/useSourceLibrary';
-import { usePresentationQuoteMode, variantForSeed } from '../../../composables/usePresentationQuoteMode';
+import { usePresentationQuoteMode, variantForSeed, textureAsset } from '../../../composables/usePresentationQuoteMode';
 import { formatMarkdown } from '../../../lib/formatText';
 import type { EmbedBlock } from '../../../composables/useEssayBlocks';
 import EssayQuoteCite from './EssayQuoteCite.vue';
@@ -29,8 +29,7 @@ const page = computed(() => quote.value?.page ?? '');
 
 const textureUrl = computed(() => {
 	if (mode.value === 'plain') return undefined;
-	const prefix = mode.value === 'fullbleed' ? 'fb' : 'tex';
-	return `/textures/${prefix}-${variantForSeed(props.block.id)}.png`;
+	return textureAsset(variantForSeed(props.block.id), mode.value === 'fullbleed' ? 'fullbleed' : 'card');
 });
 </script>
 

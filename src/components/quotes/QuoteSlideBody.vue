@@ -36,9 +36,12 @@ const props = defineProps<{
      *  the slide), or 'plain' (no surface — text directly on the dark
      *  ground). Undefined behaves like 'plain'. */
     mode?: 'textured' | 'fullbleed' | 'plain';
-    /** Chosen texture asset for 'textured' (/textures/tex-0X.png) or
-     *  'fullbleed' (/textures/fb-0X.png). */
+    /** Chosen texture asset for 'textured' (/textures/tex-<slug>.webp) or
+     *  'fullbleed' (/textures/fb-<slug>.webp). */
     textureUrl?: string;
+    /** Optional darkness wash strength (0–0.9). When set, overrides the static
+     *  `--tex-darkness` default on the surface; undefined keeps the CSS value. */
+    darkness?: number;
 }>();
 
 const html = computed(() => formatMarkdown(props.text));
@@ -54,6 +57,7 @@ const html = computed(() => formatMarkdown(props.text));
             textAlign: justified ? 'justify' : 'left',
             hyphens: hyphenation ? 'auto' : 'none',
             '--tex': textureUrl ? `url(${textureUrl})` : 'none',
+            '--tex-darkness': darkness != null ? String(darkness) : undefined,
         }">
             <span class="qc-body"><span v-if="withQuotationMarks" class="qc-mark" aria-hidden="true">&ldquo;</span><span v-html="html"></span><span v-if="withQuotationMarks" class="qc-mark" aria-hidden="true">&rdquo;</span></span>
         </blockquote>
@@ -62,7 +66,7 @@ const html = computed(() => formatMarkdown(props.text));
 
     <!-- Full-bleed: the texture fills the whole slide; quote + credit float on
          it with a legibility wash. Absolute-fills the (relative) host slide. -->
-    <div v-else-if="mode === 'fullbleed'" class="qsb-fullbleed qsb-fullbleed--dim" :style="{ '--tex': textureUrl ? `url(${textureUrl})` : 'none' }">
+    <div v-else-if="mode === 'fullbleed'" class="qsb-fullbleed qsb-fullbleed--dim" :style="{ '--tex': textureUrl ? `url(${textureUrl})` : 'none', '--tex-darkness': darkness != null ? String(darkness) : undefined }">
         <!-- Same column as the card branch (wrapper + quote-card padding), so
              the quote wraps at the same width — just no card surface. -->
         <div class="fb-inner">
