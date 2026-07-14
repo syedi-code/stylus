@@ -46,6 +46,9 @@ const props = defineProps<{
     /** Optional darkness wash strength (0–0.9). When set, overrides the static
      *  `--tex-darkness` default on the surface; undefined keeps the CSS value. */
     darkness?: number;
+    /** Seeded CSS object-position ("x% y%") for the full-bleed texture, so each
+     *  quote frames a different region. Undefined falls back to the CSS `center`. */
+    textureObjectPosition?: string;
 }>();
 
 const html = computed(() => formatMarkdown(props.text));
@@ -79,7 +82,7 @@ const { src: texSrc } = useTextureImage(
     <!-- Full-bleed: the texture fills the whole slide; quote + credit float on
          it with a legibility wash. Absolute-fills the (relative) host slide. -->
     <div v-else-if="mode === 'fullbleed'" class="qsb-fullbleed" :style="{ '--tex-darkness': darkness != null ? String(darkness) : undefined }">
-        <img v-if="texSrc" class="tex-img tex-img--dim" :src="texSrc" alt="" aria-hidden="true" />
+        <img v-if="texSrc" class="tex-img tex-img--dim" :src="texSrc" :style="{ objectPosition: textureObjectPosition }" alt="" aria-hidden="true" />
         <!-- Same column as the card branch (wrapper + quote-card padding), so
              the quote wraps at the same width — just no card surface. -->
         <div class="fb-inner">

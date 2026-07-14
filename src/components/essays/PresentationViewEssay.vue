@@ -9,7 +9,7 @@ import {
 } from '../../composables/usePresentationFontSize';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
-import { usePresentationQuoteMode, textureAsset, variantForSeed } from '../../composables/usePresentationQuoteMode';
+import { usePresentationQuoteMode, textureAsset, variantForSeed, objectPositionForSeed } from '../../composables/usePresentationQuoteMode';
 import { usePresentationTextureDarkness, DARKNESS_MIN, DARKNESS_MAX, DARKNESS_STEP } from '../../composables/usePresentationTextureDarkness';
 import { useEssaySlides } from '../../composables/useEssaySlides';
 import { useSwipeNavigation } from '../../composables/useSwipeNavigation';
@@ -68,6 +68,12 @@ function quoteTextureUrl(reference: EssayReference): string {
 // fallback for the heavier full-bleed tier (see useTextureImage).
 function quoteCardTextureUrl(reference: EssayReference): string {
     return textureAsset(variantForSeed(reference.entity_id), 'card');
+}
+
+// Seeded crop position (full-bleed) — same seed as the variant so texture +
+// crop stay consistent for a given quote.
+function quoteObjectPosition(reference: EssayReference): string {
+    return objectPositionForSeed(reference.entity_id);
 }
 
 // Darkness slider only applies to a textured quote slide.
@@ -419,6 +425,7 @@ function openDarkness() {
                                 :mode="quoteMode"
                                 :texture-url="quoteTextureUrl(slide.reference)"
                                 :fallback-texture-url="quoteCardTextureUrl(slide.reference)"
+                                :texture-object-position="quoteObjectPosition(slide.reference)"
                                 :darkness="darkness"
                             />
                             <EssayBookCoverSlide
