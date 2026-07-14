@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useSourceLibrary } from '../../../composables/useSourceLibrary';
 import { usePresentationQuoteMode, variantForSeed, textureAsset } from '../../../composables/usePresentationQuoteMode';
 import { formatMarkdown } from '../../../lib/formatText';
@@ -31,11 +31,16 @@ const textureUrl = computed(() => {
 	if (mode.value === 'plain') return undefined;
 	return textureAsset(variantForSeed(props.block.id), mode.value === 'fullbleed' ? 'fullbleed' : 'card');
 });
+
+// Tracks which texture URL has decoded, so .tex-img fades in on load and
+// re-fades when the surface mode swaps the asset (tex-* ↔ fb-*).
+const loadedSrc = ref('');
 </script>
 
 <template>
 	<div class="fq" :class="{ 'fq-fullbleed': mode === 'fullbleed' }">
-		<div v-if="mode === 'fullbleed'" class="qsb-fullbleed" :style="{ '--tex': textureUrl ? `url(${textureUrl})` : 'none' }">
+		<div v-if="mode === 'fullbleed'" class="qsb-fullbleed">
+			<img v-if="textureUrl" class="tex-img" :class="{ 'is-loaded': loadedSrc === textureUrl }" :src="textureUrl" @load="loadedSrc = textureUrl" alt="" aria-hidden="true" decoding="async" />
 			<div class="fb-inner">
 				<blockquote class="quote-card fb-quote qbody">
 					<template v-if="quote"><span class="qc-body"><span class="qc-mark">&ldquo;</span><span v-html="html"></span><span class="qc-mark">&rdquo;</span></span></template>
@@ -43,7 +48,8 @@ const textureUrl = computed(() => {
 				</blockquote>
 			</div>
 		</div>
-		<blockquote v-else class="quote-card qbody" :class="mode === 'textured' ? 'is-textured' : ''" :style="mode === 'textured' ? { '--tex': textureUrl ? `url(${textureUrl})` : 'none' } : {}">
+		<blockquote v-else class="quote-card qbody" :class="mode === 'textured' ? 'is-textured' : ''">
+			<img v-if="mode === 'textured' && textureUrl" class="tex-img" :class="{ 'is-loaded': loadedSrc === textureUrl }" :src="textureUrl" @load="loadedSrc = textureUrl" alt="" aria-hidden="true" decoding="async" />
 			<template v-if="quote"><span class="qc-body"><span class="qc-mark">&ldquo;</span><span v-html="html"></span><span class="qc-mark">&rdquo;</span></span></template>
 			<span v-else class="missing">quote unavailable</span>
 		</blockquote>

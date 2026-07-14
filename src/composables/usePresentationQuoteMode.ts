@@ -10,14 +10,13 @@ import { ref, type Ref } from 'vue';
  * stale `'foil'` value from before this mode was retired is silently rejected
  * by the `ORDER.includes()` guard in `load()` and falls back to the default.
  *
- * The texture (textured + fullbleed) is chosen pseudo-randomly per slide index
- * via variantForIndex — stable so a slide doesn't flicker on re-render, but
- * varied across the deck. reshuffle() re-randomizes the whole mapping (called
- * when entering a texture mode or re-opening the deck). variantForSeed offers
- * the same stable pick keyed by an arbitrary id string instead of a slide
- * index, for non-deck contexts (writing-view foils, Quotes-tab list cards).
+ * The texture variant is a pure function of the quote's id (variantForSeed):
+ * every surface — Quotes-tab card, essay-writing foil, presentation modal, and
+ * essay deck — derives the same stable variant for a given quote. So a quote
+ * looks identical everywhere, and toggling the surface mode never swaps (nor
+ * re-fetches) the texture; it only changes how that one texture is framed.
  * Build the asset URL with textureAsset(variant, kind) — 'card' → tex-*, and
- * 'fullbleed' → fb-* — served as small WebP from /public/textures.
+ * 'fullbleed' → fb-* — served as WebP from /public/textures.
  */
 export type QuoteMode = 'textured' | 'fullbleed' | 'plain';
 
@@ -39,11 +38,7 @@ export function textureAsset(variant: string, kind: 'card' | 'fullbleed'): strin
 	return `/textures/${kind === 'fullbleed' ? 'fb' : 'tex'}-${variant}.webp`;
 }
 
-interface Shared {
-	mode: Ref<QuoteMode>;
-	shuffleSeed: Ref<number>;
-}
-const instances = new Map<string, Shared>();
+const instances = new Map<string, Ref<QuoteMode>>();
 
 function load(key: string): QuoteMode {
 	try {
@@ -80,45 +75,20 @@ export function usePresentationQuoteMode(entity: string = 'quote') {
 	const storageKey = `${BASE_KEY}-${entity}`;
 
 	if (!instances.has(storageKey)) {
-		instances.set(storageKey, {
-			mode: ref(load(storageKey)),
-			shuffleSeed: ref(1),
-		});
+		instances.set(storageKey, ref(load(storageKey)));
 	}
-	const { mode, shuffleSeed } = instances.get(storageKey)!;
-
-	function reshuffle() {
-		shuffleSeed.value = (shuffleSeed.value * 1103515245 + 12345) >>> 0 || 1;
-	}
-
-	/** Stable pseudo-random texture variant (a VARIANTS slug) for a slide. */
-	function variantForIndex(i: number): string {
-		const h =
-			(Math.imul(i + 1, 2654435761) ^
-				Math.imul(shuffleSeed.value, 40503)) >>>
-			0;
-		return VARIANTS[h % VARIANTS.length];
-	}
+	const mode = instances.get(storageKey)!;
 
 	function cycle() {
 		const next = ORDER[(ORDER.indexOf(mode.value) + 1) % ORDER.length];
 		mode.value = next;
 		save(storageKey, next);
-		// Entering a texture mode picks a fresh random background. Loop the
-		// reshuffle so the primary variant is guaranteed to differ from the one
-		// just shown — otherwise a 1-in-N seed collision reads as "nothing
-		// changed" when cycling back into a texture.
-		if (next === 'textured' || next === 'fullbleed') {
-			const prev = variantForIndex(0);
-			for (let i = 0; i < 8 && variantForIndex(0) === prev; i++) reshuffle();
-		}
 	}
 
-	/** Force back to the default rounded card and re-randomize the texture. */
+	/** Force back to the default rounded card. */
 	function reset() {
 		mode.value = 'textured';
 		save(storageKey, 'textured');
-		reshuffle();
 	}
 
 	return {
@@ -126,11 +96,7 @@ export function usePresentationQuoteMode(entity: string = 'quote') {
 		mode,
 		/** advance textured → fullbleed → plain → textured */
 		cycle,
-		/** re-randomize the per-slide texture mapping */
-		reshuffle,
 		/** reset to the default 'textured' card */
 		reset,
-		/** stable texture variant key for a slide index */
-		variantForIndex,
 	};
 }

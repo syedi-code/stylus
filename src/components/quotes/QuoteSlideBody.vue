@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { formatMarkdown } from '../../lib/formatText';
 import EssayQuoteCite from '../essays/blocks/EssayQuoteCite.vue';
 
@@ -45,6 +45,10 @@ const props = defineProps<{
 }>();
 
 const html = computed(() => formatMarkdown(props.text));
+
+// Tracks which texture URL has finished decoding, so .tex-img fades in on load
+// and re-fades when the surface mode swaps the asset (tex-* ↔ fb-*).
+const loadedSrc = ref('');
 </script>
 
 <template>
@@ -56,9 +60,9 @@ const html = computed(() => formatMarkdown(props.text));
             fontWeight: 400,
             textAlign: justified ? 'justify' : 'left',
             hyphens: hyphenation ? 'auto' : 'none',
-            '--tex': textureUrl ? `url(${textureUrl})` : 'none',
             '--tex-darkness': darkness != null ? String(darkness) : undefined,
         }">
+            <img v-if="textureUrl" class="tex-img" :class="{ 'is-loaded': loadedSrc === textureUrl }" :src="textureUrl" @load="loadedSrc = textureUrl" alt="" aria-hidden="true" decoding="async" />
             <span class="qc-body"><span v-if="withQuotationMarks" class="qc-mark" aria-hidden="true">&ldquo;</span><span v-html="html"></span><span v-if="withQuotationMarks" class="qc-mark" aria-hidden="true">&rdquo;</span></span>
         </blockquote>
         <EssayQuoteCite v-if="creator || work" class="mt-3 ml-auto pr-4" presentation :author="creator" :title="work" :year="year" :page="page" :title-href="pdfUrl" />
@@ -66,7 +70,8 @@ const html = computed(() => formatMarkdown(props.text));
 
     <!-- Full-bleed: the texture fills the whole slide; quote + credit float on
          it with a legibility wash. Absolute-fills the (relative) host slide. -->
-    <div v-else-if="mode === 'fullbleed'" class="qsb-fullbleed qsb-fullbleed--dim" :style="{ '--tex': textureUrl ? `url(${textureUrl})` : 'none', '--tex-darkness': darkness != null ? String(darkness) : undefined }">
+    <div v-else-if="mode === 'fullbleed'" class="qsb-fullbleed" :style="{ '--tex-darkness': darkness != null ? String(darkness) : undefined }">
+        <img v-if="textureUrl" class="tex-img tex-img--dim" :class="{ 'is-loaded': loadedSrc === textureUrl }" :src="textureUrl" @load="loadedSrc = textureUrl" alt="" aria-hidden="true" decoding="async" />
         <!-- Same column as the card branch (wrapper + quote-card padding), so
              the quote wraps at the same width — just no card surface. -->
         <div class="fb-inner">
