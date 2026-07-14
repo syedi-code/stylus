@@ -51,7 +51,7 @@ const hasYear = computed(() => props.year !== undefined && props.year !== null &
 	color: var(--color-mono-300);
 }
 .surname {
-	font-weight: 600;
+	font-weight: 400;
 }
 .row {
 	font-size: 12px;
