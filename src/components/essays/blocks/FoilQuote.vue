@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useSourceLibrary } from '../../../composables/useSourceLibrary';
 import { usePresentationQuoteMode, variantForSeed, textureAsset } from '../../../composables/usePresentationQuoteMode';
+import { useTextureImage } from '../../../composables/useTextureImage';
 import { formatMarkdown } from '../../../lib/formatText';
 import type { EmbedBlock } from '../../../composables/useEssayBlocks';
 import EssayQuoteCite from './EssayQuoteCite.vue';
@@ -31,11 +32,18 @@ const textureUrl = computed(() => {
 	if (mode.value === 'plain') return undefined;
 	return textureAsset(variantForSeed(props.block.id), mode.value === 'fullbleed' ? 'fullbleed' : 'card');
 });
+// Card-tier (tex-*) URL — instant placeholder / decode fallback for full-bleed.
+const fallbackUrl = computed(() => textureAsset(variantForSeed(props.block.id), 'card'));
+
+// Decode-gated texture src: the <img> only ever receives an already-decoded
+// URL, so it paints instantly and reliably on iOS.
+const { src: texSrc } = useTextureImage(textureUrl, fallbackUrl);
 </script>
 
 <template>
 	<div class="fq" :class="{ 'fq-fullbleed': mode === 'fullbleed' }">
-		<div v-if="mode === 'fullbleed'" class="qsb-fullbleed" :style="{ '--tex': textureUrl ? `url(${textureUrl})` : 'none' }">
+		<div v-if="mode === 'fullbleed'" class="qsb-fullbleed">
+			<img v-if="texSrc" class="tex-img" :src="texSrc" alt="" aria-hidden="true" />
 			<div class="fb-inner">
 				<blockquote class="quote-card fb-quote qbody">
 					<template v-if="quote"><span class="qc-body"><span class="qc-mark">&ldquo;</span><span v-html="html"></span><span class="qc-mark">&rdquo;</span></span></template>
@@ -43,7 +51,8 @@ const textureUrl = computed(() => {
 				</blockquote>
 			</div>
 		</div>
-		<blockquote v-else class="quote-card qbody" :class="mode === 'textured' ? 'is-textured' : ''" :style="mode === 'textured' ? { '--tex': textureUrl ? `url(${textureUrl})` : 'none' } : {}">
+		<blockquote v-else class="quote-card qbody" :class="mode === 'textured' ? 'is-textured' : ''">
+			<img v-if="mode === 'textured' && texSrc" class="tex-img" :src="texSrc" alt="" aria-hidden="true" />
 			<template v-if="quote"><span class="qc-body"><span class="qc-mark">&ldquo;</span><span v-html="html"></span><span class="qc-mark">&rdquo;</span></span></template>
 			<span v-else class="missing">quote unavailable</span>
 		</blockquote>

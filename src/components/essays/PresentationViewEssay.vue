@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, toRef, nextTick } from 'vue';
-import type { Essay } from '../../lib/api';
+import type { Essay, EssayReference } from '../../lib/api';
 import {
     usePresentationFontSize,
     FONT_SIZE_MIN,
@@ -9,7 +9,7 @@ import {
 } from '../../composables/usePresentationFontSize';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
-import { usePresentationQuoteMode, textureAsset } from '../../composables/usePresentationQuoteMode';
+import { usePresentationQuoteMode, textureAsset, variantForSeed } from '../../composables/usePresentationQuoteMode';
 import { usePresentationTextureDarkness, DARKNESS_MIN, DARKNESS_MAX, DARKNESS_STEP } from '../../composables/usePresentationTextureDarkness';
 import { useEssaySlides } from '../../composables/useEssaySlides';
 import { useSwipeNavigation } from '../../composables/useSwipeNavigation';
@@ -52,14 +52,22 @@ const baseFontSize = ref(12);
 const { finalFontSize, setFontSize, reset } = usePresentationFontSize('essay', baseFontSize);
 const { justified, toggle: toggleJustify } = usePresentationJustify('essay');
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('essay');
-const { mode: quoteMode, cycle: cycleQuoteMode, reshuffle: reshuffleTextures, variantForIndex } = usePresentationQuoteMode('essay');
+const { mode: quoteMode, cycle: cycleQuoteMode } = usePresentationQuoteMode('essay');
 const { darkness, setDarkness, reset: resetDarkness } = usePresentationTextureDarkness();
 
 // Resolve the texture asset for a quote slide: card modes use tex-*, full-bleed
-// uses the larger fb-*; plain has no texture.
-function quoteTextureUrl(i: number): string {
+// uses the larger fb-*; plain has no texture. Seeded by the quote's entity id,
+// so a quote keeps the same texture across surface toggles and matches its
+// Quotes-tab card / writing-view foil.
+function quoteTextureUrl(reference: EssayReference): string {
     if (quoteMode.value === 'plain') return '';
-    return textureAsset(variantForIndex(i), quoteMode.value === 'fullbleed' ? 'fullbleed' : 'card');
+    return textureAsset(variantForSeed(reference.entity_id), quoteMode.value === 'fullbleed' ? 'fullbleed' : 'card');
+}
+
+// Card-tier (tex-*) URL for a quote slide — the instant placeholder / decode
+// fallback for the heavier full-bleed tier (see useTextureImage).
+function quoteCardTextureUrl(reference: EssayReference): string {
+    return textureAsset(variantForSeed(reference.entity_id), 'card');
 }
 
 // Darkness slider only applies to a textured quote slide.
@@ -162,7 +170,6 @@ watch(() => props.isOpen, (isOpen) => {
         currentIndex.value = 0;
         showChrome();
         poke();
-        if (quoteMode.value !== 'plain') reshuffleTextures();
         document.body.style.overflow = 'hidden';
     } else {
         showFontControls.value = false;
@@ -410,7 +417,8 @@ function openDarkness() {
                                 :justified="justified"
                                 :hyphenation="hyphenation"
                                 :mode="quoteMode"
-                                :texture-url="quoteTextureUrl(slide.index)"
+                                :texture-url="quoteTextureUrl(slide.reference)"
+                                :fallback-texture-url="quoteCardTextureUrl(slide.reference)"
                                 :darkness="darkness"
                             />
                             <EssayBookCoverSlide
