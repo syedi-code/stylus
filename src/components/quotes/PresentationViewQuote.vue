@@ -6,7 +6,7 @@ import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP }
 import { useTypography } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
-import { usePresentationQuoteMode, textureAsset } from '../../composables/usePresentationQuoteMode';
+import { usePresentationQuoteMode, textureAsset, variantForSeed } from '../../composables/usePresentationQuoteMode';
 import { usePresentationTextureDarkness, DARKNESS_MIN, DARKNESS_MAX, DARKNESS_STEP } from '../../composables/usePresentationTextureDarkness';
 import { useAutoChrome } from '../../composables/useAutoChrome';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
@@ -47,18 +47,24 @@ const { justified, toggle: toggleJustify } = usePresentationJustify();
 
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation();
 
-const { mode: quoteMode, cycle: cycleQuoteMode, variantForIndex } = usePresentationQuoteMode('quote');
+const { mode: quoteMode, cycle: cycleQuoteMode } = usePresentationQuoteMode('quote');
 
 const { darkness, setDarkness, reset: resetDarkness } = usePresentationTextureDarkness();
 
 // Resolve the texture asset for this quote: card mode uses tex-*, full-bleed
-// uses the larger fb-*; plain has no texture. Driven by the shuffle seed (not
-// the quote id), so each cycle into a texture mode picks a fresh random
-// background (see cycle() in usePresentationQuoteMode).
+// uses the larger fb-*; plain has no texture. Seeded by the quote id, so the
+// texture is stable across surface toggles and matches the same quote's
+// Quotes-tab card (see variantForSeed in usePresentationQuoteMode).
 const textureUrl = computed(() => {
     if (quoteMode.value === 'plain' || !props.quote) return undefined;
-    return textureAsset(variantForIndex(0), quoteMode.value === 'fullbleed' ? 'fullbleed' : 'card');
+    return textureAsset(variantForSeed(props.quote.id), quoteMode.value === 'fullbleed' ? 'fullbleed' : 'card');
 });
+
+// Card-tier (tex-*) URL of the same variant — the instant placeholder / decode
+// fallback for the heavier full-bleed tier (see useTextureImage).
+const fallbackTextureUrl = computed(() =>
+    props.quote ? textureAsset(variantForSeed(props.quote.id), 'card') : undefined,
+);
 
 // Auto-fading chrome (action buttons) — mirrors the essay deck via the shared
 // useAutoChrome timer + PresentationChrome wrapper.
@@ -226,6 +232,7 @@ watch(() => props.isOpen, (isOpen) => {
                         with-quotation-marks
                         :mode="quoteMode"
                         :texture-url="textureUrl"
+                        :fallback-texture-url="fallbackTextureUrl"
                         :darkness="darkness"
                     />
                 </div>

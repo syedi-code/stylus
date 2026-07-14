@@ -157,38 +157,18 @@ const quoteFontSize = useDynamicContentFontSize(contentLength, {
 });
 
 // Stable per-quote texture (dark textured card + gilt ring, no toggle here).
-// `--tex` is only assigned once the card nears the viewport (see textureVisible)
-// so a long Quotes feed doesn't fetch every card's WebP up front. `--gilt` tints
-// the ring emerald for posted quotes.
-const cardStyle = computed(() => ({
-  ...(textureVisible.value
-    ? { '--tex': `url(${textureAsset(variantForSeed(props.quote.id), 'card')})` }
-    : {}),
-  ...(props.quote.posted ? { '--gilt': '#047857' } : {}),
-}));
-
-// Lazy-load the (small but non-trivial) texture: hold off setting --tex until
-// the card is within ~500px of the viewport, then load once and stop observing.
-const cardRef = ref<HTMLElement | null>(null);
-const textureVisible = ref(false);
-onMounted(() => {
-  if (typeof IntersectionObserver === 'undefined' || !cardRef.value) {
-    textureVisible.value = true; // no IO support — just load it
-    return;
-  }
-  const io = new IntersectionObserver((entries) => {
-    if (entries.some((e) => e.isIntersecting)) {
-      textureVisible.value = true;
-      io.disconnect();
-    }
-  }, { rootMargin: '500px' });
-  io.observe(cardRef.value);
-});
+// Rendered as a real, natively lazy <img> (not a ::before background) so iOS
+// Safari decodes/evicts/repaints it reliably and a long feed doesn't retain
+// every off-screen card's decoded bitmap. `--gilt` tints the ring emerald for
+// posted quotes.
+const textureSrc = computed(() => textureAsset(variantForSeed(props.quote.id), 'card'));
+const giltStyle = computed(() => (props.quote.posted ? { '--gilt': '#047857' } : {}));
 </script>
 
 <template>
   <div class="group cursor-pointer quote-in" :style="{ animationDelay: unfurlDelay }" @click="emit('present', quote)">
-    <div ref="cardRef" class="is-textured" :style="cardStyle">
+    <div class="is-textured" :style="giltStyle">
+      <img class="tex-img" :src="textureSrc" alt="" aria-hidden="true" decoding="async" loading="lazy" />
       <div class="quote-card relative z-10 flex flex-col gap-2.5">
 
         <!-- Content -->

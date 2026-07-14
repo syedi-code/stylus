@@ -303,16 +303,31 @@ body {
 	background: #050505;
 	box-shadow: 0 22px 52px -28px rgba(0, 0, 0, 0.88);
 }
-.is-textured::before {
-	content: '';
+/* Texture layer — a real <img> (not a ::before background-image) so iOS
+   Safari can decode, evict, and repaint it reliably. It occupies the same z=0
+   box the pseudo used, so the ::after scrim/gilt ring and the qc-body text
+   (z-index 2) stack above it unchanged. The element is only ever given a src
+   that useTextureImage() has already decoded, so it paints immediately at full
+   opacity — no opacity-transition reveal (which silently fails to repaint a
+   large full-bleed image on iOS), no black flash. */
+.tex-img {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
+	width: 100%;
+	height: 100%;
 	border-radius: inherit;
-	background-image: var(--tex);
-	background-size: cover;
-	background-position: center;
-	background-repeat: no-repeat;
+	object-fit: cover;
+	object-position: center;
+	pointer-events: none;
+	-webkit-user-select: none;
+	user-select: none;
+}
+/* Presentation views (Quotes tab + Essay deck, via QuoteSlideBody) dim the
+   full-bleed texture to 80% so the floated quote reads better on it. The
+   writing-view foil (FoilQuote) keeps full brightness — it isn't tagged. */
+.tex-img--dim {
+	filter: brightness(0.8);
 }
 .is-textured::after {
 	content: '';
@@ -347,24 +362,9 @@ body {
 	position: absolute;
 	inset: 0;
 	overflow: hidden;
+	background: #050505;
 	/* Flat darkness wash strength, layered under the legibility wash in ::after. */
 	--tex-darkness: 0.6;
-}
-.qsb-fullbleed::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	z-index: 0;
-	background-image: var(--tex);
-	background-size: cover;
-	background-position: center;
-	background-repeat: no-repeat;
-}
-/* Presentation views (Quotes tab + Essays deck, via QuoteSlideBody) dim the
-   full-bleed texture to 80% so the floated quote reads better on it. The
-   writing-view foil (FoilQuote) keeps full brightness — it isn't tagged. */
-.qsb-fullbleed--dim::before {
-	filter: brightness(0.8);
 }
 .qsb-fullbleed::after {
 	content: '';
