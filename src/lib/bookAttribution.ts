@@ -12,27 +12,26 @@
 // We split into one or more authors and slice each into firstParts +
 // lastName + suffix. Only the lastName gets the deterministic palette
 // color; firstParts and suffix render in the surface's default text color.
-// The palette is a soft pastel range (yellow → orange → pink → purple →
-// red) tuned to read warmly on `--color-mono-950`.
+// The palette is a blue · gold · ember triad tuned to read on the essay's
+// near-black ground (`--color-mono-950`).
 
 const SUFFIXES = new Set(['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'phd', 'md']);
 
-// Soft pastels across the warm half of the wheel + magenta/violet — no
-// greens, blues, or cyans. S/L tuned high-light/medium-saturation so they
-// feel quiet on `#050505` rather than candy-bright.
+// Blue · gold · ember: luminous steel/teal blues opposite warm gold, closing
+// through burnt-orange → ember → garnet. Blue is gold's optical complement, so
+// surnames split into legible cool/warm camps while every hue still glows on
+// `#050505` (S/L kept high-light so nothing goes candy-bright or muddy).
 const PALETTE = [
-    'hsl(0 70% 82%)',     // blush
-    'hsl(12 78% 80%)',    // soft coral
-    'hsl(24 80% 78%)',    // peach
-    'hsl(34 78% 76%)',    // apricot
-    'hsl(44 72% 76%)',    // butter
-    'hsl(54 60% 78%)',    // pale yellow
-    'hsl(290 48% 82%)',   // soft lavender
-    'hsl(305 55% 82%)',   // light orchid
-    'hsl(320 60% 82%)',   // pink
-    'hsl(335 70% 82%)',   // bubblegum
-    'hsl(348 75% 82%)',   // rose
-    'hsl(358 70% 80%)',   // dusty red
+    'hsl(212 62% 71%)',   // steel blue
+    'hsl(224 56% 73%)',   // periwinkle
+    'hsl(200 56% 68%)',   // teal blue
+    'hsl(190 45% 66%)',   // slate cyan
+    'hsl(46 82% 71%)',    // bright gold
+    'hsl(40 76% 64%)',    // amber
+    'hsl(50 66% 78%)',    // champagne
+    'hsl(24 78% 61%)',    // burnt orange
+    'hsl(12 70% 62%)',    // ember
+    'hsl(2 60% 64%)',     // garnet
 ];
 
 export interface ParsedAuthor {
