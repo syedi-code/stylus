@@ -9,11 +9,13 @@ import {
 } from '../../composables/usePresentationFontSize';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
-import { usePresentationQuoteMode } from '../../composables/usePresentationQuoteMode';
+import { usePresentationQuoteMode, textureAsset } from '../../composables/usePresentationQuoteMode';
+import { usePresentationTextureDarkness, DARKNESS_MIN, DARKNESS_MAX, DARKNESS_STEP } from '../../composables/usePresentationTextureDarkness';
 import { useEssaySlides } from '../../composables/useEssaySlides';
 import { useSwipeNavigation } from '../../composables/useSwipeNavigation';
 import { useAutoChrome } from '../../composables/useAutoChrome';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
+import PresentationDarknessControl from '../shared/PresentationDarknessControl.vue';
 import EssaySlide from './EssaySlide.vue';
 import EssayHeaderSlide from './EssayHeaderSlide.vue';
 import EssayQuoteSlide from './EssayQuoteSlide.vue';
@@ -51,16 +53,22 @@ const { finalFontSize, setFontSize, reset } = usePresentationFontSize('essay', b
 const { justified, toggle: toggleJustify } = usePresentationJustify('essay');
 const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('essay');
 const { mode: quoteMode, cycle: cycleQuoteMode, reshuffle: reshuffleTextures, variantForIndex } = usePresentationQuoteMode('essay');
+const { darkness, setDarkness, reset: resetDarkness } = usePresentationTextureDarkness();
 
 // Resolve the texture asset for a quote slide: card modes use tex-*, full-bleed
 // uses the larger fb-*; plain has no texture.
 function quoteTextureUrl(i: number): string {
     if (quoteMode.value === 'plain') return '';
-    const prefix = quoteMode.value === 'fullbleed' ? 'fb' : 'tex';
-    return `/textures/${prefix}-${variantForIndex(i)}.png`;
+    return textureAsset(variantForIndex(i), quoteMode.value === 'fullbleed' ? 'fullbleed' : 'card');
 }
 
+// Darkness slider only applies to a textured quote slide.
+const darknessApplicable = computed(
+    () => slides.value[currentIndex.value]?.kind === 'quote' && quoteMode.value !== 'plain'
+);
+
 const showFontControls = ref(false);
+const showDarkness = ref(false);
 const { chromeVisible, poke, show: showChrome } = useAutoChrome(2800);
 
 const exporting = ref(false);
@@ -158,6 +166,7 @@ watch(() => props.isOpen, (isOpen) => {
         document.body.style.overflow = 'hidden';
     } else {
         showFontControls.value = false;
+        showDarkness.value = false;
         document.body.style.overflow = '';
     }
 });
@@ -238,6 +247,13 @@ async function handleSaveImage() {
 
 function openFontControls() {
     showFontControls.value = !showFontControls.value;
+    if (showFontControls.value) showDarkness.value = false;
+    showChrome();
+}
+
+function openDarkness() {
+    showDarkness.value = !showDarkness.value;
+    if (showDarkness.value) showFontControls.value = false;
     showChrome();
 }
 </script>
@@ -247,7 +263,7 @@ function openFontControls() {
         <Transition name="presentation">
             <div
                 v-if="isOpen && essay"
-                class="fixed inset-0 z-50 bg-mono-950 flex flex-col select-none"
+                class="fixed inset-0 z-50 bg-mono-950 flex flex-col select-none touch-manipulation"
                 @pointermove="poke"
                 @click="handleBackdropClick"
                 @touchstart.passive="onTouchStart"
@@ -299,13 +315,38 @@ function openFontControls() {
                                 v-if="slides[currentIndex]?.kind === 'quote'"
                                 @click.stop="cycleQuoteMode(); poke()"
                                 class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer"
-                                :class="quoteMode !== 'textured' ? 'text-essay' : ''"
-                                :aria-label="`Quote surface (${quoteMode}) — tap to change`"
+                                :class="quoteMode !== 'plain' ? 'text-essay' : ''"
+                                :aria-label="`Surface: ${quoteMode} — tap to change`"
+                                :title="`Surface: ${quoteMode} — tap to change`"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <!-- textured: framed picture (card over a texture) -->
+                                <svg v-if="quoteMode === 'textured'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="3" width="18" height="18" rx="2" />
                                     <circle cx="9" cy="9" r="1.6" fill="currentColor" stroke="none" />
                                     <path d="m21 15-4.5-4.5L7 20" />
+                                </svg>
+                                <!-- fullbleed: texture bleeds to the edges (maximize) -->
+                                <svg v-else-if="quoteMode === 'fullbleed'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                                    <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+                                    <path d="M21 16v3a2 2 0 0 1-2 2h-3" />
+                                    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                                </svg>
+                                <!-- plain: no surface — text lines only -->
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h10" />
+                                </svg>
+                            </button>
+                            <button
+                                v-if="slides[currentIndex]?.kind === 'quote' && quoteMode !== 'plain'"
+                                @click.stop="openDarkness(); poke()"
+                                class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer"
+                                :class="showDarkness ? 'text-essay' : ''"
+                                aria-label="Toggle texture darkness"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor" stroke="none" />
                                 </svg>
                             </button>
                             <button
@@ -370,6 +411,7 @@ function openFontControls() {
                                 :hyphenation="hyphenation"
                                 :mode="quoteMode"
                                 :texture-url="quoteTextureUrl(slide.index)"
+                                :darkness="darkness"
                             />
                             <EssayBookCoverSlide
                                 v-else-if="slide.kind === 'bookCover'"
@@ -407,9 +449,9 @@ function openFontControls() {
                     </button>
                 </div>
 
-                <!-- Font controls -->
+                <!-- Font / darkness controls (mutually exclusive — one bottom slot) -->
                 <div
-                    v-show="showFontControls"
+                    v-show="showFontControls || (showDarkness && darknessApplicable)"
                     class="absolute left-0 right-0 bottom-0 z-30 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] pt-3 bg-gradient-to-t from-mono-950 via-mono-950/90 to-transparent"
                     @click.stop
                     @touchstart.stop
@@ -417,6 +459,7 @@ function openFontControls() {
                     @touchend.stop
                 >
                     <PresentationFontControls
+                        v-show="showFontControls"
                         :font-size="finalFontSize"
                         :min="FONT_SIZE_MIN"
                         :max="FONT_SIZE_MAX"
@@ -424,6 +467,16 @@ function openFontControls() {
                         color="essay"
                         @change="(size: number) => { setFontSize(size); poke(); }"
                         @reset="() => { reset(); poke(); }"
+                    />
+                    <PresentationDarknessControl
+                        v-show="showDarkness && darknessApplicable"
+                        :darkness="darkness"
+                        :min="DARKNESS_MIN"
+                        :max="DARKNESS_MAX"
+                        :step="DARKNESS_STEP"
+                        color="essay"
+                        @change="(v: number) => { setDarkness(v); poke(); }"
+                        @reset="() => { resetDarkness(); poke(); }"
                     />
                 </div>
 

@@ -4,7 +4,7 @@ import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, typ
 import { formatMarkdown } from '../../lib/formatText';
 import { useTypography } from '../../composables/useTypography';
 import { useDynamicContentFontSize } from '../../composables/useDynamicContentFontSize';
-import { variantForSeed } from '../../composables/usePresentationQuoteMode';
+import { variantForSeed, textureAsset } from '../../composables/usePresentationQuoteMode';
 import AuthorPopover from '../library/AuthorPopover.vue';
 import EssayQuoteCite from '../essays/blocks/EssayQuoteCite.vue';
 
@@ -156,16 +156,39 @@ const quoteFontSize = useDynamicContentFontSize(contentLength, {
   ],
 });
 
-// Stable per-quote texture (dark textured card + gold border, no toggle here).
+// Stable per-quote texture (dark textured card + gilt ring, no toggle here).
+// `--tex` is only assigned once the card nears the viewport (see textureVisible)
+// so a long Quotes feed doesn't fetch every card's WebP up front. `--gilt` tints
+// the ring emerald for posted quotes.
 const cardStyle = computed(() => ({
-  '--tex': `url(/textures/tex-${variantForSeed(props.quote.id)}.png)`,
-  ...(props.quote.posted ? { borderColor: '#047857' } : {}),
+  ...(textureVisible.value
+    ? { '--tex': `url(${textureAsset(variantForSeed(props.quote.id), 'card')})` }
+    : {}),
+  ...(props.quote.posted ? { '--gilt': '#047857' } : {}),
 }));
+
+// Lazy-load the (small but non-trivial) texture: hold off setting --tex until
+// the card is within ~500px of the viewport, then load once and stop observing.
+const cardRef = ref<HTMLElement | null>(null);
+const textureVisible = ref(false);
+onMounted(() => {
+  if (typeof IntersectionObserver === 'undefined' || !cardRef.value) {
+    textureVisible.value = true; // no IO support — just load it
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting)) {
+      textureVisible.value = true;
+      io.disconnect();
+    }
+  }, { rootMargin: '500px' });
+  io.observe(cardRef.value);
+});
 </script>
 
 <template>
   <div class="group cursor-pointer quote-in" :style="{ animationDelay: unfurlDelay }" @click="emit('present', quote)">
-    <div class="is-textured" :style="cardStyle">
+    <div ref="cardRef" class="is-textured" :style="cardStyle">
       <div class="quote-card relative z-10 flex flex-col gap-2.5">
 
         <!-- Content -->

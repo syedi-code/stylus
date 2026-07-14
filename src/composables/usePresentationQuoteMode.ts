@@ -16,14 +16,28 @@ import { ref, type Ref } from 'vue';
  * when entering a texture mode or re-opening the deck). variantForSeed offers
  * the same stable pick keyed by an arbitrary id string instead of a slide
  * index, for non-deck contexts (writing-view foils, Quotes-tab list cards).
- * The caller builds the asset URL from the variant + mode (tex-* for the
- * card, fb-* for full-bleed).
+ * Build the asset URL with textureAsset(variant, kind) — 'card' → tex-*, and
+ * 'fullbleed' → fb-* — served as small WebP from /public/textures.
  */
 export type QuoteMode = 'textured' | 'fullbleed' | 'plain';
 
 const BASE_KEY = 'presentation-quote-mode';
 const ORDER: QuoteMode[] = ['textured', 'fullbleed', 'plain'];
-const VARIANTS = ['02', '03', '06'] as const;
+
+/**
+ * The shipped texture slugs (dark, monochrome fluid vortex/hurricane fields).
+ * Files live at /public/textures/{tex,fb}-<slug>.webp — the `tex-` card tier
+ * (~1280px) and the `fb-` full-bleed tier (~2560px).
+ */
+const VARIANTS = [
+	'vortex-01', 'vortex-02', 'hurricane', 'maelstrom', 'turbulence',
+	'smoke', 'whirl-tight', 'nebula', 'cyclones',
+] as const;
+
+/** Build the texture asset URL for a variant + surface kind. */
+export function textureAsset(variant: string, kind: 'card' | 'fullbleed'): string {
+	return `/textures/${kind === 'fullbleed' ? 'fb' : 'tex'}-${variant}.webp`;
+}
 
 interface Shared {
 	mode: Ref<QuoteMode>;
@@ -57,7 +71,7 @@ function hashString(s: string): number {
 	return h >>> 0;
 }
 
-/** Stable pseudo-random texture variant ('02' | '03' | '06') for an id. */
+/** Stable pseudo-random texture variant (a VARIANTS slug) for an id. */
 export function variantForSeed(seed: string): string {
 	return VARIANTS[hashString(seed) % VARIANTS.length];
 }
@@ -77,7 +91,7 @@ export function usePresentationQuoteMode(entity: string = 'quote') {
 		shuffleSeed.value = (shuffleSeed.value * 1103515245 + 12345) >>> 0 || 1;
 	}
 
-	/** Stable pseudo-random texture variant ('02' | '03' | '06') for a slide. */
+	/** Stable pseudo-random texture variant (a VARIANTS slug) for a slide. */
 	function variantForIndex(i: number): string {
 		const h =
 			(Math.imul(i + 1, 2654435761) ^
@@ -90,7 +104,14 @@ export function usePresentationQuoteMode(entity: string = 'quote') {
 		const next = ORDER[(ORDER.indexOf(mode.value) + 1) % ORDER.length];
 		mode.value = next;
 		save(storageKey, next);
-		if (next === 'textured' || next === 'fullbleed') reshuffle();
+		// Entering a texture mode picks a fresh random background. Loop the
+		// reshuffle so the primary variant is guaranteed to differ from the one
+		// just shown — otherwise a 1-in-N seed collision reads as "nothing
+		// changed" when cycling back into a texture.
+		if (next === 'textured' || next === 'fullbleed') {
+			const prev = variantForIndex(0);
+			for (let i = 0; i < 8 && variantForIndex(0) === prev; i++) reshuffle();
+		}
 	}
 
 	/** Force back to the default rounded card and re-randomize the texture. */
