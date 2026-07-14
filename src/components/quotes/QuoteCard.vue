@@ -163,13 +163,12 @@ const quoteFontSize = useDynamicContentFontSize(contentLength, {
 // posted quotes.
 const textureSrc = computed(() => textureAsset(variantForSeed(props.quote.id), 'card'));
 const giltStyle = computed(() => (props.quote.posted ? { '--gilt': '#047857' } : {}));
-const texLoaded = ref(false);
 </script>
 
 <template>
   <div class="group cursor-pointer quote-in" :style="{ animationDelay: unfurlDelay }" @click="emit('present', quote)">
     <div class="is-textured" :style="giltStyle">
-      <img class="tex-img" :class="{ 'is-loaded': texLoaded }" :src="textureSrc" @load="texLoaded = true" alt="" aria-hidden="true" decoding="async" loading="lazy" />
+      <img class="tex-img" :src="textureSrc" alt="" aria-hidden="true" decoding="async" loading="lazy" />
       <div class="quote-card relative z-10 flex flex-col gap-2.5">
 
         <!-- Content -->
