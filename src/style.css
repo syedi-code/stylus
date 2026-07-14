@@ -306,8 +306,10 @@ body {
 /* Texture layer — a real <img> (not a ::before background-image) so iOS
    Safari can decode, evict, and repaint it reliably. It occupies the same z=0
    box the pseudo used, so the ::after scrim/gilt ring and the qc-body text
-   (z-index 2) stack above it unchanged. Fades in on decode to avoid a pop /
-   black flash while the WebP loads over the card's #050505 ground. */
+   (z-index 2) stack above it unchanged. The element is only ever given a src
+   that useTextureImage() has already decoded, so it paints immediately at full
+   opacity — no opacity-transition reveal (which silently fails to repaint a
+   large full-bleed image on iOS), no black flash. */
 .tex-img {
 	position: absolute;
 	inset: 0;
@@ -320,22 +322,12 @@ body {
 	pointer-events: none;
 	-webkit-user-select: none;
 	user-select: none;
-	opacity: 0;
-	transition: opacity 0.25s ease;
-}
-.tex-img.is-loaded {
-	opacity: 1;
 }
 /* Presentation views (Quotes tab + Essay deck, via QuoteSlideBody) dim the
    full-bleed texture to 80% so the floated quote reads better on it. The
    writing-view foil (FoilQuote) keeps full brightness — it isn't tagged. */
 .tex-img--dim {
 	filter: brightness(0.8);
-}
-@media (prefers-reduced-motion: reduce) {
-	.tex-img {
-		transition: none;
-	}
 }
 .is-textured::after {
 	content: '';

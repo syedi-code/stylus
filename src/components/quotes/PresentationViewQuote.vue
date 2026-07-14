@@ -60,6 +60,12 @@ const textureUrl = computed(() => {
     return textureAsset(variantForSeed(props.quote.id), quoteMode.value === 'fullbleed' ? 'fullbleed' : 'card');
 });
 
+// Card-tier (tex-*) URL of the same variant — the instant placeholder / decode
+// fallback for the heavier full-bleed tier (see useTextureImage).
+const fallbackTextureUrl = computed(() =>
+    props.quote ? textureAsset(variantForSeed(props.quote.id), 'card') : undefined,
+);
+
 // Auto-fading chrome (action buttons) — mirrors the essay deck via the shared
 // useAutoChrome timer + PresentationChrome wrapper.
 const { chromeVisible, poke } = useAutoChrome(2800);
@@ -226,6 +232,7 @@ watch(() => props.isOpen, (isOpen) => {
                         with-quotation-marks
                         :mode="quoteMode"
                         :texture-url="textureUrl"
+                        :fallback-texture-url="fallbackTextureUrl"
                         :darkness="darkness"
                     />
                 </div>

@@ -64,6 +64,12 @@ function quoteTextureUrl(reference: EssayReference): string {
     return textureAsset(variantForSeed(reference.entity_id), quoteMode.value === 'fullbleed' ? 'fullbleed' : 'card');
 }
 
+// Card-tier (tex-*) URL for a quote slide — the instant placeholder / decode
+// fallback for the heavier full-bleed tier (see useTextureImage).
+function quoteCardTextureUrl(reference: EssayReference): string {
+    return textureAsset(variantForSeed(reference.entity_id), 'card');
+}
+
 // Darkness slider only applies to a textured quote slide.
 const darknessApplicable = computed(
     () => slides.value[currentIndex.value]?.kind === 'quote' && quoteMode.value !== 'plain'
@@ -412,6 +418,7 @@ function openDarkness() {
                                 :hyphenation="hyphenation"
                                 :mode="quoteMode"
                                 :texture-url="quoteTextureUrl(slide.reference)"
+                                :fallback-texture-url="quoteCardTextureUrl(slide.reference)"
                                 :darkness="darkness"
                             />
                             <EssayBookCoverSlide
