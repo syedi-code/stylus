@@ -71,6 +71,23 @@ export function variantForSeed(seed: string): string {
 	return VARIANTS[hashString(seed) % VARIANTS.length];
 }
 
+/**
+ * Stable, bold per-seed CSS object-position ("x% y%") for the full-bleed
+ * texture, so each quote frames a different region of its (16:9, 2560×1440)
+ * texture instead of always the center. The seed is salted per axis so the
+ * crop is decorrelated from the variant choice (variantForSeed), and full-pan
+ * (0–100%) for maximum variety.
+ */
+export function objectPositionForSeed(seed: string): string {
+	// Salt BEFORE the seed: hashString accumulates left-to-right, so a prefix
+	// difference is amplified by every following char, decorrelating the two
+	// axes. Salting after (a suffix) leaves x/y differing by ~1 — the crop would
+	// only ever pan along the diagonal.
+	const x = hashString('x:' + seed) % 101; // 0–100 inclusive
+	const y = hashString('y:' + seed) % 101;
+	return `${x}% ${y}%`;
+}
+
 export function usePresentationQuoteMode(entity: string = 'quote') {
 	const storageKey = `${BASE_KEY}-${entity}`;
 

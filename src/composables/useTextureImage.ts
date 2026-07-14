@@ -61,16 +61,13 @@ export function useTextureImage(
 				await decode(url);
 				if (mine === token) src.value = url;
 			} catch {
-				// Primary won't decode on this device (iOS memory ceiling) — settle
-				// on the smaller fallback tier so *something* renders.
-				if (mine === token && fb && src.value === '') {
-					try {
-						await decode(fb);
-						if (mine === token) src.value = fb;
-					} catch {
-						/* nothing renders; the surface's dark base shows through */
-					}
-				}
+				// decode() rejects on iOS for large images the browser can still
+				// paint via a plain full-opacity <img> (there is no opacity-
+				// transition reveal here — the <img> mounts via v-if at full
+				// opacity). Show the full-res regardless rather than staying pinned
+				// on the smaller placeholder tier, which is why the full-bleed
+				// texture never sharpened on mobile.
+				if (mine === token) src.value = url;
 			}
 		},
 		{ immediate: true },
