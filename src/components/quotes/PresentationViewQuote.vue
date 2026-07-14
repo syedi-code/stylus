@@ -6,7 +6,7 @@ import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP }
 import { useTypography } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
-import { usePresentationQuoteMode, textureAsset, variantForSeed } from '../../composables/usePresentationQuoteMode';
+import { usePresentationQuoteMode, textureAsset, variantForSeed, objectPositionForSeed } from '../../composables/usePresentationQuoteMode';
 import { usePresentationTextureDarkness, DARKNESS_MIN, DARKNESS_MAX, DARKNESS_STEP } from '../../composables/usePresentationTextureDarkness';
 import { useAutoChrome } from '../../composables/useAutoChrome';
 import PresentationFontControls from '../shared/PresentationFontControls.vue';
@@ -64,6 +64,14 @@ const textureUrl = computed(() => {
 // fallback for the heavier full-bleed tier (see useTextureImage).
 const fallbackTextureUrl = computed(() =>
     props.quote ? textureAsset(variantForSeed(props.quote.id), 'card') : undefined,
+);
+
+// Seeded crop position — full-bleed only, so each quote frames a different
+// region of its texture (stable per quote id).
+const textureObjectPosition = computed(() =>
+    props.quote && quoteMode.value === 'fullbleed'
+        ? objectPositionForSeed(props.quote.id)
+        : undefined,
 );
 
 // Auto-fading chrome (action buttons) — mirrors the essay deck via the shared
@@ -233,6 +241,7 @@ watch(() => props.isOpen, (isOpen) => {
                         :mode="quoteMode"
                         :texture-url="textureUrl"
                         :fallback-texture-url="fallbackTextureUrl"
+                        :texture-object-position="textureObjectPosition"
                         :darkness="darkness"
                     />
                 </div>
