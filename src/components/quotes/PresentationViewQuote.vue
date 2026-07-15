@@ -240,10 +240,11 @@ watch(() => props.isOpen, (isOpen) => {
                 </div>
 
                 <!-- Font size controls. In full-bleed the texture fills the
-                     whole root, so the slider floats over it at the bottom
-                     (above the texture, with a safe bottom inset); in other
-                     modes it flows below the centered card. -->
-                <div :class="quoteMode === 'fullbleed' ? 'absolute inset-x-0 bottom-0 z-20 flex justify-center pb-8' : 'contents'" @click.stop>
+                     whole root, so the slider floats over it at the bottom;
+                     the padding clears the iOS home indicator / collapsed
+                     Safari toolbar (safe-area inset is 0 on desktop). In
+                     other modes it flows below the centered card. -->
+                <div :class="quoteMode === 'fullbleed' ? 'absolute inset-x-0 bottom-0 z-20 flex justify-center pb-[calc(env(safe-area-inset-bottom,0px)+56px)]' : 'contents'" @click.stop>
                     <PresentationFontControls v-show="showFontControls" :fontSize="finalFontSize" :min="FONT_SIZE_MIN" :max="FONT_SIZE_MAX" :step="FONT_SIZE_STEP" color="quote" @change="setFontSize" @reset="reset" />
                     <PresentationDarknessControl v-show="showDarkness && quoteMode !== 'plain'" :darkness="darkness" :min="DARKNESS_MIN" :max="DARKNESS_MAX" :step="DARKNESS_STEP" color="quote" @change="setDarkness" @reset="resetDarkness" />
                 </div>
