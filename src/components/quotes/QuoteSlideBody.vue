@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, toRef } from 'vue';
+import { computed } from 'vue';
 import { formatMarkdown } from '../../lib/formatText';
-import { useTextureImage } from '../../composables/useTextureImage';
 import EssayQuoteCite from '../essays/blocks/EssayQuoteCite.vue';
 
 /**
@@ -38,42 +37,48 @@ const props = defineProps<{
      *  ground). Undefined behaves like 'plain'. */
     mode?: 'textured' | 'fullbleed' | 'plain';
     /** Chosen texture asset for 'textured' (/textures/tex-<slug>.webp) or
-     *  'fullbleed' (/textures/fb-<slug>.webp). */
+     *  'fullbleed' (/textures/fb-<slug>.webp). Undefined paints no texture —
+     *  the surface's dark base shows; hosts use this to window which slides
+     *  hold a decoded bitmap (see PresentationViewEssay). */
     textureUrl?: string;
-    /** Card-tier (tex-*) URL for the same variant — the instant placeholder /
-     *  decode fallback for the heavier full-bleed tier (see useTextureImage). */
-    fallbackTextureUrl?: string;
     /** Optional darkness wash strength (0–0.9). When set, overrides the static
      *  `--tex-darkness` default on the surface; undefined keeps the CSS value. */
     darkness?: number;
-    /** Seeded CSS object-position ("x% y%") for the full-bleed texture, so each
-     *  quote frames a different region. Undefined falls back to the CSS `center`. */
-    textureObjectPosition?: string;
+    /** Seeded background-position ("x% y%") that pans the full-bleed texture so
+     *  each quote frames a different region. Undefined leaves it centered. */
+    texturePosition?: string;
 }>();
 
 const html = computed(() => formatMarkdown(props.text));
 
-// Decode-gated texture src: the <img> only ever receives an already-decoded
-// URL, so it paints instantly and reliably on iOS (no opacity-reveal that
-// silently fails to repaint a large full-bleed image on mobile).
-const { src: texSrc } = useTextureImage(
-    toRef(props, 'textureUrl'),
-    toRef(props, 'fallbackTextureUrl'),
-);
+// Fullbleed surface style: texture + a flat 20%-black dim (pixel-identical to
+// the old brightness(0.8) filter on an opaque image, minus the offscreen
+// buffer), panned to the seeded per-quote crop. Painted as a CSS background —
+// never an <img> — so a decode that fails under iOS's image-memory budget
+// degrades to the dark base instead of a broken-image glyph.
+const fullbleedStyle = computed(() => ({
+    '--tex-darkness': props.darkness != null ? String(props.darkness) : undefined,
+    ...(props.textureUrl
+        ? {
+            backgroundImage: `linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(${props.textureUrl})`,
+            backgroundPosition: `center, ${props.texturePosition ?? 'center'}`,
+        }
+        : {}),
+}));
 </script>
 
 <template>
     <!-- Essay-deck / Quotes-tab textured card. -->
     <div v-if="mode === 'textured'" class="w-full sm:max-w-2xl mx-auto px-6 sm:px-4">
-        <blockquote lang="en" :class="[typographyClass, 'quote-card whitespace-pre-wrap is-textured']" :style="{
+        <blockquote lang="en" :class="[typographyClass, 'quote-card whitespace-pre-wrap is-textured tex-bg']" :style="{
             fontSize: fontSize + 'px',
             lineHeight: 'var(--content-leading)',
             fontWeight: 400,
             textAlign: justified ? 'justify' : 'left',
             hyphens: hyphenation ? 'auto' : 'none',
             '--tex-darkness': darkness != null ? String(darkness) : undefined,
+            backgroundImage: textureUrl ? `url(${textureUrl})` : undefined,
         }">
-            <img v-if="texSrc" class="tex-img" :src="texSrc" alt="" aria-hidden="true" />
             <span class="qc-body"><span v-if="withQuotationMarks" class="qc-mark" aria-hidden="true">&ldquo;</span><span v-html="html"></span><span v-if="withQuotationMarks" class="qc-mark" aria-hidden="true">&rdquo;</span></span>
         </blockquote>
         <EssayQuoteCite v-if="creator || work" class="mt-3 ml-auto pr-4" presentation :author="creator" :title="work" :year="year" :page="page" :title-href="pdfUrl" />
@@ -81,8 +86,7 @@ const { src: texSrc } = useTextureImage(
 
     <!-- Full-bleed: the texture fills the whole slide; quote + credit float on
          it with a legibility wash. Absolute-fills the (relative) host slide. -->
-    <div v-else-if="mode === 'fullbleed'" class="qsb-fullbleed" :style="{ '--tex-darkness': darkness != null ? String(darkness) : undefined }">
-        <img v-if="texSrc" class="tex-img tex-img--dim" :src="texSrc" :style="{ objectPosition: textureObjectPosition }" alt="" aria-hidden="true" />
+    <div v-else-if="mode === 'fullbleed'" class="qsb-fullbleed tex-bg" :style="fullbleedStyle">
         <!-- Same column as the card branch (wrapper + quote-card padding), so
              the quote wraps at the same width — just no card surface. -->
         <div class="fb-inner">

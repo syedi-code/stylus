@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { useSourceLibrary } from '../../../composables/useSourceLibrary';
 import { usePresentationQuoteMode, variantForSeed, textureAsset } from '../../../composables/usePresentationQuoteMode';
-import { useTextureImage } from '../../../composables/useTextureImage';
 import { formatMarkdown } from '../../../lib/formatText';
 import type { EmbedBlock } from '../../../composables/useEssayBlocks';
 import EssayQuoteCite from './EssayQuoteCite.vue';
@@ -28,22 +27,21 @@ const title = computed(() => book.value?.title ?? quote.value?.work ?? '');
 const year = computed(() => book.value?.originally_published ?? '');
 const page = computed(() => quote.value?.page ?? '');
 
-const textureUrl = computed(() => {
-	if (mode.value === 'plain') return undefined;
-	return textureAsset(variantForSeed(props.block.id), mode.value === 'fullbleed' ? 'fullbleed' : 'card');
-});
-// Card-tier (tex-*) URL — instant placeholder / decode fallback for full-bleed.
-const fallbackUrl = computed(() => textureAsset(variantForSeed(props.block.id), 'card'));
-
-// Decode-gated texture src: the <img> only ever receives an already-decoded
-// URL, so it paints instantly and reliably on iOS.
-const { src: texSrc } = useTextureImage(textureUrl, fallbackUrl);
+// Always the card tier (tex-*, 1280×800) — an inline foil never renders large
+// enough to need the 2560×1440 full-bleed tier, and a writing view can hold
+// many foils at once (each fb-* decodes to ~15MB, straight into iOS WebKit's
+// per-page image-memory budget). Painted as a .tex-bg background so a failed
+// decode degrades to the dark base, never a broken-image glyph.
+const textureStyle = computed(() =>
+	mode.value === 'plain'
+		? undefined
+		: { backgroundImage: `url(${textureAsset(variantForSeed(props.block.id), 'card')})` },
+);
 </script>
 
 <template>
 	<div class="fq" :class="{ 'fq-fullbleed': mode === 'fullbleed' }">
-		<div v-if="mode === 'fullbleed'" class="qsb-fullbleed">
-			<img v-if="texSrc" class="tex-img" :src="texSrc" alt="" aria-hidden="true" />
+		<div v-if="mode === 'fullbleed'" class="qsb-fullbleed tex-bg" :style="textureStyle">
 			<div class="fb-inner">
 				<blockquote class="quote-card fb-quote qbody">
 					<template v-if="quote"><span class="qc-body"><span class="qc-mark">&ldquo;</span><span v-html="html"></span><span class="qc-mark">&rdquo;</span></span></template>
@@ -51,8 +49,7 @@ const { src: texSrc } = useTextureImage(textureUrl, fallbackUrl);
 				</blockquote>
 			</div>
 		</div>
-		<blockquote v-else class="quote-card qbody" :class="mode === 'textured' ? 'is-textured' : ''">
-			<img v-if="mode === 'textured' && texSrc" class="tex-img" :src="texSrc" alt="" aria-hidden="true" />
+		<blockquote v-else class="quote-card qbody" :class="mode === 'textured' ? 'is-textured tex-bg' : ''" :style="mode === 'textured' ? textureStyle : undefined">
 			<template v-if="quote"><span class="qc-body"><span class="qc-mark">&ldquo;</span><span v-html="html"></span><span class="qc-mark">&rdquo;</span></span></template>
 			<span v-else class="missing">quote unavailable</span>
 		</blockquote>
