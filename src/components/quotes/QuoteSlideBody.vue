@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 import { formatMarkdown } from '../../lib/formatText';
+import { useTextureBlob } from '../../composables/useTextureBlob';
 import EssayQuoteCite from '../essays/blocks/EssayQuoteCite.vue';
 
 /**
@@ -51,6 +52,12 @@ const props = defineProps<{
 
 const html = computed(() => formatMarkdown(props.text));
 
+// Texture URLs resolve once per session into blob: URLs (useTextureBlob), so
+// repainting on modal remount never re-contacts the network — in prod that
+// path runs through Cloudflare Access, and a bounced re-request permanently
+// poisons WebKit's cache entry for the URL (the iOS black-screen bug).
+const displayTextureUrl = useTextureBlob(toRef(props, 'textureUrl'));
+
 // Fullbleed surface style: texture + a flat 20%-black dim (pixel-identical to
 // the old brightness(0.8) filter on an opaque image, minus the offscreen
 // buffer), panned to the seeded per-quote crop. Painted as a CSS background —
@@ -58,27 +65,31 @@ const html = computed(() => formatMarkdown(props.text));
 // degrades to the dark base instead of a broken-image glyph.
 const fullbleedStyle = computed(() => ({
     '--tex-darkness': props.darkness != null ? String(props.darkness) : undefined,
-    ...(props.textureUrl
+    ...(displayTextureUrl.value
         ? {
-            backgroundImage: `linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(${props.textureUrl})`,
+            backgroundImage: `linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(${displayTextureUrl.value})`,
             backgroundPosition: `center, ${props.texturePosition ?? 'center'}`,
         }
         : {}),
+}));
+
+// Textured-card surface style (was inline in the template; extracted so it
+// can paint from the resolved blob URL too).
+const texturedStyle = computed(() => ({
+    fontSize: props.fontSize + 'px',
+    lineHeight: 'var(--content-leading)',
+    fontWeight: 400,
+    textAlign: props.justified ? ('justify' as const) : ('left' as const),
+    hyphens: props.hyphenation ? ('auto' as const) : ('none' as const),
+    '--tex-darkness': props.darkness != null ? String(props.darkness) : undefined,
+    backgroundImage: displayTextureUrl.value ? `url(${displayTextureUrl.value})` : undefined,
 }));
 </script>
 
 <template>
     <!-- Essay-deck / Quotes-tab textured card. -->
     <div v-if="mode === 'textured'" class="w-full sm:max-w-2xl mx-auto px-6 sm:px-4">
-        <blockquote lang="en" :class="[typographyClass, 'quote-card whitespace-pre-wrap is-textured tex-bg']" :style="{
-            fontSize: fontSize + 'px',
-            lineHeight: 'var(--content-leading)',
-            fontWeight: 400,
-            textAlign: justified ? 'justify' : 'left',
-            hyphens: hyphenation ? 'auto' : 'none',
-            '--tex-darkness': darkness != null ? String(darkness) : undefined,
-            backgroundImage: textureUrl ? `url(${textureUrl})` : undefined,
-        }">
+        <blockquote lang="en" :class="[typographyClass, 'quote-card whitespace-pre-wrap is-textured tex-bg']" :style="texturedStyle">
             <span class="qc-body"><span v-if="withQuotationMarks" class="qc-mark" aria-hidden="true">&ldquo;</span><span v-html="html"></span><span v-if="withQuotationMarks" class="qc-mark" aria-hidden="true">&rdquo;</span></span>
         </blockquote>
         <EssayQuoteCite v-if="creator || work" class="mt-3 ml-auto pr-4" presentation :author="creator" :title="work" :year="year" :page="page" :title-href="pdfUrl" />
