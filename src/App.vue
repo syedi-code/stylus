@@ -27,6 +27,7 @@ import ThreadDetail from './components/threads/ThreadDetail.vue';
 import ThreadList from './components/threads/ThreadList.vue';
 import EditThoughtModal from './components/thoughts/EditThoughtModal.vue';
 import ConfirmModal from './components/shared/ConfirmModal.vue';
+import TextureDebugOverlay from './components/shared/TextureDebugOverlay.vue';
 import EssaysIndex from './components/essays/EssaysIndex.vue';
 import EditEssayModal from './components/essays/EditEssayModal.vue';
 import PresentationViewEssay from './components/essays/PresentationViewEssay.vue';
@@ -673,6 +674,9 @@ watch([threadsSearch], () => {
         <path d="m15 5 4 4" />
       </svg>
     </button>
+
+    <!-- Opt-in texture-load debug readout (?texdebug=1) — see the component. -->
+    <TextureDebugOverlay />
 
   </div>
 </template>
