@@ -156,19 +156,19 @@ const quoteFontSize = useDynamicContentFontSize(contentLength, {
   ],
 });
 
-// Stable per-quote texture (dark textured card + gilt ring, no toggle here).
-// Rendered as a real, natively lazy <img> (not a ::before background) so iOS
-// Safari decodes/evicts/repaints it reliably and a long feed doesn't retain
-// every off-screen card's decoded bitmap. `--gilt` tints the ring emerald for
-// posted quotes.
-const textureSrc = computed(() => textureAsset(variantForSeed(props.quote.id), 'card'));
-const giltStyle = computed(() => (props.quote.posted ? { '--gilt': '#047857' } : {}));
+// Stable per-quote texture (dark textured card + gilt ring, no toggle here),
+// painted as a .tex-bg background — the feed shares 9 card-tier assets, so
+// WebKit holds at most 9 decoded bitmaps however long the feed gets. `--gilt`
+// tints the ring emerald for posted quotes.
+const surfaceStyle = computed(() => ({
+  backgroundImage: `url(${textureAsset(variantForSeed(props.quote.id), 'card')})`,
+  ...(props.quote.posted ? { '--gilt': '#047857' } : {}),
+}));
 </script>
 
 <template>
   <div class="group cursor-pointer quote-in" :style="{ animationDelay: unfurlDelay }" @click="emit('present', quote)">
-    <div class="is-textured" :style="giltStyle">
-      <img class="tex-img" :src="textureSrc" alt="" aria-hidden="true" decoding="async" loading="lazy" />
+    <div class="is-textured tex-bg" :style="surfaceStyle">
       <div class="quote-card relative z-10 flex flex-col gap-2.5">
 
         <!-- Content -->
