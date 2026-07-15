@@ -15,6 +15,11 @@ import { ref, watch, type Ref } from 'vue';
  *
  * Blob URLs are deliberately never revoked: ≤18 textures ≈ a few MB
  * compressed, and revoking would reintroduce the re-fetch we're avoiding.
+ *
+ * Fetches retry with backoff (Safari 18 sometimes fails a fetch on a stale
+ * keep-alive connection instead of retrying it), and only successes are
+ * memoized — a transient failure must never pin a texture to the raw-URL
+ * fallback for the rest of the session.
  */
 
 export interface TextureLoadEvent {
@@ -30,7 +35,11 @@ export interface TextureLoadEvent {
     bytes?: number;
     decode?: 'ok' | 'fail';
     error?: string;
-    outcome: 'blob' | 'fallback-raw' | 'cache-hit';
+    /** 1-based fetch attempt this event describes (retries bump it). */
+    attempt?: number;
+    /** For 'summary' events — the whole line. */
+    note?: string;
+    outcome: 'blob' | 'fallback-raw' | 'cache-hit' | 'retry' | 'summary';
 }
 
 /** Ring buffer for TextureDebugOverlay — newest first, capped. */
@@ -58,81 +67,156 @@ const pending = new Map<string, Promise<string>>();
 /** Synchronous fast path — avoids a one-frame dark flash on re-entry. */
 const resolved = new Map<string, string>();
 
-async function loadTexture(url: string): Promise<string> {
-    let res: Response;
-    try {
-        res = await fetch(url, { credentials: 'same-origin' });
-    } catch (err) {
-        // A cross-origin redirect to the Access login page (no ACAO header)
-        // rejects the fetch with a TypeError — this is the primary bounce
-        // signature. Offline rejections look identical, so gate on onLine.
-        if (navigator.onLine) textureAccessBounce.value = true;
-        logEvent({
-            url: shortUrl(url),
-            error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-            outcome: 'fallback-raw',
-        });
-        return url;
-    }
+/** Waits before retry attempts 2 and 3; a bounce or offline never retries. */
+const RETRY_DELAYS_MS = [250, 1000];
 
-    const contentType = res.headers.get('content-type') ?? undefined;
-    const cacheControl = res.headers.get('cache-control') ?? undefined;
-    let finalOrigin: string | undefined;
-    try {
-        finalOrigin = new URL(res.url).origin;
-    } catch { /* opaque/empty res.url */ }
-    const crossOrigin = finalOrigin !== undefined && finalOrigin !== location.origin;
-
-    if (!res.ok || res.redirected || crossOrigin || !contentType?.startsWith('image/')) {
-        if (res.redirected || crossOrigin) textureAccessBounce.value = true;
-        logEvent({
-            url: shortUrl(url),
-            status: res.status,
-            redirected: res.redirected,
-            finalOrigin,
-            contentType,
-            cacheControl,
-            outcome: 'fallback-raw',
-        });
-        return url;
-    }
-
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-
-    // Diagnostic only: iOS decode() false-rejects under memory pressure while
-    // the CSS paint still succeeds, so never gate the return on it.
-    let decode: 'ok' | 'fail' = 'ok';
-    try {
-        const img = new Image();
-        img.src = blobUrl;
-        await img.decode();
-    } catch {
-        decode = 'fail';
-    }
-
-    logEvent({
-        url: shortUrl(url),
-        status: res.status,
-        contentType,
-        cacheControl,
-        bytes: blob.size,
-        decode,
-        outcome: 'blob',
-    });
-    return blobUrl;
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export function resolveTexture(url: string): Promise<string> {
+async function loadTexture(url: string, quiet = false): Promise<string> {
+    for (let attempt = 1; ; attempt++) {
+        const retryDelay = RETRY_DELAYS_MS[attempt - 1];
+        let res: Response;
+        try {
+            res = await fetch(url, { credentials: 'same-origin' });
+        } catch (err) {
+            const error = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+            // Two rejection causes share this "TypeError: Load failed"
+            // signature: Safari 18 reusing a dead keep-alive connection
+            // without retrying it (transient — a fresh attempt succeeds),
+            // and a cross-origin redirect to the Access login page (no ACAO
+            // header). Retry while online; only call it a bounce once the
+            // retry budget is spent. Offline rejections look identical too.
+            if (retryDelay !== undefined && navigator.onLine) {
+                logEvent({ url: shortUrl(url), attempt, error, outcome: 'retry' });
+                await sleep(retryDelay);
+                continue;
+            }
+            if (navigator.onLine) textureAccessBounce.value = true;
+            logEvent({ url: shortUrl(url), attempt, error, outcome: 'fallback-raw' });
+            return url;
+        }
+
+        const contentType = res.headers.get('content-type') ?? undefined;
+        const cacheControl = res.headers.get('cache-control') ?? undefined;
+        let finalOrigin: string | undefined;
+        try {
+            finalOrigin = new URL(res.url).origin;
+        } catch { /* opaque/empty res.url */ }
+        const crossOrigin = finalOrigin !== undefined && finalOrigin !== location.origin;
+
+        if (!res.ok || res.redirected || crossOrigin || !contentType?.startsWith('image/')) {
+            const isBounce = res.redirected || crossOrigin;
+            // An off-origin redirect is the Access gate — retrying can't
+            // help. Anything else (5xx, wrong content-type) gets the budget.
+            if (!isBounce && retryDelay !== undefined) {
+                logEvent({ url: shortUrl(url), attempt, status: res.status, contentType, outcome: 'retry' });
+                await sleep(retryDelay);
+                continue;
+            }
+            if (isBounce) textureAccessBounce.value = true;
+            logEvent({
+                url: shortUrl(url),
+                attempt,
+                status: res.status,
+                redirected: res.redirected,
+                finalOrigin,
+                contentType,
+                cacheControl,
+                outcome: 'fallback-raw',
+            });
+            return url;
+        }
+
+        let blob: Blob;
+        try {
+            blob = await res.blob();
+        } catch (err) {
+            // Connection died mid-body — same transient class as above.
+            const error = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+            if (retryDelay !== undefined && navigator.onLine) {
+                logEvent({ url: shortUrl(url), attempt, error, outcome: 'retry' });
+                await sleep(retryDelay);
+                continue;
+            }
+            logEvent({ url: shortUrl(url), attempt, error, outcome: 'fallback-raw' });
+            return url;
+        }
+        const blobUrl = URL.createObjectURL(blob);
+
+        // Diagnostic only: iOS decode() false-rejects under memory pressure
+        // while the CSS paint still succeeds, so never gate the return on it.
+        let decode: 'ok' | 'fail' = 'ok';
+        try {
+            const img = new Image();
+            img.src = blobUrl;
+            await img.decode();
+        } catch {
+            decode = 'fail';
+        }
+
+        if (!quiet) {
+            logEvent({
+                url: shortUrl(url),
+                attempt,
+                status: res.status,
+                contentType,
+                cacheControl,
+                bytes: blob.size,
+                decode,
+                outcome: 'blob',
+            });
+        }
+        return blobUrl;
+    }
+}
+
+export function resolveTexture(url: string, quiet = false): Promise<string> {
     let p = pending.get(url);
     if (!p) {
-        p = loadTexture(url).then((final) => {
-            resolved.set(url, final);
+        p = loadTexture(url, quiet).then((final) => {
+            if (final.startsWith('blob:')) {
+                resolved.set(url, final);
+            } else {
+                // Failed load: forget it, so the next request refetches
+                // instead of pinning the broken raw URL all session.
+                pending.delete(url);
+            }
             return final;
         });
         pending.set(url, p);
     }
     return p;
+}
+
+/**
+ * Idle prefetch: resolve every texture up front so transient fetch failures
+ * (and their retries) happen before any quote is opened. Sequential, so it
+ * never competes with data requests. Failures get one delayed second pass.
+ * Individual successes load quietly; one summary line hits the debug log.
+ */
+export async function warmTextures(urls: string[]): Promise<void> {
+    const isWarm = (final: string) => final.startsWith('blob:');
+    let failed: string[] = [];
+    for (const url of urls) {
+        if (!isWarm(await resolveTexture(url, true))) failed.push(url);
+    }
+    if (failed.length) {
+        await sleep(10_000);
+        const secondPass = failed;
+        failed = [];
+        for (const url of secondPass) {
+            if (!isWarm(await resolveTexture(url, true))) failed.push(url);
+        }
+    }
+    logEvent({
+        url: '',
+        note: failed.length
+            ? `warmed ${urls.length - failed.length}/${urls.length} textures — ${failed.length} failed`
+            : `all ${urls.length} textures warmed`,
+        outcome: 'summary',
+    });
 }
 
 /**

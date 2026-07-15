@@ -21,16 +21,19 @@ try {
 } catch { /* storage unavailable — stay disabled */ }
 
 function fmt(e: TextureLoadEvent): string {
+    if (e.outcome === 'summary') return `${e.at} ✓ ${e.note}`;
     const name = e.url.replace(/^\/textures\//, '').replace(/\.webp$/, '');
+    const nthTry = e.attempt && e.attempt > 1 ? ` (try ${e.attempt})` : '';
     if (e.outcome === 'cache-hit') return `${e.at} ${name} → cache-hit`;
-    if (e.error) return `${e.at} ${name} ERR ${e.error} → raw`;
+    if (e.outcome === 'retry') return `${e.at} ${name} ERR ${e.error ?? `status ${e.status}`}${nthTry} → retry`;
+    if (e.error) return `${e.at} ${name} ERR ${e.error}${nthTry} → raw`;
     const parts = [e.at, name, e.status ?? '?', e.contentType ?? '?'];
     if (e.bytes != null) parts.push(`${Math.round(e.bytes / 1024)}KB`);
     if (e.redirected != null) parts.push(`red:${e.redirected ? 'y' : 'n'}`);
     if (e.finalOrigin && e.finalOrigin !== location.origin) parts.push(e.finalOrigin);
     if (e.decode) parts.push(`dec:${e.decode}`);
     if (e.cacheControl) parts.push(`[${e.cacheControl}]`);
-    parts.push(`→ ${e.outcome === 'blob' ? 'blob' : 'raw'}`);
+    parts.push(`→ ${e.outcome === 'blob' ? 'blob' : 'raw'}${nthTry}`);
     return parts.join(' ');
 }
 

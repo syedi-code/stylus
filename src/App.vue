@@ -28,6 +28,8 @@ import ThreadList from './components/threads/ThreadList.vue';
 import EditThoughtModal from './components/thoughts/EditThoughtModal.vue';
 import ConfirmModal from './components/shared/ConfirmModal.vue';
 import TextureDebugOverlay from './components/shared/TextureDebugOverlay.vue';
+import { warmTextures } from './composables/useTextureBlob';
+import { allTextureAssets } from './composables/usePresentationQuoteMode';
 import EssaysIndex from './components/essays/EssaysIndex.vue';
 import EditEssayModal from './components/essays/EditEssayModal.vue';
 import PresentationViewEssay from './components/essays/PresentationViewEssay.vue';
@@ -61,6 +63,12 @@ onMounted(async () => {
   // NotesPage loads its own data on mount; other tabs load via the tab watcher.
   authReady.value = true;
   if (currentTab.value === 'quotes') loadQuotes();
+
+  // Warm the texture blob cache once the browser is idle, so transient fetch
+  // failures (and their retries) happen before any quote is ever opened.
+  const warm = () => { warmTextures(allTextureAssets()); };
+  if ('requestIdleCallback' in window) requestIdleCallback(warm);
+  else setTimeout(warm, 2000);
 });
 
 onUnmounted(() => {

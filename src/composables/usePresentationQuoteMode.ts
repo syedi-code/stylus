@@ -38,6 +38,14 @@ export function textureAsset(variant: string, kind: 'card' | 'fullbleed'): strin
 	return `/textures/${kind === 'fullbleed' ? 'fb' : 'tex'}-${variant}.webp`;
 }
 
+/** Every shipped texture URL, fullbleed tier first (the bug-prone one). */
+export function allTextureAssets(): string[] {
+	return [
+		...VARIANTS.map((v) => textureAsset(v, 'fullbleed')),
+		...VARIANTS.map((v) => textureAsset(v, 'card')),
+	];
+}
+
 const instances = new Map<string, Ref<QuoteMode>>();
 
 function load(key: string): QuoteMode {
