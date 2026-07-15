@@ -72,18 +72,16 @@ export function variantForSeed(seed: string): string {
 }
 
 /**
- * Stable, bold per-seed CSS object-position ("x% y%") for the full-bleed
- * texture, so each quote frames a different region of its (16:9, 2560×1440)
- * texture instead of always the center. The seed is salted per axis so the
- * crop is decorrelated from the variant choice (variantForSeed), and full-pan
- * (0–100%) for maximum variety.
+ * Stable, bold per-seed crop ("x% y%") for a cover background, so each quote
+ * frames a different region of its texture instead of always the center.
+ *
+ * Salt BEFORE the seed: hashString accumulates left-to-right, so a prefix
+ * difference is amplified by every following char, decorrelating the two axes.
+ * Salting after (a suffix) would leave x/y differing by ~1 — the crop would only
+ * ever pan along the diagonal.
  */
-export function objectPositionForSeed(seed: string): string {
-	// Salt BEFORE the seed: hashString accumulates left-to-right, so a prefix
-	// difference is amplified by every following char, decorrelating the two
-	// axes. Salting after (a suffix) leaves x/y differing by ~1 — the crop would
-	// only ever pan along the diagonal.
-	const x = hashString('x:' + seed) % 101; // 0–100 inclusive
+export function texturePositionForSeed(seed: string): string {
+	const x = hashString('x:' + seed) % 101; // 0–100 inclusive: full pan range
 	const y = hashString('y:' + seed) % 101;
 	return `${x}% ${y}%`;
 }

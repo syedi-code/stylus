@@ -9,7 +9,7 @@ import {
 } from '../../composables/usePresentationFontSize';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
 import { usePresentationHyphenation } from '../../composables/usePresentationHyphenation';
-import { usePresentationQuoteMode, textureAsset, variantForSeed, objectPositionForSeed } from '../../composables/usePresentationQuoteMode';
+import { usePresentationQuoteMode, textureAsset, variantForSeed, texturePositionForSeed } from '../../composables/usePresentationQuoteMode';
 import { usePresentationTextureDarkness, DARKNESS_MIN, DARKNESS_MAX, DARKNESS_STEP } from '../../composables/usePresentationTextureDarkness';
 import { useEssaySlides } from '../../composables/useEssaySlides';
 import { useSwipeNavigation } from '../../composables/useSwipeNavigation';
@@ -55,25 +55,29 @@ const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('e
 const { mode: quoteMode, cycle: cycleQuoteMode } = usePresentationQuoteMode('essay');
 const { darkness, setDarkness, reset: resetDarkness } = usePresentationTextureDarkness();
 
+// The carousel mounts every slide at once (the track just translates), so
+// only slides within one step of the current index get a texture URL — iOS
+// WebKit can't hold every slide's decoded 2560×1440 full-bleed bitmap at once
+// (the first paints, the rest blow the per-page image-memory budget). ±1
+// keeps the neighbors pre-painted so swiping never shows a texture pop-in;
+// off-window slides drop to the dark base and release their bitmap.
+function textureNear(index: number): boolean {
+    return Math.abs(index - currentIndex.value) <= 1;
+}
+
 // Resolve the texture asset for a quote slide: card modes use tex-*, full-bleed
 // uses the larger fb-*; plain has no texture. Seeded by the quote's entity id,
 // so a quote keeps the same texture across surface toggles and matches its
 // Quotes-tab card / writing-view foil.
-function quoteTextureUrl(reference: EssayReference): string {
-    if (quoteMode.value === 'plain') return '';
+function quoteTextureUrl(reference: EssayReference, index: number): string | undefined {
+    if (quoteMode.value === 'plain' || !textureNear(index)) return undefined;
     return textureAsset(variantForSeed(reference.entity_id), quoteMode.value === 'fullbleed' ? 'fullbleed' : 'card');
-}
-
-// Card-tier (tex-*) URL for a quote slide — the instant placeholder / decode
-// fallback for the heavier full-bleed tier (see useTextureImage).
-function quoteCardTextureUrl(reference: EssayReference): string {
-    return textureAsset(variantForSeed(reference.entity_id), 'card');
 }
 
 // Seeded crop position (full-bleed) — same seed as the variant so texture +
 // crop stay consistent for a given quote.
-function quoteObjectPosition(reference: EssayReference): string {
-    return objectPositionForSeed(reference.entity_id);
+function quotePosition(reference: EssayReference): string {
+    return texturePositionForSeed(reference.entity_id);
 }
 
 // Darkness slider only applies to a textured quote slide.
@@ -423,9 +427,8 @@ function openDarkness() {
                                 :justified="justified"
                                 :hyphenation="hyphenation"
                                 :mode="quoteMode"
-                                :texture-url="quoteTextureUrl(slide.reference)"
-                                :fallback-texture-url="quoteCardTextureUrl(slide.reference)"
-                                :texture-object-position="quoteObjectPosition(slide.reference)"
+                                :texture-url="quoteTextureUrl(slide.reference, slide.index)"
+                                :texture-position="quotePosition(slide.reference)"
                                 :darkness="darkness"
                             />
                             <EssayBookCoverSlide
