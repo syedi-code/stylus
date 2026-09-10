@@ -166,6 +166,29 @@
 /* Base Styles */
 :root {
 	color-scheme: dark;
+
+	/* ── Author palette ──
+	   Blue · gold · ember: luminous steel/teal blues opposite warm gold, closing
+	   through burnt-orange → ember → garnet. Blue is gold's optical complement,
+	   so surnames split into legible cool/warm camps while every hue still glows
+	   on `--color-mono-950` (#050505). S/L kept high-light so nothing goes
+	   candy-bright or muddy.
+
+	   A surname hashes to one of these slots (lib/bookAttribution). This block is
+	   the single source of truth for the values: `colorForName` returns
+	   `var(--author-cN)` for Vue `:style` bindings, and formatMarkdown emits the
+	   matching `.author-cN` class. Adding or removing a slot means updating
+	   PALETTE_SIZE in lib/bookAttribution.ts and the .author-cN rules below. */
+	--author-c0: hsl(212 62% 71%); /* steel blue */
+	--author-c1: hsl(224 56% 73%); /* periwinkle */
+	--author-c2: hsl(200 56% 68%); /* teal blue */
+	--author-c3: hsl(190 45% 66%); /* slate cyan */
+	--author-c4: hsl(46 82% 71%); /* bright gold */
+	--author-c5: hsl(40 76% 64%); /* amber */
+	--author-c6: hsl(50 66% 78%); /* champagne */
+	--author-c7: hsl(24 78% 61%); /* burnt orange */
+	--author-c8: hsl(12 70% 62%); /* ember */
+	--author-c9: hsl(2 60% 64%); /* garnet */
 }
 
 body {
@@ -227,6 +250,50 @@ body {
 	color: #e8d0a8;
 }
 
+/* Hashed author mention (::Name::) — emitted by formatMarkdown, which colors
+   only the surname, matching how BookAttribution renders a citation row. The
+   slot arrives as a class rather than an inline style for two reasons: an
+   inline color would outrank any surface override (see `.foil-text` below),
+   and it keeps hsl() out of the formatter's output stream where a later rule
+   could re-match its own emission.
+
+   Weight is deliberately not bumped. Attribution rows use font-medium on the
+   surname, but a prose mention sits mid-sentence and must stay in the same
+   Tiempos cut as its neighbors — the same reasoning as .md-hl. */
+.author-hl {
+	color: var(--author-color, var(--color-mono-200));
+}
+.author-c0 {
+	--author-color: var(--author-c0);
+}
+.author-c1 {
+	--author-color: var(--author-c1);
+}
+.author-c2 {
+	--author-color: var(--author-c2);
+}
+.author-c3 {
+	--author-color: var(--author-c3);
+}
+.author-c4 {
+	--author-color: var(--author-c4);
+}
+.author-c5 {
+	--author-color: var(--author-c5);
+}
+.author-c6 {
+	--author-color: var(--author-c6);
+}
+.author-c7 {
+	--author-color: var(--author-c7);
+}
+.author-c8 {
+	--author-color: var(--author-c8);
+}
+.author-c9 {
+	--author-color: var(--author-c9);
+}
+
 /* ── Gold-foil bubble (essay quotes) ──
    One solid rounded panel with clean straight edges and the warm foil gradient;
    black "etched" text inside. */
@@ -251,6 +318,14 @@ body {
 .foil-text .gold-underline {
 	text-decoration-color: rgba(20, 13, 3, 0.92);
 	-webkit-text-decoration-color: rgba(20, 13, 3, 0.92);
+}
+/* Author mentions flatten to the etched black on gold — the palette is tuned
+   for a near-black ground and every hue in it washes out here. This trades
+   per-person identity for legibility. To restore it, redefine the ten
+   `--author-cN` values inside this scope with gold-ground twins: `.author-cN`
+   indirects through them, so the whole palette retints with no rule changes. */
+.foil-text .author-hl {
+	color: #140d03;
 }
 .foil-text .md-hl {
 	-webkit-box-decoration-break: clone;
