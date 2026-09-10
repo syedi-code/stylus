@@ -17,22 +17,12 @@
 
 const SUFFIXES = new Set(['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'phd', 'md']);
 
-// Blue · gold · ember: luminous steel/teal blues opposite warm gold, closing
-// through burnt-orange → ember → garnet. Blue is gold's optical complement, so
-// surnames split into legible cool/warm camps while every hue still glows on
-// `#050505` (S/L kept high-light so nothing goes candy-bright or muddy).
-const PALETTE = [
-    'hsl(212 62% 71%)',   // steel blue
-    'hsl(224 56% 73%)',   // periwinkle
-    'hsl(200 56% 68%)',   // teal blue
-    'hsl(190 45% 66%)',   // slate cyan
-    'hsl(46 82% 71%)',    // bright gold
-    'hsl(40 76% 64%)',    // amber
-    'hsl(50 66% 78%)',    // champagne
-    'hsl(24 78% 61%)',    // burnt orange
-    'hsl(12 70% 62%)',    // ember
-    'hsl(2 60% 64%)',     // garnet
-];
+// The blue · gold · ember palette itself lives in style.css as `--author-c0`
+// … `--author-c9` — a single source of truth shared with the `.author-cN`
+// classes that formatMarkdown emits for `::Name::` mentions. Here we only need
+// how many slots there are and how to name one, so a surface can retint the
+// whole palette by redefining those variables in its own scope.
+const PALETTE_SIZE = 10;
 
 export interface ParsedAuthor {
     /** Full original token, e.g. "Martin Luther King Jr." */
@@ -96,11 +86,29 @@ function hashFnv1a(str: string): number {
     return h >>> 0;
 }
 
+// Apostrophes reach us in three forms: a straight ' typed on a desktop, a
+// curly ’ that iOS substitutes automatically, and the modifier letter ʼ used in
+// transliterations ("Ibn ʼArabī"). They must all hash alike or the same person
+// draws a different color depending on where the name was typed. Prose names
+// make this unavoidable rather than merely likely — `smartPunctuation` curls
+// every apostrophe before the formatter ever sees the name.
+const APOSTROPHES = /[‘’ʼ]/g;
+
+/**
+ * Palette slot for a surname, or -1 when there is no name to hash. Callers
+ * wanting a CSS color use `colorForName`; the text formatter emits the index
+ * as an `.author-cN` class so the palette can stay in the stylesheet.
+ */
+export function paletteIndexForName(name: string): number {
+    const key = name.trim().toLowerCase().replace(APOSTROPHES, "'");
+    if (!key) return -1;
+    return hashFnv1a(key) % PALETTE_SIZE;
+}
+
 /** Hash a surname to a curated palette entry. */
 export function colorForName(name: string): string {
-    const key = name.trim().toLowerCase();
-    if (!key) return 'var(--color-mono-200)';
-    return PALETTE[hashFnv1a(key) % PALETTE.length];
+    const slot = paletteIndexForName(name);
+    return slot < 0 ? 'var(--color-mono-200)' : `var(--author-c${slot})`;
 }
 
 export function parseAuthors(raw: string | null | undefined): ParsedAuthor[] {
