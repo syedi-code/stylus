@@ -13,6 +13,8 @@ import { useSourceLibrary } from '../../composables/useSourceLibrary';
 import { useKeyboardAnchor } from '../../composables/useKeyboardAnchor';
 import EssayEmbedSheet from './EssayEmbedSheet.vue';
 import EssayBlockEditor from './EssayBlockEditor.vue';
+import EssayDeckRail from './EssayDeckRail.vue';
+import { essayName, essayWordCount } from '../../lib/essayDisplay';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -31,6 +33,23 @@ const tags = ref<string[]>([]);
 const submitting = ref(false);
 const editorRef = ref<InstanceType<typeof EssayBlockEditor> | null>(null);
 const { ensureLoaded, registerImage } = useSourceLibrary();
+
+/**
+ * Deck readout. The essay's own name (its first section header, or the opening
+ * words in italic when it has none — `essayName`), then the three numbers that
+ * describe the piece: slides, words, sources.
+ *
+ * Slides, not a word target: across the corpus the median essay is four blocks
+ * and ~133 words, so a progress bar toward any prose goal would sit permanently
+ * near-empty. The hard character limit stays — that one is a real constraint,
+ * not an aspiration.
+ */
+const name = computed(() => essayName(content.value));
+const blockCount = computed(() => editorRef.value?.blocks?.length ?? 0);
+const wordCount = computed(() => essayWordCount(content.value));
+const sourceCount = computed(
+	() => (content.value.match(/\[\[(?:quote|book|image):/g) ?? []).length
+);
 
 const sheetOpen = ref(false);
 const sheetInitialKind = ref<'quote' | 'book'>('quote');
@@ -244,9 +263,28 @@ const handleKeydown = (e: KeyboardEvent) => {
       <div
         class="writing-room flex flex-col w-full h-[100dvh] max-h-[100dvh] sm:h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-3rem)] sm:max-w-4xl sm:rounded-2xl overflow-hidden"
       >
+        <!-- Chrome. The safe-area inset is carried HERE, by the container,
+             and never by one of the fixed-height rows inside it: with
+             `box-sizing: border-box` a 47px notch inset eats a short row
+             whole and slices the controls in it. -->
+        <div class="edchrome shrink-0">
+        <EssayDeckRail
+          :blocks="editorRef?.blocks ?? []"
+          :active-bid="editorRef?.activeBid ?? null"
+          @jump="(bid) => editorRef?.goToBlock(bid)"
+        />
         <!-- Top bar — Close left; tags / present / save right. -->
-        <div class="edtop shrink-0 flex items-center justify-between gap-3 px-4 py-2.5">
+        <div class="edtop flex items-center justify-between gap-2 px-3 py-2">
           <button type="button" @click="emit('close')" class="wr-btn">‹ Close</button>
+
+          <!-- The deck's own identity vocabulary, from EssaySlide /
+               EssayHeaderSlide: an ESSAY chip, then the piece's name in
+               italic semibold amber. -->
+          <div class="ednm min-w-0 flex items-center gap-1.5">
+            <span class="edbadge">essay</span>
+            <span class="sep">·</span>
+            <span class="t truncate" :class="{ untitled: name.untitled }">{{ name.name }}</span>
+          </div>
           <div class="relative flex items-center gap-2">
             <button type="button" class="itg" :class="{ on: tags.length }" title="Tags" @click="showTags = !showTags">#</button>
             <button v-if="content.trim().length > 0" type="button" class="itg" title="Present" @click="handlePresent" aria-label="Present essay">
@@ -282,19 +320,32 @@ const handleKeydown = (e: KeyboardEvent) => {
           </div>
         </div>
 
-        <!-- Toolbar — insert tiles + char count. Formatting lives on the
-             bottom bar (thumb-reachable + above the keyboard). -->
-        <div class="wr-tools shrink-0 flex items-center gap-1.5 px-4 py-2 overflow-x-auto">
-          <button type="button" @click="insertHeader" class="ttile" title="Section header"><span class="g">＃</span>Header</button>
-          <button type="button" @click="openSheet('quote')" class="ttile" title="Insert quote"><span class="g">❝</span>Quote</button>
+        <!-- Toolbar — insert tiles. Ordered by what actually gets inserted:
+             across the corpus, 84 quotes and 43 books against 6 images and
+             ZERO section headers. Header used to sit first, nearest the
+             thumb, for a block type no essay has ever contained; it moves
+             last. Formatting lives on the bottom bar (thumb-reachable and
+             above the keyboard). -->
+        <div class="wr-tools flex items-center gap-1.5 px-3 py-1.5 overflow-x-auto">
+          <button type="button" @click="openSheet('quote')" class="ttile primary" title="Insert quote"><span class="g">❝</span>Quote</button>
           <button type="button" @click="openSheet('book')" class="ttile" title="Insert book"><span class="g">▤</span>Book</button>
           <button type="button" @click="triggerImageUpload" :disabled="imageUploading" class="ttile" title="Insert image"><span class="g">▦</span>{{ imageUploading ? '…' : 'Image' }}</button>
+          <button type="button" @click="insertHeader" class="ttile" title="Section header"><span class="g">＃</span>Header</button>
           <input ref="imageFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="handleImageSelected" />
+        </div>
 
-          <span class="ml-auto shrink-0 tabular-nums text-[10.5px]" :class="charCount > MAX_CHARS ? 'text-red-400' : 'text-mono-600'">
+        <!-- Status — the deck, plus the hard character limit. -->
+        <div class="wr-status flex items-center gap-2 px-4 pb-1.5 text-[10.5px]">
+          <span class="n">{{ blockCount }} {{ blockCount === 1 ? 'slide' : 'slides' }}</span>
+          <span class="b"></span>
+          <span class="n">{{ wordCount }} {{ wordCount === 1 ? 'word' : 'words' }}</span>
+          <span class="b"></span>
+          <span class="n">{{ sourceCount === 0 ? 'no sources' : `${sourceCount} ${sourceCount === 1 ? 'source' : 'sources'}` }}</span>
+          <span class="ml-auto shrink-0 tabular-nums" :class="charCount > MAX_CHARS ? 'text-red-400' : 'text-mono-700'">
             {{ charCount.toLocaleString() }} / {{ MAX_CHARS.toLocaleString() }}
           </span>
         </div>
+        </div><!-- /.edchrome -->
 
         <!-- Writing area: the block surface, fills remaining height -->
         <div class="wr-scroll flex-1 min-h-0 overflow-y-auto">
@@ -354,9 +405,70 @@ const handleKeydown = (e: KeyboardEvent) => {
   background: #040302;
 }
 
+/* ── Chrome ──
+   The container owns the safe-area inset so no fixed-height row inside it
+   ever has to. Full-screen on mobile, the modal's top row sat under the
+   notch; a row that carried the inset itself would have had its content box
+   eaten instead (border-box + a 47px inset against a ~44px row). */
+.edchrome {
+  padding-top: env(safe-area-inset-top, 0px);
+  border-bottom: 1px solid var(--line);
+}
+
 /* top bar */
 .edtop {
-  border-bottom: 1px solid var(--line);
+  min-height: 44px;
+}
+
+/* The deck's identity, matching EssaySlide's badge row and the italic-amber
+   title EssayHeaderSlide gives a piece on the slide itself. */
+.ednm {
+  flex: 1;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+.edbadge {
+  flex: 0 0 auto;
+  background: var(--color-essay);
+  color: var(--color-essay-text);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+}
+.ednm .sep {
+  flex: 0 0 auto;
+  color: var(--color-mono-600);
+  font-size: 11px;
+}
+.ednm .t {
+  font-size: 12.5px;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--color-essay);
+  letter-spacing: -0.005em;
+}
+.ednm .t.untitled {
+  font-weight: 400;
+  color: var(--color-mono-500);
+}
+
+/* Status line — slides · words · sources, then the hard character limit. */
+.wr-status {
+  color: var(--color-mono-600);
+  font-variant-numeric: lining-nums;
+}
+.wr-status .n {
+  color: var(--color-mono-500);
+}
+.wr-status .b {
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: var(--color-mono-700);
+  flex: 0 0 auto;
 }
 .edtop .mid {
   font-size: 13px;
@@ -514,6 +626,23 @@ const handleKeydown = (e: KeyboardEvent) => {
   font-size: 14px;
   color: var(--color-mono-500);
   line-height: 1;
+}
+/* Quote is filled because it is the primary insert — 84 of the 133 embeds in
+   the corpus are quotes. That is the only difference between the tiles. */
+.ttile.primary {
+  background: var(--color-essay);
+  border-color: var(--color-essay);
+  color: var(--color-essay-text);
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgb(255 245 220 / 0.5);
+}
+.ttile.primary .g {
+  color: rgb(20 13 3 / 0.65);
+}
+.ttile.primary:hover {
+  background: var(--color-essay-bright);
+  border-color: var(--color-essay-bright);
+  color: var(--color-essay-text);
 }
 .ttile:hover {
   border-color: var(--gold);

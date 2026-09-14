@@ -19,6 +19,13 @@ const props = defineProps<{
 	page?: string;
 	/** Larger type for presentation slides. */
 	presentation?: boolean;
+	/**
+	 * One wrapping line instead of three stacked ones. For the writing view,
+	 * where quotes are frequent (84 across the corpus, against 221 prose
+	 * paragraphs) and a three-line credit under each one costs more column
+	 * than some of the paragraphs do.
+	 */
+	compact?: boolean;
 	/** When set, the work title becomes a clickable link to the source PDF. */
 	titleHref?: string;
 }>();
@@ -28,7 +35,7 @@ const hasYear = computed(() => props.year !== undefined && props.year !== null &
 </script>
 
 <template>
-	<div class="qcite" :class="{ pres: presentation }">
+	<div class="qcite" :class="{ pres: presentation, compact }">
 		<div v-if="authors.length" class="name">
 			<span class="conn">&mdash;&nbsp;</span><template v-for="(a, i) in authors" :key="i">
 				<span v-if="i > 0"> &amp; </span><span class="given">{{ a.firstParts }}</span><span class="surname" :style="{ color: a.color }">{{ a.lastName }}</span><span v-if="a.suffix" class="given">{{ a.suffix }}</span>
@@ -42,6 +49,20 @@ const hasYear = computed(() => props.year !== undefined && props.year !== null &
 <style scoped>
 .qcite {
 	text-align: right;
+}
+
+/* Compact — the three lines run together as one wrapping line. */
+.qcite.compact {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	align-items: baseline;
+	gap: 0 6px;
+}
+.qcite.compact .name,
+.qcite.compact .row {
+	font-size: 11px;
+	line-height: 1.35;
 }
 .name {
 	font-size: 12.5px;
