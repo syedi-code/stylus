@@ -81,6 +81,27 @@ function focusBlk(bid: string) {
 	nextTick(() => blkEls.get(bid)?.focus());
 }
 
+/**
+ * The join between a block and the one before it.
+ *
+ * Every block used to carry the same 8px margin, so prose-after-prose,
+ * prose-after-a-quote and quote-after-quote all read identically — which is
+ * why the column's spacing felt arbitrary. The corpus says these joins are
+ * not alike: paragraphs run ~35 words (two or three sentences), and essays
+ * routinely set three quotes in a row. Prose wants air at the join, stacked
+ * objects want to tuck.
+ */
+const joinClasses = computed(() => {
+	const m = new Map<string, string>();
+	blocks.value.forEach((b, i) => {
+		if (i === 0) return;
+		const prev = blocks.value[i - 1];
+		const bothEmbeds = isEmbedBlock(b) && isEmbedBlock(prev);
+		m.set(b.bid, bothEmbeds ? 'j-stacked' : isEmbedBlock(prev) ? 'j-after-embed' : 'j-after-text');
+	});
+	return m;
+});
+
 // ── Header numbering ──
 const headerLabels = computed(() => {
 	const m = new Map<string, string>();
@@ -282,7 +303,18 @@ function insertEmbed(kind: EmbedBlockKind, id: string, params: EmbedParams = {})
 	activeBid.value = nb;
 }
 
-defineExpose({ insertHeaderBlock, insertEmbed, wrapActiveSelection, activeBid });
+/**
+ * Scroll a block into view and select it. The deck rail in the modal header
+ * drives this — tapping a segment goes to its slide.
+ */
+function goToBlock(bid: string) {
+	const el = blkEls.get(bid);
+	if (!el) return;
+	activeBid.value = bid;
+	el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+defineExpose({ insertHeaderBlock, insertEmbed, wrapActiveSelection, activeBid, blocks, goToBlock });
 
 // ── Pointer gestures (tap / long-press / drag) ──
 const dragBid = ref<string | null>(null);
@@ -397,6 +429,7 @@ function endDrag() {
 				class="blk"
 				:class="[
 					`k-${block.kind}`,
+					joinClasses.get(block.bid),
 					{ act: activeBid === block.bid, editing: editingBid === block.bid, drag: dragBid === block.bid },
 				]"
 				:style="dragBid === block.bid ? { transform: `translateY(${dragDy}px)`, zIndex: 20 } : undefined"
@@ -501,10 +534,22 @@ function endDrag() {
 .blk {
 	position: relative;
 	padding: 2px 6px;
-	margin: 8px 0;
+	margin: 0;
 	border-radius: 12px;
 	outline: none;
 	transition: background 0.18s ease;
+}
+/* The rhythm. Prose is set tight (--content-leading), so the air lives at the
+   joins rather than inside the paragraph — which is also how the deck reads.
+   See `joinClasses` for why the three cases differ. */
+.blk.j-after-text {
+	margin-top: 20px;
+}
+.blk.j-after-embed {
+	margin-top: 22px;
+}
+.blk.j-stacked {
+	margin-top: 8px;
 }
 .blk.act {
 	background: rgba(232, 160, 64, 0.05);
