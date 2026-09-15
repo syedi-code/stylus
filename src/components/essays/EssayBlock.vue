@@ -32,7 +32,22 @@ const emit = defineEmits<{
 	(e: 'mergeBack'): void;
 	(e: 'cross', dir: 'up' | 'down', caret: number): void;
 	(e: 'exitEdit'): void;
+	/** A keystroke landed — the modal retracts its chrome while writing. */
+	(e: 'typing'): void;
+	/** `/quote`, `/section`, `/book`, `/image` typed at the start of a line. */
+	(e: 'slash', kind: 'quote' | 'section' | 'book' | 'image'): void;
+	/** Pasted text that parses as a citable quote. */
+	(e: 'pastedQuote', payload: PastedQuote): void;
 }>();
+
+export interface PastedQuote {
+	text: string;
+	creator?: string;
+	work?: string;
+	page?: string;
+	/** True when the paste was the block's entire content. */
+	whole: boolean;
+}
 
 const taRef = ref<HTMLTextAreaElement | null>(null);
 const textValue = ref('');
@@ -44,11 +59,76 @@ const rendered = computed(() => {
 	return t ? formatMarkdown(t) : '';
 });
 
+/**
+ * Slash commands, recognised only at the very start of an empty-ish line so
+ * they can never fire inside prose (dates, fractions, URLs all contain "/").
+ * The command word is consumed; the editor performs the insert.
+ */
+const SLASH_RE = /^\/(quote|section|book|image)\s$/;
+
 function onInput(e: Event) {
-	const v = (e.target as HTMLTextAreaElement).value;
+	const ta = e.target as HTMLTextAreaElement;
+	const v = ta.value;
+
+	const m = v.match(SLASH_RE);
+	if (m) {
+		// Swallow the command text; the block goes back to empty.
+		textValue.value = '';
+		emit('update', '');
+		grow();
+		emit('slash', m[1] as 'quote' | 'section' | 'book' | 'image');
+		return;
+	}
+
 	textValue.value = v;
 	emit('update', v);
 	grow();
+	emit('typing');
+}
+
+/**
+ * Paste-to-quote. Someone copying a passage out of a book app or a PDF almost
+ * always gets the words plus an attribution tail, and re-typing that into the
+ * quote sheet is the slowest path in the editor. If the pasted text looks like
+ *     "A line." — Someone, Some Book, p. 12
+ * offer to set it as a quote instead of leaving it as prose.
+ *
+ * Deliberately conservative: it only fires on a paste (never on typing), and
+ * only when an attribution actually parses. Anything else pastes as normal.
+ */
+const QUOTED_RE = /^\s*[“"'‘]([\s\S]+?)[”"'’]\s*(?:[—–-]+\s*(.+))?$/;
+const ATTR_RE = /^([^,]+?)(?:,\s*([^,]+?))?(?:,\s*p+\.?\s*([0-9ivxlc]+))?\.?$/i;
+
+function parsePastedQuote(raw: string, whole: boolean): PastedQuote | null {
+	const text = raw.trim();
+	if (text.length < 24 || text.length > 2000) return null;
+	const q = text.match(QUOTED_RE);
+	if (!q) return null;
+	const body = q[1].trim();
+	if (!body) return null;
+	const out: PastedQuote = { text: body, whole };
+	const tail = (q[2] || '').trim();
+	if (tail) {
+		const a = tail.match(ATTR_RE);
+		if (a) {
+			out.creator = (a[1] || '').trim() || undefined;
+			out.work = (a[2] || '').trim() || undefined;
+			out.page = (a[3] || '').trim() || undefined;
+		}
+	}
+	return out;
+}
+
+function onPaste(e: ClipboardEvent) {
+	const ta = taRef.value;
+	if (!ta) return;
+	const raw = e.clipboardData?.getData('text/plain') ?? '';
+	if (!raw) return;
+	const whole = ta.selectionStart === 0 && ta.selectionEnd === ta.value.length;
+	const parsed = parsePastedQuote(raw, whole && ta.value.trim() === raw.trim() ? true : whole);
+	if (parsed) emit('pastedQuote', parsed);
+	// Never preventDefault: the paste lands as prose either way, and the offer
+	// is a suggestion the writer can ignore.
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -128,6 +208,7 @@ defineExpose({ focus, el: () => taRef.value });
 			placeholder="Section title"
 			@input="onInput"
 			@keydown="onKeydown"
+			@paste="onPaste"
 			@blur="emit('exitEdit')"
 		></textarea>
 		<div v-else class="hbadge foil" :data-empty="!block.text.trim()">
@@ -147,6 +228,7 @@ defineExpose({ focus, el: () => taRef.value });
 			placeholder="Write…"
 			@input="onInput"
 			@keydown="onKeydown"
+			@paste="onPaste"
 			@blur="emit('exitEdit')"
 		></textarea>
 		<div v-else class="para-view" :class="{ empty: !rendered }">
