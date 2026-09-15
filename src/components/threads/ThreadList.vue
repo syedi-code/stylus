@@ -3,7 +3,7 @@ import type { Thread } from '../../lib/api';
 import ThreadCard from './ThreadCard.vue';
 import ThreadDetail from './ThreadDetail.vue';
 
-const props = defineProps<{
+defineProps<{
   threads: Thread[];
   loading: boolean;
   error: string | null;

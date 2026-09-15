@@ -12,9 +12,12 @@
  * Plan D20.
  */
 import { reactive } from 'vue';
-import type { EmbedKind, ParamSpec } from './essayTokens';
+import {
+	EMBED_PARAM_SPECS as GRAMMAR_DEFAULT_SPECS,
+	type EmbedParamSpecs,
+} from './essayTokenGrammar';
 
-export type EmbedParamSpecs = Record<EmbedKind, readonly ParamSpec[]>;
+export type { EmbedParamSpecs };
 
 export interface ApiContract {
 	limits: Record<string, number>;
@@ -31,56 +34,11 @@ const FALLBACK_LIMITS = {
 	TAGS: 1_000,
 };
 
-const FALLBACK_EMBED_PARAM_SPECS: EmbedParamSpecs = {
-	quote: [
-		{
-			key: 'size',
-			type: 'int',
-			min: 12,
-			max: 48,
-			default: 24,
-			description: 'Font size in pixels (12–48)',
-		},
-	],
-	book: [
-		{
-			key: 'author',
-			type: 'enum',
-			enumValues: ['show', 'hide'],
-			default: 'hide',
-			description: 'Show author above title (defaults to hidden)',
-		},
-		{
-			key: 'size',
-			type: 'int',
-			min: 12,
-			max: 64,
-			default: 26,
-			description: 'Title font size in pixels (12–64)',
-		},
-	],
-	image: [
-		{
-			key: 'bg',
-			type: 'enum',
-			enumValues: ['dark', 'light', 'none'],
-			default: 'dark',
-			description: 'Slide background (dark · light · none)',
-		},
-		{
-			key: 'caption',
-			type: 'string',
-			default: '',
-			description: 'Per-embed caption (overrides the image record)',
-		},
-	],
-};
-
 /** Mutated in place on arrival so templates reading it re-render. */
 export const MAX_LENGTHS = reactive({ ...FALLBACK_LIMITS });
 
 export const EMBED_PARAM_SPECS = reactive({
-	...FALLBACK_EMBED_PARAM_SPECS,
+	...GRAMMAR_DEFAULT_SPECS,
 }) as EmbedParamSpecs;
 
 export function applyContract(contract: ApiContract | undefined): void {

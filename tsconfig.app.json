@@ -1,5 +1,5 @@
 {
-	"extends": "../../tsconfig.base.json",
+	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
 		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 		"lib": ["esnext", "dom"],
@@ -13,6 +13,5 @@
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true
 	},
-	"include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
-	"references": [{ "path": "../../packages/core" }]
+	"include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
 }

@@ -5,13 +5,7 @@ name = "<PROJECT_NAME>"
 pages_build_output_dir = "dist"
 compatibility_date = "<YYYY-MM-DD>"
 
-# Required env vars (set in Pages dashboard or via wrangler pages secret put):
-#   VITE_API_URL - Worker URL (e.g., https://journal.<subdomain>.workers.dev)
-#   VITE_API_KEY - API key matching worker's API_KEY secret
-
-# Staging environment (optional)
-# Create: wrangler pages project create antisocial-media-staging
-# Deploy: wrangler pages deploy dist --project-name=antisocial-media-staging
+# Required, set in the Pages dashboard or via `wrangler pages secret put`:
+#   WORKER_URL - the alexandria worker to proxy /api/* to
 #
-[env.staging]
-name = "antisocial-media-staging"
+# Local development can bypass the proxy instead, via VITE_API_URL in .env.

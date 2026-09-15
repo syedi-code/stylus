@@ -1,36 +1,35 @@
 import { describe, it, expect } from 'vitest';
-import { apiContract } from '@antisocial/core';
 import {
 	MAX_LENGTHS,
 	EMBED_PARAM_SPECS,
 	applyContract,
 } from '../src/lib/contract';
+import { EMBED_PARAM_SPECS as SHIPPED } from '../src/lib/essayTokenGrammar';
+import { parseEssayToken, serializeToken } from '../src/lib/essayTokens';
 
-/**
- * The values in contract.ts are a fallback for the frames before the server
- * responds. They are allowed to be stale after stylus leaves this repo; while
- * both still live here, a drift is a mistake, so it fails loudly.
- */
-describe('the shipped fallback', () => {
-	const server = apiContract();
+const ID = '9f2a1b3c-4d5e-4f60-8a71-b2c3d4e5f607';
 
-	it('matches the limits the server sends', () => {
-		expect({ ...MAX_LENGTHS }).toEqual(server.limits);
+describe('before the server answers', () => {
+	it('falls back to the vocabulary shipped with the grammar', () => {
+		expect(JSON.parse(JSON.stringify(EMBED_PARAM_SPECS))).toEqual(
+			JSON.parse(JSON.stringify(SHIPPED))
+		);
 	});
 
-	it('matches the embed param vocabulary the server sends', () => {
-		expect(JSON.parse(JSON.stringify(EMBED_PARAM_SPECS))).toEqual(
-			JSON.parse(JSON.stringify(server.embed_param_specs))
-		);
+	it('has limits to enforce', () => {
+		expect(MAX_LENGTHS.ESSAY).toBeGreaterThan(0);
+		expect(MAX_LENGTHS.CONTENT).toBeGreaterThan(0);
 	});
 });
 
-describe('applyContract', () => {
-	it('takes the server value over the fallback', () => {
+describe('once the server answers', () => {
+	it('parses a param the shipped vocabulary does not know', () => {
+		expect(parseEssayToken(`[[image:${ID} bg=sepia]]`)?.params).toEqual({});
+
 		applyContract({
-			limits: { ...server_limits(), ESSAY: 50_000 },
+			limits: { ...MAX_LENGTHS, ESSAY: 50_000 },
 			embed_param_specs: {
-				...apiContract().embed_param_specs,
+				...EMBED_PARAM_SPECS,
 				image: [
 					{
 						key: 'bg',
@@ -42,20 +41,33 @@ describe('applyContract', () => {
 				],
 			},
 		});
-		expect(MAX_LENGTHS.ESSAY).toBe(50_000);
-		expect(EMBED_PARAM_SPECS.image[0].enumValues).toContain('sepia');
 
-		applyContract(apiContract());
-		expect(MAX_LENGTHS.ESSAY).toBe(20_000);
-		expect(EMBED_PARAM_SPECS.image[0].enumValues).not.toContain('sepia');
+		expect(MAX_LENGTHS.ESSAY).toBe(50_000);
+		expect(parseEssayToken(`[[image:${ID} bg=sepia]]`)?.params).toEqual({
+			bg: 'sepia',
+		});
 	});
 
-	it('leaves the fallback alone when the server sends nothing', () => {
-		applyContract(undefined);
-		expect(MAX_LENGTHS.ESSAY).toBe(20_000);
+	it('round-trips a token through the live vocabulary', () => {
+		const token = parseEssayToken(`[[image:${ID} bg=sepia]]`)!;
+		expect(serializeToken(token)).toBe(`[[image:${ID} bg=sepia]]`);
 	});
 });
 
-function server_limits() {
-	return apiContract().limits;
-}
+describe('the grammar itself', () => {
+	it('clamps an int to the spec bounds', () => {
+		expect(parseEssayToken(`[[quote:${ID} size=999]]`)?.params).toEqual({
+			size: 48,
+		});
+	});
+
+	it('drops an unknown key', () => {
+		expect(parseEssayToken(`[[book:${ID} nonsense=1]]`)?.params).toEqual(
+			{}
+		);
+	});
+
+	it('returns null for a paragraph that is not a token', () => {
+		expect(parseEssayToken('Just some prose.')).toBeNull();
+	});
+});

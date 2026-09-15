@@ -24,7 +24,7 @@ import NoteCardSkeleton from './NoteCardSkeleton.vue';
 import CaptureForm from '../shared/CaptureForm.vue';
 import BookLinePicker from '../library/BookLinePicker.vue';
 
-const props = defineProps<{
+defineProps<{
     isAdmin?: boolean;
 }>();
 
