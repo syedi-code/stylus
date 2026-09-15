@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
-import { MAX_LENGTHS } from '@antisocial/core';
+import { MAX_LENGTHS } from '../../lib/contract';
 import { createNote, createConnectionApi, fetchConnections, fetchBookById, type Note, type Book } from '../../lib/api';
 import BookLinePicker from '../library/BookLinePicker.vue';
 

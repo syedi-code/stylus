@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
-import { MAX_LENGTHS } from '@antisocial/core';
+import { MAX_LENGTHS } from '../../lib/contract';
 import { updateThought, type Thought, type ThoughtInput } from '../../lib/api';
 import { useMoodAutocomplete } from '../../composables/useMoodAutocomplete';
 

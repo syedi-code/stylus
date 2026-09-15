@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
-import { MAX_LENGTHS } from '@antisocial/core';
+import { MAX_LENGTHS } from './lib/contract';
 import { fetchBookById, deleteQuote, fetchQuotes, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
 import { useAuth } from './lib/auth';
 import { usePagination } from './composables/usePagination';

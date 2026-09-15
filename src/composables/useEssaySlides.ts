@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue';
 import type { Essay, EssayReference } from '../lib/api';
-import { parseEssayToken, type ParsedToken } from '@antisocial/core';
+import { parseEssayToken, type ParsedToken } from '../lib/essayTokens';
 import { useSourceLibrary } from './useSourceLibrary';
 
 /**

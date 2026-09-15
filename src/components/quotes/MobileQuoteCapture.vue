@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, computed, onUnmounted } from 'vue';
-import { MAX_LENGTHS } from '@antisocial/core';
+import { MAX_LENGTHS } from '../../lib/contract';
 import { createQuote, createConnectionApi } from '../../lib/api';
 import SourceSelector from '../library/SourceSelector.vue';
 import type { SourceAttribution } from '../library/SourceSelector.vue';
