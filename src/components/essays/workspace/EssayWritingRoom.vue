@@ -12,6 +12,7 @@ import { useEssayDraft } from '../../../composables/useEssayDraft';
 import { useSourceLibrary } from '../../../composables/useSourceLibrary';
 import { useKeyboardAnchor } from '../../../composables/useKeyboardAnchor';
 import EssayEmbedSheet from '../EssayEmbedSheet.vue';
+import EssayQuoteModal from '../EssayQuoteModal.vue';
 import EssayBlockEditor from '../EssayBlockEditor.vue';
 import EssayDeckRail from '../EssayDeckRail.vue';
 import { essayName, essayWordCount } from '../../../lib/essayDisplay';
@@ -220,9 +221,15 @@ const canSubmit = computed(() =>
 );
 
 // ─── Insertion — the block editor owns the array; the modal just drives it ───
+/** Quotes open the centred modal; books keep the picker sheet. */
+const quoteModalOpen = ref(false);
 function openSheet(kind: 'quote' | 'book', seed?: QuoteDraft) {
-  sheetInitialKind.value = kind;
   sheetSeed.value = seed ?? null;
+  if (kind === 'quote') {
+    quoteModalOpen.value = true;
+    return;
+  }
+  sheetInitialKind.value = kind;
   sheetOpen.value = true;
 }
 
@@ -471,10 +478,16 @@ defineExpose({ goToBlock });
         </div>
 
         <!-- Embed picker sheet -->
+        <EssayQuoteModal
+          :is-open="quoteModalOpen"
+          :seed="sheetSeed"
+          @close="quoteModalOpen = false"
+          @select="handleEmbedSelect"
+        />
+
         <EssayEmbedSheet
           :is-open="sheetOpen"
-          :initial-kind="sheetInitialKind"
-          :seed="sheetSeed"
+          initial-kind="book"
           @close="sheetOpen = false"
           @select="handleEmbedSelect"
         />
