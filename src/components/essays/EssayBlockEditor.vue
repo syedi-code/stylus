@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import { EMBED_PARAM_SPECS, type EmbedParams } from '@antisocial/core';
+import { EMBED_PARAM_SPECS } from '../../lib/contract';
+import type { EmbedParams } from '../../lib/essayTokens';
 import {
 	useEssayBlocks,
 	isEmbedBlock,

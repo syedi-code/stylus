@@ -9,7 +9,7 @@ import {
   type Thread,
 } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
-import { parseEssayToken } from '@antisocial/core';
+import { parseEssayToken } from '../../lib/essayTokens';
 import BookAttribution from '../books/BookAttribution.vue';
 
 const props = defineProps<{

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { MAX_LENGTHS } from '@antisocial/core';
+import { MAX_LENGTHS } from '../../lib/contract';
 import {
   fetchThreads,
   fetchThreadsForEntity,

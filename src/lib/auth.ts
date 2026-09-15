@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue';
+import { applyContract, type ApiContract } from './contract';
 
 interface AuthUser {
 	id: string;
@@ -37,7 +38,9 @@ export function useAuth() {
 			const response = await apiClient.post<{
 				user: { id: string; email: string };
 				role: 'admin' | 'member';
+				contract?: ApiContract;
 			}>('/session');
+			applyContract(response.data.contract);
 			user.value = {
 				id: response.data.user.id,
 				email: response.data.user.email,

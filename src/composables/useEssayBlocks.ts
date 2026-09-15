@@ -5,7 +5,7 @@ import {
 	type EmbedKind,
 	type EmbedParams,
 	type ParamValue,
-} from '@antisocial/core';
+} from '../lib/essayTokens';
 
 /**
  * Block model for the essay writing room.
@@ -21,7 +21,7 @@ import {
  * That idempotency is the correctness gate — opening an essay and saving it
  * untouched must never mint a spurious version. See useEssayBlocks.roundtrip.ts.
  *
- * Token grammar (regex, params) is owned by `@antisocial/core`; we never
+ * Token grammar (regex, params) is owned by `lib/essayTokens`; we never
  * re-roll it — parse via `parseEssayToken`, emit via `serializeToken`.
  */
 

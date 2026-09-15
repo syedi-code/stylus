@@ -1,4 +1,4 @@
-import { parseEssayToken } from '@antisocial/core';
+import { parseEssayToken } from './essayTokens';
 import type { Essay } from './api';
 
 /**
