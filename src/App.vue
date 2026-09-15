@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { MAX_LENGTHS } from './lib/contract';
-import { fetchBookById, deleteQuote, fetchQuotes, fetchEssays, deleteEssay as deleteEssayApi, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
+import { fetchBookById, deleteQuote, fetchQuotes, type Note, type Quote, type Book, type Thought, type Essay } from './lib/api';
 import { useAuth } from './lib/auth';
-import { usePagination } from './composables/usePagination';
 import NotesPage from './components/notes/NotesPage.vue';
 import QuoteCard from './components/quotes/QuoteCard.vue';
 import AppHeader from './components/shared/AppHeader.vue';
@@ -30,7 +29,7 @@ import ConfirmModal from './components/shared/ConfirmModal.vue';
 import TextureDebugOverlay from './components/shared/TextureDebugOverlay.vue';
 import { warmTextures } from './composables/useTextureBlob';
 import { allTextureAssets } from './composables/usePresentationQuoteMode';
-import EssaysIndex from './components/essays/EssaysIndex.vue';
+import EssaysWorkspace from './components/essays/workspace/EssaysWorkspace.vue';
 import EditEssayModal from './components/essays/EditEssayModal.vue';
 import PresentationViewEssay from './components/essays/PresentationViewEssay.vue';
 import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
@@ -38,11 +37,6 @@ import { fetchThreads, deleteThreadApi, type Thread } from './lib/api';
 const { isAdmin, user: authUser, init: initAuth, logout } = useAuth();
 
 const notesPageRef = ref<InstanceType<typeof NotesPage> | null>(null);
-
-const essaysPagination = usePagination<Essay, { search?: string }>({ 
-  fetchFn: (params) => fetchEssays({ ...params }),
-  pageSize: 30,
-});
 
 const currentTab = ref('notes');
 
@@ -310,7 +304,6 @@ watch(currentTab, (newTab) => {
     loadQuotes();
   }
   if (newTab === 'essays') {
-    essaysPagination.loadInitial();
   }
   if (newTab === 'threads') {
     loadThreads();
@@ -389,42 +382,21 @@ const handleAddEssayToThread = (essay: Essay) => openAddToThread('essay', essay.
 // ============================================================================
 // Essays
 // ============================================================================
+// The tab owns itself now (components/essays/workspace/EssaysWorkspace.vue):
+// its pagination, its spine, copy/delete, and the writing room. What stays
+// here is only what OTHER tabs reach for — presenting an essay, and editing
+// one from inside a thread, which must stay a modal over the thread rather
+// than throwing you onto the Essays tab.
 
+const essaysRef = ref<InstanceType<typeof EssaysWorkspace> | null>(null);
 const editingEssay = ref<Essay | null>(null);
 const presentingEssay = ref<Essay | null>(null);
-const showNewEssayModal = ref(false);
-
-const handleEditEssay = (essay: Essay) => {
-  editingEssay.value = essay;
-};
-
-const handleCopyEssay = async (essay: Essay) => {
-  if (essay.content) {
-    await navigator.clipboard.writeText(essay.content);
-  }
-};
 
 const handlePresentEssay = (essay: Essay) => {
   presentingEssay.value = essay;
 };
-
-const handleDeleteEssay = async (essay: Essay) => {
-  if (!confirm('Are you sure you want to delete this essay? This action cannot be undone.')) {
-    return;
-  }
-  try {
-    await deleteEssayApi(essay.id);
-    essaysPagination.removeItem((e) => e.id === essay.id);
-  } catch (err) {
-    console.error('Failed to delete essay:', err);
-  }
-};
-
-const handleEssaySaved = async () => {
+const handleEssaySaved = () => {
   editingEssay.value = null;
-  showNewEssayModal.value = false;
-  await essaysPagination.loadInitial();
-  await reloadEditingThread();
 };
 
 const handleNavigateToThread = (_threadId: string) => {
@@ -568,23 +540,15 @@ watch([threadsSearch], () => {
         </div>
       </transition>
 
-      <!-- Essays Tab — "the gilded index", rendered edge-to-edge on black. -->
+      <!-- Essays Tab — the manuscript itself. No index: the spine inside
+           the workspace is how you move between pieces. -->
       <transition name="fade" mode="out-in">
-        <EssaysIndex
+        <EssaysWorkspace
           v-if="currentTab === 'essays'"
-          :essays="essaysPagination.items.value"
-          :loading="essaysPagination.loading.value"
-          :loadingMore="essaysPagination.loadingMore.value"
-          :error="essaysPagination.error.value"
+          ref="essaysRef"
           :isAdmin="isAdmin"
-          @new="showNewEssayModal = true"
-          @edit="handleEditEssay"
-          @copy="handleCopyEssay"
           @present="handlePresentEssay"
-          @delete="handleDeleteEssay"
           @addToThread="handleAddEssayToThread"
-          @navigateToThread="handleNavigateToThread"
-          @retry="essaysPagination.loadInitial()"
         />
       </transition>
 
@@ -594,7 +558,9 @@ watch([threadsSearch], () => {
 
       <EditThoughtModal :isOpen="!!editingThought" :thought="editingThought" @close="editingThought = null" @saved="handleThreadThoughtSaved" />
 
-      <EditEssayModal :isOpen="showNewEssayModal || !!editingEssay" :essay="editingEssay" @close="showNewEssayModal = false; editingEssay = null" @saved="handleEssaySaved" @present="handlePresentEssay" />
+      <!-- Only for editing an essay from inside a thread; the Essays tab
+           renders the writing room inline instead. -->
+      <EditEssayModal :isOpen="!!editingEssay" :essay="editingEssay" @close="editingEssay = null" @saved="handleEssaySaved" @present="handlePresentEssay" />
 
       <EditBookModal :isOpen="showBookModal" :book="editingBook" @close="showBookModal = false; editingBook = null" @saved="handleBookSaved" />
 
@@ -676,7 +642,11 @@ watch([threadsSearch], () => {
     </button>
 
     <!-- Amber FAB for essays tab -->
-    <button v-if="isMobile && currentTab === 'essays'" @click="showNewEssayModal = true" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-essay active:bg-essay-bright rounded-full shadow-lg shadow-essay/30 flex items-center justify-center text-black transition-all active:scale-95" aria-label="New Essay">
+    <!-- Mobile "write" button. Hidden once the room is already on a blank
+         piece — tapping it then does nothing visible, and it sits on top of
+         the editor's own insert rail. Lifted clear of that rail while it is
+         showing, so it never covers the Quote/Book/Image/Header pills. -->
+    <button v-if="isMobile && currentTab === 'essays' && !essaysRef?.isNewPiece" @click="essaysRef?.newEssay()" class="fixed right-5 z-40 w-14 h-14 bg-essay active:bg-essay-bright rounded-full shadow-lg shadow-essay/30 flex items-center justify-center text-black transition-all active:scale-95" style="bottom: calc(4.75rem + env(safe-area-inset-bottom))" aria-label="New Essay">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
         <path d="m15 5 4 4" />

@@ -76,6 +76,22 @@ async function ensureLoaded(force = false): Promise<void> {
 	return inflight;
 }
 
+/**
+ * Put a quote written elsewhere in the app into the shared catalogue.
+ *
+ * The quote sheet can now WRITE a quote, not only pick one — and the store it
+ * creates into is the store every foil and picker reads. Without this the new
+ * quote's `[[quote:UUID]]` token would render "quote unavailable" until a
+ * full 500-row refetch landed; with it the foil resolves on the next tick and
+ * nothing has to be force-refreshed.
+ */
+function registerQuote(q: Quote) {
+	const i = quotes.value.findIndex((x) => x.id === q.id);
+	if (i >= 0) quotes.value = quotes.value.map((x, n) => (n === i ? q : x));
+	// Newest first, matching the order fetchQuotes returns.
+	else quotes.value = [q, ...quotes.value];
+}
+
 /** Register a resolvable image URL for an essay_images id. */
 function registerImage(id: string, url: string) {
 	const next = new Map(imageUrls.value);
@@ -99,6 +115,7 @@ export function useSourceLibrary() {
 		bookById,
 		authorById,
 		registerImage,
+		registerQuote,
 		imageUrl,
 	};
 }

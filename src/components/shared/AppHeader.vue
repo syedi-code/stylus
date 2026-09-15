@@ -64,13 +64,41 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
+/**
+ * Publish the header's height as `--app-header-h` on the document root.
+ *
+ * A full-height tab (the Essays manuscript) has to fill from under this
+ * header to the bottom of the viewport. Measuring its OWN offset to work that
+ * out is what broke: the six tab transitions in App.vue are separate
+ * `<transition>` elements, so `mode="out-in"` does not coordinate between
+ * them — the outgoing tab is still in the DOM, mid-fade, when the incoming
+ * one mounts and measures. Its top came back as "below the whole previous
+ * feed", the height clamped to nothing, and the tab rendered blank until any
+ * resize re-measured it.
+ *
+ * The header's height does not depend on what is leaving underneath it. A
+ * ResizeObserver also keeps it right when the nav wraps or the mobile panel
+ * opens, which a one-shot measurement never did.
+ */
+let headerRO: ResizeObserver | null = null;
+
 onMounted(() => {
   document.addEventListener('click', onDocumentClick);
   document.addEventListener('keydown', onKeydown);
+
+  if (rootEl.value && typeof ResizeObserver !== 'undefined') {
+    headerRO = new ResizeObserver(([entry]) => {
+      const h = Math.round(entry.target.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--app-header-h', `${h}px`);
+    });
+    headerRO.observe(rootEl.value);
+  }
 });
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick);
   document.removeEventListener('keydown', onKeydown);
+  headerRO?.disconnect();
+  headerRO = null;
 });
 </script>
 

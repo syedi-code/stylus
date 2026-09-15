@@ -19,12 +19,14 @@ function paragraphs(content: string): string[] {
         .filter((p) => p.length > 0);
 }
 
-/** Strip inline markdown delimiters (**bold**, *italic*, <u>, {highlight}) and
- *  header hashes so a paragraph reads as plain text. */
+/** Strip inline markdown delimiters (**bold**, *italic*, <u>, {highlight},
+ *  ::Name::) and header hashes so a paragraph reads as plain text. The doubled
+ *  colon is removed as a pair so ordinary prose colons survive. */
 function stripInline(text: string): string {
     return text
         .replace(/^#+\s*/, '')
         .replace(/\*\*/g, '')
+        .replace(/::/g, '')
         .replace(/[*_`]/g, '')
         .replace(/[<>{}]/g, '')
         .replace(/\s+/g, ' ')
