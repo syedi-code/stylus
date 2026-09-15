@@ -6,9 +6,9 @@ import type { EmbedBlock } from '../../../composables/useEssayBlocks';
 
 /**
  * Book embed (writing view) — presentational. A small gilt-edged book (dark
- * leather cover, gold spine + page edge) beside the title (gold-underlined,
- * the app's book-title convention) and its author, on the dark ground. No
- * gold slab — it reads as a book, not a stick of butter.
+ * leather cover, gold spine + page edge) beside the title in gold italic and
+ * its author, on the dark ground. No gold slab — it reads as a book, not a
+ * stick of butter.
  */
 const props = defineProps<{ block: EmbedBlock }>();
 
@@ -84,12 +84,13 @@ const authors = computed(() => parseAuthors(book.value?.author));
 	font-size: 15px;
 	font-style: italic;
 	font-weight: 500;
-	color: var(--color-mono-50);
+	/* Gold italic, unlined. The underline is the app's convention for a book
+	   title sitting INSIDE a sentence, where it needs to be picked out of
+	   prose; a book foil is already its own object beside its own cover, and
+	   a rule dragged under a title as long as some of these looked like a
+	   mistake. Same #e8d0a8 the credit gives a work. */
+	color: #e8d0a8;
 	line-height: 1.25;
-	text-decoration: underline;
-	text-decoration-color: rgba(232, 160, 64, 0.55);
-	text-decoration-thickness: max(1.5px, 0.06em);
-	text-underline-offset: 0.16em;
 }
 .bau {
 	font-size: 12px;
