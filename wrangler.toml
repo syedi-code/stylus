@@ -1,14 +1,24 @@
-# Cloudflare Pages configuration
+# Cloudflare Pages configuration for stylus.
 name = "antisocial-media"
 pages_build_output_dir = "dist"
 compatibility_date = "2025-08-24"
 
+# The project is still named antisocial-media. A Pages project cannot be
+# renamed — recreating one means a new *.pages.dev and re-adding every custom
+# domain and Access policy — and the name is visible nowhere a reader would
+# look. The hostname is what matters, and a project holds as many as you like:
+#
+#   wrangler pages domain add stylus.socialeating.studio --project-name antisocial-media
+#
+# Keep anti.socialeating.studio and journal.ibrahimsyed.io pointing here too.
+# They cost nothing and someone's bookmarks still use them.
+
 # Environment variables:
-#   WORKER_URL - Backend worker URL for the Pages Function proxy
-#     Production: https://api.ibrahimsyed.io  (or antisocial-worker.iysyed01.workers.dev)
+#   WORKER_URL - the alexandria worker the Pages Function proxies to.
+#     Production: https://alexandria.socialeating.studio
 #     Staging:    https://antisocial-worker-staging.iysyed01.workers.dev
 #
 # Set via: wrangler pages secret put WORKER_URL --project=antisocial-media
 #
-# For local dev, set VITE_API_URL in .env to bypass the proxy:
+# For local dev, set VITE_API_URL in .env to bypass the proxy entirely:
 #   VITE_API_URL=http://localhost:8787/api
