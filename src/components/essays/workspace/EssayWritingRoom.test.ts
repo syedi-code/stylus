@@ -275,4 +275,16 @@ describe('EssayWritingRoom — the stylesheet', () => {
 			expect(css, `${sel} has no rule`).toContain(`${sel} {`);
 		}
 	});
+
+	it('pins the docked spine to its width, whatever the piece titles are', () => {
+		// `flex: 0 0 258px` is not enough on its own: a flex item's default
+		// min-width is its content's min-content size, and the titles do not
+		// wrap. With long untitled pieces on prod the dock grew to the width of
+		// the longest opening sentence. happy-dom does no layout, so this pins
+		// the rule itself.
+		const css = roomSource.slice(roomSource.indexOf('<style scoped>'));
+		const rule = css.slice(css.indexOf('.spine-dock {'), css.indexOf('}', css.indexOf('.spine-dock {')));
+		expect(rule).toMatch(/min-width:\s*0/);
+		expect(rule).toMatch(/max-width:\s*258px/);
+	});
 });
