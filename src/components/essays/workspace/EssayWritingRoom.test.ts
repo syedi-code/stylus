@@ -28,6 +28,8 @@ vi.mock('../../../composables/useSourceLibrary', () => ({
 }));
 
 import EssayWritingRoom from './EssayWritingRoom.vue';
+// Raw source, for the stylesheet guard at the bottom of this file.
+import roomSource from './EssayWritingRoom.vue?raw';
 
 const ESSAY: Essay = {
 	id: 'e-1',
@@ -142,8 +144,8 @@ describe('EssayWritingRoom — chrome', () => {
 	});
 });
 
-describe('EssayWritingRoom \u2014 the rail', () => {
-	it('names every insert once \u2014 no two pills reading the same word', async () => {
+describe('EssayWritingRoom — the rail', () => {
+	it('names every insert once — no two pills reading the same word', async () => {
 		const room = mountRoom();
 		await flushPromises();
 
@@ -151,8 +153,8 @@ describe('EssayWritingRoom \u2014 the rail', () => {
 		const labels = room.findAll('.pill').map((p) => p.text().replace(/[^A-Za-z]/g, ''));
 		expect(labels).toEqual(['Quote', 'Book', 'Image', 'Header']);
 		// The rail used to carry two "recent quote" chips labelled with the
-		// quote's own opening words \u2014 so beside the Quote button it read
-		// "Quote / Book / Quote\u2026 / Quote\u2026", and the duplicates were the feature.
+		// quote's own opening words — so beside the Quote button it read
+		// "Quote / Book / Quote… / Quote…", and the duplicates were the feature.
 		expect(room.findAll('.pill.recent')).toHaveLength(0);
 	});
 
@@ -161,7 +163,7 @@ describe('EssayWritingRoom \u2014 the rail', () => {
 		await flushPromises();
 
 		// `.fmt` was declared twice in this component's stylesheet: once as the
-		// container, and again \u2014 later, so it won \u2014 as a 30x30 grid cell. The
+		// container, and again — later, so it won — as a 30x30 grid cell. The
 		// four buttons were being laid out inside a box narrower than two of
 		// them, which is why B/I/U/H vanished off the bottom-right on a small
 		// window. One declaration now, and the cluster never shrinks.
@@ -171,7 +173,7 @@ describe('EssayWritingRoom \u2014 the rail', () => {
 	});
 });
 
-describe('EssayWritingRoom \u2014 the header', () => {
+describe('EssayWritingRoom — the header', () => {
 	it('leads with the piece, and ends with exactly one filled control', async () => {
 		const room = mountRoom();
 		await flushPromises();
@@ -187,18 +189,40 @@ describe('EssayWritingRoom \u2014 the header', () => {
 	});
 });
 
-describe('EssayWritingRoom \u2014 starting a new piece', () => {
+describe('EssayWritingRoom — starting a new piece', () => {
 	it('says that a new piece started, because nothing else visibly happens', async () => {
 		// The room is always open, so "new essay" used to look identical to the
-		// text disappearing \u2014 which reads as a fault, not as a beginning. On a
+		// text disappearing — which reads as a fault, not as a beginning. On a
 		// phone the button that does it is at the far end of the screen from the
 		// only thing that changed.
-		const room = mountRoom({ essay: null });
+		const room = mountRoom({ essay: null, announceNew: true });
 		await flushPromises();
 
 		const flash = room.find('.newflash');
 		expect(flash.exists()).toBe(true);
 		expect(flash.text()).toContain('New piece');
+	});
+
+	/**
+	 * THE FALSE POSITIVE.
+	 *
+	 * The notice used to fire on `essay == null` — which is also true for the
+	 * gap between the tab mounting and the essay list arriving. So every cold
+	 * load announced a new piece and then quietly opened the most recent one
+	 * underneath the notice. Absence of a piece is a state the room passes
+	 * through; STARTING one is an intent only the caller knows about, so the
+	 * caller has to say so.
+	 */
+	it('stays quiet while the first load has simply not arrived yet', async () => {
+		const room = mountRoom({ essay: null });
+		await flushPromises();
+		expect(room.find('.newflash').exists()).toBe(false);
+
+		// …and then the list lands and an old piece opens, with nothing having
+		// claimed it was new.
+		await room.setProps({ essay: ESSAY });
+		await flushPromises();
+		expect(room.find('.newflash').exists()).toBe(false);
 	});
 
 	it('says nothing when an existing piece is opened', async () => {
@@ -208,12 +232,47 @@ describe('EssayWritingRoom \u2014 starting a new piece', () => {
 	});
 
 	it('gets out of the way as soon as writing starts', async () => {
-		const room = mountRoom({ essay: null });
+		const room = mountRoom({ essay: null, announceNew: true });
 		await flushPromises();
 		expect(room.find('.newflash').exists()).toBe(true);
 
 		await room.findComponent({ name: 'EssayBlockEditor' }).vm.$emit('typing');
 		await flushPromises();
 		expect(room.find('.newflash').exists()).toBe(false);
+	});
+
+	it('sits on the rail, not in the manuscript', async () => {
+		const room = mountRoom({ essay: null, announceNew: true });
+		await flushPromises();
+
+		// The top of the column is exactly where the caret is on the blank page
+		// this is announcing.
+		expect(room.find('.wr-scroll .newflash').exists()).toBe(false);
+		expect(room.find('.newflash').exists()).toBe(true);
+	});
+});
+
+describe('EssayWritingRoom — the stylesheet', () => {
+	/**
+	 * A rule going missing is silent: the element still renders, just
+	 * unstyled, and no test fails. `.wr-foot` was lost exactly that way — a
+	 * cut of the dead focus-mode CSS spanned across it — so the rail shipped
+	 * with no ground and no top edge, and the notice with no styles at all.
+	 */
+	it('declares a rule for every class its chrome paints with', () => {
+		const css = roomSource.slice(roomSource.indexOf('<style scoped>'));
+		for (const sel of [
+			'.wr-foot',
+			'.newflash',
+			'.nf-dot',
+			'.nf-t',
+			'.fmt',
+			'.pill',
+			'.itg',
+			'.edchrome',
+			'.spine-dock',
+		]) {
+			expect(css, `${sel} has no rule`).toContain(`${sel} {`);
+		}
 	});
 });
