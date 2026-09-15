@@ -7,7 +7,8 @@ import {
 	type EmbedBlockKind,
 } from '../../composables/useEssayBlocks';
 import { usePresentationQuoteMode } from '../../composables/usePresentationQuoteMode';
-import EssayBlock, { type PastedQuote } from './EssayBlock.vue';
+import EssayBlock from './EssayBlock.vue';
+import { joinClassMap, type PastedQuote } from '../../lib/essayWorkspace';
 import BlockDeleteConfirm from './blocks/BlockDeleteConfirm.vue';
 
 /**
@@ -83,26 +84,8 @@ function focusBlk(bid: string) {
 	nextTick(() => blkEls.get(bid)?.focus());
 }
 
-/**
- * The join between a block and the one before it.
- *
- * Every block used to carry the same 8px margin, so prose-after-prose,
- * prose-after-a-quote and quote-after-quote all read identically — which is
- * why the column's spacing felt arbitrary. The corpus says these joins are
- * not alike: paragraphs run ~35 words (two or three sentences), and essays
- * routinely set three quotes in a row. Prose wants air at the join, stacked
- * objects want to tuck.
- */
-const joinClasses = computed(() => {
-	const m = new Map<string, string>();
-	blocks.value.forEach((b, i) => {
-		if (i === 0) return;
-		const prev = blocks.value[i - 1];
-		const bothEmbeds = isEmbedBlock(b) && isEmbedBlock(prev);
-		m.set(b.bid, bothEmbeds ? 'j-stacked' : isEmbedBlock(prev) ? 'j-after-embed' : 'j-after-text');
-	});
-	return m;
-});
+/** How each block joins the one above it — see lib/essayWorkspace. */
+const joinClasses = computed(() => joinClassMap(blocks.value));
 
 // ── Header numbering ──
 const headerLabels = computed(() => {
@@ -543,6 +526,7 @@ function endDrag() {
 						:active="activeBid === block.bid"
 						:editing="editingBid === block.bid"
 						:hn="headerLabels.get(block.bid)"
+						:last="i === blocks.length - 1"
 						@update="(t) => onUpdate(block.bid, t)"
 						@enter="(c) => onEnter(block.bid, c)"
 						@merge-back="onMergeBack(block.bid)"
@@ -556,9 +540,13 @@ function endDrag() {
 
 				<div v-if="dragBid === block.bid && dragDir === 'down'" class="dragind down" aria-hidden="true">▼</div>
 
-				<!-- action rail (selected, not editing) -->
+				<!-- Action rail — EMBEDS ONLY. Prose never gets a floating
+				     toolbar: it is the per-block chrome that made this feel
+				     like data entry, and reordering paragraphs by drag is a
+				     thing people almost never want and often trigger by
+				     accident. Prose reorders from the spine instead. -->
 				<div
-					v-if="activeBid === block.bid && editingBid !== block.bid && dragBid !== block.bid"
+					v-if="isEmbedBlock(block) && activeBid === block.bid && editingBid !== block.bid && dragBid !== block.bid"
 					class="rail"
 				>
 					<button type="button" class="ra" title="Edit" @click.stop="railEdit(block.bid)">
@@ -645,9 +633,32 @@ function endDrag() {
 </template>
 
 <style scoped>
+/* THE MEASURE.
+   The surface had no column at all — blocks ran the full width of whatever
+   contained them, which at desk width is a 900px line of 17px prose, roughly
+   twice a readable measure. One centred column now, opening in steps as the
+   room widens, and the room is a query container so docking the spine
+   re-tunes it instead of squashing it. */
 .blocks {
 	position: relative;
-	padding: 12px 8px 2px;
+	container-type: inline-size;
+	container-name: room;
+	padding: 18px 8px 2px;
+}
+.blk-list {
+	max-width: 33rem;
+	margin: 0 auto;
+	padding: 0 12px;
+}
+@container room (min-width: 700px) {
+	.blk-list {
+		max-width: 35rem;
+	}
+}
+@container room (min-width: 900px) {
+	.blk-list {
+		max-width: 37rem;
+	}
 }
 @media (min-width: 640px) {
 	.blk-list {
@@ -764,13 +775,15 @@ function endDrag() {
 	color: var(--color-mono-400);
 }
 
+/* PROSE HAS NO CHROME.
+   Every block used to be a rounded card that tinted gold when selected — the
+   CMS look this rework exists to get rid of. A paragraph is now just text on
+   the page; the only things that look like objects are the objects. */
 .blk {
 	position: relative;
 	padding: 2px 6px;
 	margin: 0;
-	border-radius: 12px;
 	outline: none;
-	transition: background 0.18s ease;
 }
 /* The rhythm. Prose is set tight (--content-leading), so the air lives at the
    joins rather than inside the paragraph — which is also how the deck reads.
@@ -784,8 +797,13 @@ function endDrag() {
 .blk.j-stacked {
 	margin-top: 8px;
 }
-.blk.act {
-	background: rgba(232, 160, 64, 0.05);
+/* Selection reads on the OBJECT, never on prose: an embed lifts slightly
+   (see .blk-inner below); a paragraph you are editing just has a caret. */
+.blk.act.k-quote,
+.blk.act.k-book,
+.blk.act.k-image {
+	background: rgb(232 160 64 / 0.05);
+	border-radius: 14px;
 }
 .blk.drag {
 	background: transparent;

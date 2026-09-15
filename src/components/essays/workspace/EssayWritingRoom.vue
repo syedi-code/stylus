@@ -163,7 +163,10 @@ watch(() => [props.isOpen, props.essay?.id ?? '__new__'], ([open]) => {
     // Force-refresh so foils reflect quote edits made since the last load.
     ensureLoaded(true);
   }
-});
+  // IMMEDIATE, because the room is now mounted already-open as the Essays tab.
+  // Keyed on isOpen alone it never fired inline — nothing seeded the content
+  // and nothing loaded the source library, so the tab rendered blank.
+}, { immediate: true });
 
 function resolveRefImageUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
