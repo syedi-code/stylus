@@ -15,6 +15,7 @@ import EssayEmbedSheet from '../EssayEmbedSheet.vue';
 import EssayBlockEditor from '../EssayBlockEditor.vue';
 import EssayDeckRail from '../EssayDeckRail.vue';
 import { essayName, essayWordCount } from '../../../lib/essayDisplay';
+import type { QuoteDraft } from '../../../lib/essayWorkspace';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -38,7 +39,7 @@ const tagInput = ref('');
 const tags = ref<string[]>([]);
 const submitting = ref(false);
 const editorRef = ref<InstanceType<typeof EssayBlockEditor> | null>(null);
-const { ensureLoaded, registerImage, quotes } = useSourceLibrary();
+const { ensureLoaded, registerImage } = useSourceLibrary();
 
 /**
  * Writing mode. On a phone the keyboard already takes half the screen; the
@@ -62,14 +63,6 @@ function stopWriting() {
 }
 
 /**
- * Recent quotes, as one-tap chips on the insert rail. Re-citing something you
- * just used is constant in this corpus — 84 quotes across 49 essays, many of
- * them several from the same book in a row — and it was a four-step trip
- * through the embed sheet every time.
- */
-const recentQuotes = computed(() => quotes.value.slice(0, 2));
-
-/**
  * Deck readout. The essay's own name (its first section header, or the opening
  * words in italic when it has none — `essayName`), then the three numbers that
  * describe the piece: slides, words, sources.
@@ -86,13 +79,10 @@ const sourceCount = computed(
 	() => (content.value.match(/\[\[(?:quote|book|image):/g) ?? []).length
 );
 
-/** Re-cite a recent quote straight from the rail, no sheet. */
-function insertRecentQuote(id: string) {
-  editorRef.value?.insertEmbed('quote', id, {});
-}
-
 const sheetOpen = ref(false);
 const sheetInitialKind = ref<'quote' | 'book'>('quote');
+/** A pasted passage handed to the sheet pre-split, rather than retyped. */
+const sheetSeed = ref<QuoteDraft | null>(null);
 const showTags = ref(false);
 
 /** The spine is docked on a wide screen and a drawer behind the hamburger
@@ -191,8 +181,9 @@ const canSubmit = computed(() =>
 );
 
 // ─── Insertion — the block editor owns the array; the modal just drives it ───
-function openSheet(kind: 'quote' | 'book') {
+function openSheet(kind: 'quote' | 'book', seed?: QuoteDraft) {
   sheetInitialKind.value = kind;
+  sheetSeed.value = seed ?? null;
   sheetOpen.value = true;
 }
 
@@ -207,9 +198,9 @@ function insertHeader() {
 
 // The block editor's ＋ Add-block picker (and foil "replace") ask the modal to
 // raise the right source UI.
-function handleRequestInsert(kind: 'quote' | 'book' | 'image') {
+function handleRequestInsert(kind: 'quote' | 'book' | 'image', seed?: QuoteDraft) {
   if (kind === 'image') triggerImageUpload();
-  else openSheet(kind);
+  else openSheet(kind, seed);
 }
 
 // Image upload: mint the id client-side, insert the image block immediately,
@@ -314,8 +305,14 @@ defineExpose({ goToBlock });
           :active-bid="editorRef?.activeBid ?? null"
           @jump="(bid) => editorRef?.goToBlock(bid)"
         />
-        <!-- Top bar — Close left; tags / present / save right. -->
-        <div class="edtop flex items-center justify-between gap-2 px-3 py-2">
+        <!-- Top bar.
+             IDENTITY LEFT, one action cluster right. It used to run the other
+             way: nothing at all on the left, the badge and title shoved up
+             against four differently-shaped controls in the top-right corner.
+             The name of the thing you are writing is the first thing on the
+             row now, and only Save is a filled control — the rest are quiet
+             glyphs, so the corner reads as one cluster instead of a pile. -->
+        <div class="edtop flex items-center gap-2 px-3 py-2">
           <button type="button" class="burger" :title="inline ? 'Pieces' : 'Back'" @click="spineOpen = !spineOpen">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h11M4 18h7" /></svg>
           </button>
@@ -326,11 +323,12 @@ defineExpose({ goToBlock });
                italic semibold amber. -->
           <div class="ednm min-w-0 flex items-center gap-1.5">
             <span class="edbadge">essay</span>
-            <span class="sep">·</span>
             <span class="t truncate" :class="{ untitled: name.untitled }">{{ name.name }}</span>
           </div>
-          <div class="relative flex items-center gap-2">
-            <button type="button" class="itg" :class="{ on: tags.length }" title="Tags" @click="showTags = !showTags">#</button>
+          <div class="relative flex items-center gap-0.5 shrink-0">
+            <button type="button" class="itg" :class="{ on: tags.length }" title="Tags" aria-label="Tags" @click="showTags = !showTags">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" /></svg>
+            </button>
             <button v-if="content.trim().length > 0" type="button" class="itg" title="Present" @click="handlePresent" aria-label="Present essay">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
             </button>
@@ -400,26 +398,20 @@ defineExpose({ goToBlock });
             transform: keyboardOffset ? `translateY(-${keyboardOffset}px)` : undefined,
           }"
         >
+          <!-- Four inserts, each named. The two "recent quote" chips that used
+               to sit here were labelled with the quote's own opening words —
+               so a rail whose first control is Quote read "Quote / Book /
+               Quote... / Quote...", and the duplicates were the feature.
+               Re-citing is one search in the sheet's Library pane instead. -->
           <div class="pills flex items-center gap-1.5 overflow-x-auto">
             <button type="button" @click="openSheet('quote')" class="pill primary" title="Insert quote"><span class="g">❝</span>Quote</button>
             <button type="button" @click="openSheet('book')" class="pill" title="Insert book"><span class="g">▤</span>Book</button>
-            <!-- One tap to re-cite something recent. -->
-            <button
-              v-for="q in recentQuotes"
-              :key="q.id"
-              type="button"
-              class="pill recent"
-              :title="q.quote"
-              @click="insertRecentQuote(q.id)"
-            >
-              <span class="g">❝</span><span class="rq">{{ q.quote.slice(0, 26) }}…</span>
-            </button>
-            <button type="button" @click="triggerImageUpload" :disabled="imageUploading" class="pill" title="Insert image"><span class="g">▦</span>{{ imageUploading ? '…' : 'Image' }}</button>
+                        <button type="button" @click="triggerImageUpload" :disabled="imageUploading" class="pill" title="Insert image"><span class="g">▦</span>{{ imageUploading ? '…' : 'Image' }}</button>
             <button type="button" @click="insertHeader" class="pill" title="Section header"><span class="g">＃</span>Header</button>
             <input ref="imageFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="handleImageSelected" />
           </div>
 
-          <div class="fmt flex items-center gap-1 shrink-0">
+          <div class="fmt flex items-center gap-0.5 shrink-0">
             <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('**', '**')" title="Bold (**text**)" class="fmt-b font-bold">B</button>
             <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('*', '*')" title="Italics (*text*)" class="fmt-b italic">I</button>
             <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('&lt;', '&gt;')" title="Underline (&lt;text&gt;)" class="fmt-b" style="text-decoration: underline; text-decoration-color: rgba(232,200,130,0.85); text-underline-offset: 2px; text-decoration-thickness: 1.5px;">U</button>
@@ -431,6 +423,7 @@ defineExpose({ goToBlock });
         <EssayEmbedSheet
           :is-open="sheetOpen"
           :initial-kind="sheetInitialKind"
+          :seed="sheetSeed"
           @close="sheetOpen = false"
           @select="handleEmbedSelect"
         />
@@ -525,14 +518,6 @@ defineExpose({ goToBlock });
   }
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
 
 /* ── The near-black writing room ── */
 .writing-room {
@@ -544,8 +529,10 @@ defineExpose({ goToBlock });
   background: var(--ink-bg);
   border: 1px solid var(--line);
 }
-.writing-room.is-focus {
-  background: #040302;
+/* As the tab it already has the app nav above it and the spine beside it; a
+   warm border drawn all the way round that was one frame too many. */
+.room-layout.is-inline .writing-room {
+  border: none;
 }
 
 /* ── Chrome ──
@@ -555,6 +542,7 @@ defineExpose({ goToBlock });
    eaten instead (border-box + a 47px inset against a ~44px row). */
 .edchrome {
   padding-top: env(safe-area-inset-top, 0px);
+  background: #08080a;
   border-bottom: 1px solid var(--line);
   /* Collapses while writing — max-height, not transform, so the space it was
      holding goes back to the manuscript instead of sitting blank. */
@@ -572,12 +560,17 @@ defineExpose({ goToBlock });
 .edtop {
   min-height: 44px;
 }
+/* The room is the tab, so its chrome butts straight up against the app's own
+   nav; without this the deck rail reads as a clipped edge rather than a bar. */
+.room-layout.is-inline .edchrome {
+  padding-top: 4px;
+}
 
 /* The deck's identity, matching EssaySlide's badge row and the italic-amber
    title EssayHeaderSlide gives a piece on the slide itself. */
 .ednm {
   flex: 1;
-  justify-content: flex-end;
+  min-width: 0;
   overflow: hidden;
 }
 .edbadge {
@@ -591,13 +584,8 @@ defineExpose({ goToBlock });
   letter-spacing: 0.06em;
   padding: 1px 5px;
 }
-.ednm .sep {
-  flex: 0 0 auto;
-  color: var(--color-mono-600);
-  font-size: 11px;
-}
 .ednm .t {
-  font-size: 12.5px;
+  font-size: 13px;
   font-style: italic;
   font-weight: 600;
   color: var(--color-essay);
@@ -622,18 +610,6 @@ defineExpose({ goToBlock });
   border-radius: 50%;
   background: var(--color-mono-700);
   flex: 0 0 auto;
-}
-.edtop .mid {
-  font-size: 13px;
-  color: var(--color-mono-300);
-}
-.edtop .mid .nm {
-  color: var(--color-mono-200);
-}
-.edtop .sv {
-  font-size: 11px;
-  color: var(--color-mono-600);
-  font-style: italic;
 }
 
 .wr-btn {
@@ -672,29 +648,24 @@ defineExpose({ goToBlock });
 }
 
 .itg {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   display: grid;
   place-items: center;
-  background: var(--color-mono-900);
-  border: 1px solid var(--line);
+  background: transparent;
+  border: none;
   color: var(--color-mono-400);
   cursor: pointer;
   font-size: 15px;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, background 0.15s;
 }
 .itg:hover {
   color: var(--gold);
-  border-color: var(--gold);
-}
-.itg.ghost {
-  background: transparent;
-  border-color: transparent;
+  background: var(--color-mono-800);
 }
 .itg.on {
   color: var(--gold);
-  border-color: var(--gold);
 }
 
 /* tags popover */
@@ -832,13 +803,20 @@ defineExpose({ goToBlock });
   font-style: italic;
   color: var(--color-mono-400);
 }
+/* The formatting cluster. It never shrinks and it never scrolls — the pills
+   beside it do both. Declared ONCE: there used to be a second `.fmt` further
+   down that re-declared it as a 30x30 grid cell, and being later it won, so
+   the four buttons were laid out inside a box narrower than two of them. */
 .fmt {
+  flex: 0 0 auto;
   border-left: 1px solid var(--line);
-  padding-left: 7px;
+  padding-left: 6px;
+  margin-left: 2px;
 }
 .fmt-b {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
   display: grid;
   place-items: center;
   border: none;
@@ -854,100 +832,5 @@ defineExpose({ goToBlock });
   color: var(--color-mono-50);
 }
 
-/* Quote is filled because it is the primary insert — 84 of the 133 embeds in
-   the corpus are quotes. That is the only difference between the tiles. */
-.wr-sep {
-  width: 1px;
-  height: 20px;
-  background: var(--line);
-  flex: 0 0 auto;
-  margin: 0 3px;
-}
-.fmt {
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  background: var(--color-mono-900);
-  border: 1px solid var(--line);
-  color: var(--color-mono-200);
-  font-size: 13px;
-  cursor: pointer;
-  flex: 0 0 auto;
-  transition: border-color 0.15s, background 0.15s;
-}
-.fmt:hover {
-  border-color: var(--color-mono-600);
-  background: var(--color-mono-800);
-}
 
-/* textarea */
-.wr-text {
-  line-height: 1.55;
-  padding: 18px 20px;
-  transition: line-height 0.3s, padding 0.3s;
-}
-@media (min-width: 640px) {
-  .wr-text {
-    max-width: 680px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 26px 24px;
-  }
-}
-.is-focus .wr-text {
-  line-height: 1.35;
-  padding: 28px 22px;
-}
-@media (min-width: 640px) {
-  .is-focus .wr-text {
-    padding: 40px 24px;
-  }
-}
-
-/* footer / tags */
-.wr-foot {
-  background: #0d0b08;
-  border-top: 1px solid var(--line);
-}
-
-/* focus chrome */
-.fedtop .ftitle {
-  font-size: 11px;
-  color: var(--color-mono-500);
-}
-.fbar .wc {
-  font-size: 10px;
-  color: var(--color-mono-600);
-  font-variant-numeric: lining-nums;
-  letter-spacing: 0.14em;
-}
-.ft {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  background: var(--color-mono-900);
-  border: 1px solid var(--line);
-  color: var(--color-mono-400);
-  font-size: 16px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.ft:hover {
-  color: var(--gold);
-  border-color: var(--gold);
-}
-.ft.done {
-  background: var(--gold);
-  color: var(--ink);
-  border: none;
-  font-weight: 700;
-  font-size: 13px;
-  width: auto;
-  padding: 0 18px;
-  box-shadow: inset 0 1px 0 rgba(255, 245, 220, 0.5);
-}
 </style>

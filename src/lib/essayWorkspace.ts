@@ -77,6 +77,82 @@ export function parsePastedQuote(raw: string, whole: boolean): PastedQuote | nul
 	return out;
 }
 
+// ── Splitting a pasted quote inside the sheet ────────────────────────────
+
+export interface QuoteDraft {
+	text: string;
+	who: string;
+	work: string;
+	page: string;
+}
+
+/**
+ * Split one pasted string into the sheet's four fields.
+ *
+ * The opposite temperament to `parsePastedQuote`, on purpose. That one
+ * interrupts you unasked, so it has to be sure; this one runs only because you
+ * pressed "Split it", where correcting one mis-split field is always cheaper
+ * than typing four from scratch. So it accepts a passage with no quotation
+ * marks, takes the LAST dash as the attribution boundary, and reads
+ * `Author, Work, p. 40`, `Author (Work)` and `Author, *Work*` alike.
+ */
+export function splitQuoteInput(raw: string): QuoteDraft | null {
+	const s = raw.replace(/\s+/g, ' ').trim();
+	if (!s) return null;
+
+	const strip = (v: string) => v.replace(/^["“”'‘’]|["“”'‘’]$/g, '').trim();
+
+	let text = s;
+	let tail = '';
+	const quoted = s.match(/^["“”'‘’]([\s\S]+?)["“”'‘’]\s*(.*)$/);
+	if (quoted) {
+		text = quoted[1].trim();
+		tail = quoted[2].trim();
+	} else {
+		// Last dash, not first: quotes contain dashes far more often than
+		// attributions do, and the attribution is always at the end.
+		const dash = Math.max(s.lastIndexOf('—'), s.lastIndexOf('–'), s.lastIndexOf('--'));
+		if (dash > 0) {
+			text = s.slice(0, dash).trim();
+			tail = s.slice(dash).replace(/^(—|–|--)/, '').trim();
+		}
+	}
+	tail = tail.replace(/^(—|–|--|-)\s*/, '').trim();
+	if (!tail) return { text: strip(text), who: '', work: '', page: '' };
+
+	let page = '';
+	const pm = tail.match(/\bpp?\.?\s*(\d+(?:\s*[-–]\s*\d+)?)\s*$/i) ?? tail.match(/[,\s](\d{1,4})\s*$/);
+	if (pm && pm.index !== undefined) {
+		page = pm[1].replace(/\s/g, '');
+		tail = tail.slice(0, pm.index).trim().replace(/[,;]$/, '');
+	}
+
+	let who = tail;
+	let work = '';
+	const paren = tail.match(/^(.*?)\s*[(（]([^)）]+)[)）]\s*$/);
+	const ital = tail.match(/^(.*?),?\s*\*([^*]+)\*\s*$/);
+	if (paren) {
+		who = paren[1].trim();
+		work = paren[2].trim();
+	} else if (ital) {
+		who = ital[1].trim();
+		work = ital[2].trim();
+	} else {
+		const c = tail.indexOf(',');
+		if (c > 0) {
+			who = tail.slice(0, c).trim();
+			work = tail.slice(c + 1).trim();
+		}
+	}
+
+	return {
+		text: strip(text),
+		who: who.replace(/[,;]$/, '').trim(),
+		work: work.replace(/[,;]$/, '').trim(),
+		page,
+	};
+}
+
 // ── The rhythm of the surface ────────────────────────────────────────────
 
 export type JoinKind = 'j-after-text' | 'j-after-embed' | 'j-stacked';

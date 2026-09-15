@@ -8,7 +8,7 @@ import {
 } from '../../composables/useEssayBlocks';
 import { usePresentationQuoteMode } from '../../composables/usePresentationQuoteMode';
 import EssayBlock from './EssayBlock.vue';
-import { joinClassMap, type PastedQuote } from '../../lib/essayWorkspace';
+import { joinClassMap, type PastedQuote, type QuoteDraft } from '../../lib/essayWorkspace';
 import BlockDeleteConfirm from './blocks/BlockDeleteConfirm.vue';
 
 /**
@@ -23,7 +23,12 @@ import BlockDeleteConfirm from './blocks/BlockDeleteConfirm.vue';
 const content = defineModel<string>('content', { required: true });
 
 const emit = defineEmits<{
-	(e: 'requestInsert', kind: 'quote' | 'book' | 'image'): void;
+	/**
+	 * `seed` carries a passage the writer already pasted, so the sheet opens
+	 * with the fields filled. Without it "Set it in" threw the parse away and
+	 * dropped you in front of an empty form holding text you had just pasted.
+	 */
+	(e: 'requestInsert', kind: 'quote' | 'book' | 'image', seed?: QuoteDraft): void;
 	/** Keystrokes are landing — the modal retracts its chrome while writing. */
 	(e: 'typing'): void;
 }>();
@@ -45,10 +50,11 @@ const {
 	merge,
 } = useEssayBlocks(content);
 
-// Writing-view quote surface toggle (textured → fullbleed → plain), shared
-// across every quote foil in every essay currently open — mirrors the same
-// global-preference pattern the Presentation deck already uses.
-const { mode: quoteMode, cycle: cycleQuoteMode } = usePresentationQuoteMode('essay-write');
+// Writing-view quote surface toggle, shared across every quote foil in every
+// essay currently open — the same global-preference pattern the Presentation
+// deck uses. It RESTS on 'plain' here (see FoilQuote): texture and the gilt
+// ring are a choice, not the state you write in.
+const { mode: quoteMode, cycle: cycleQuoteMode } = usePresentationQuoteMode('essay-write-v2', 'plain');
 
 const activeBid = ref<string | null>(null);
 const editingBid = ref<string | null>(null);
@@ -196,9 +202,18 @@ function onBlkKeydown(bid: string, e: KeyboardEvent) {
 const seamIndex = ref<number | null>(null);
 
 function openSeam(i: number) {
-	seamIndex.value = seamIndex.value === i ? null : i;
+	if (seamIndex.value === i && showAdd.value) {
+		closeSeam();
+		showAdd.value = false;
+		return;
+	}
+	seamIndex.value = i;
 	activeBid.value = null;
 	editingBid.value = null;
+	// Tapping a gap asks "what goes here", so answer it. Before this the seam
+	// only drew a rule and you still had to go find the insert rail — which
+	// left the ＋ looking like a button that did nothing.
+	showAdd.value = true;
 }
 function closeSeam() {
 	seamIndex.value = null;
@@ -247,7 +262,12 @@ function acceptPaste() {
 	pasted.value = null;
 	if (!p) return;
 	activeBid.value = p.bid;
-	emit('requestInsert', 'quote');
+	emit('requestInsert', 'quote', {
+		text: p.payload.text,
+		who: p.payload.creator ?? '',
+		work: p.payload.work ?? '',
+		page: p.payload.page ?? '',
+	});
 }
 
 // ── Action rail ──
@@ -322,6 +342,10 @@ function wrapActiveSelection(before: string, after: string) {
 
 // ── Add-block picker ──
 const showAdd = ref(false);
+function dismissAdd() {
+	showAdd.value = false;
+	closeSeam();
+}
 function chooseBlock(kind: 'text' | 'header' | 'quote' | 'book' | 'image') {
 	showAdd.value = false;
 	if (kind === 'text') {
@@ -609,15 +633,13 @@ function endDrag() {
 			</div>
 		</TransitionGroup>
 
-		<button type="button" class="addblk" @click="showAdd = true">＋ Add block</button>
-
 		<!-- keeps the last block + Add above the keyboard / bottom bar -->
 		<div class="tail" aria-hidden="true"></div>
 	</div>
 
 	<!-- add-block type picker -->
 	<Teleport to="body">
-		<div v-if="showAdd" class="add-scrim" @click="showAdd = false">
+		<div v-if="showAdd" class="add-scrim" @click="dismissAdd">
 			<div class="add-sheet" @click.stop>
 				<div class="add-title">Add a block</div>
 				<div class="add-grid">
@@ -650,20 +672,22 @@ function endDrag() {
 	margin: 0 auto;
 	padding: 0 12px;
 }
-@container room (min-width: 700px) {
+@container room (min-width: 800px) {
 	.blk-list {
-		max-width: 35rem;
+		max-width: 36rem;
 	}
 }
-@container room (min-width: 900px) {
+/* 39rem inside a 1000px room leaves ~190px of gutter a side — which is
+   exactly what the hanging credit in FoilQuote needs, and why that is the
+   width it starts hanging at. */
+@container room (min-width: 1000px) {
 	.blk-list {
-		max-width: 37rem;
+		max-width: 39rem;
 	}
 }
-@media (min-width: 640px) {
+@container room (min-width: 1240px) {
 	.blk-list {
-		max-width: 680px;
-		margin: 0 auto;
+		max-width: 41rem;
 	}
 }
 
@@ -797,8 +821,8 @@ function endDrag() {
 .blk.j-stacked {
 	margin-top: 8px;
 }
-/* Selection reads on the OBJECT, never on prose: an embed lifts slightly
-   (see .blk-inner below); a paragraph you are editing just has a caret. */
+/* Selection reads on the OBJECT, never on prose: a selected embed takes a
+   quiet amber wash; a paragraph you are editing just has a caret. */
 .blk.act.k-quote,
 .blk.act.k-book,
 .blk.act.k-image {
@@ -811,17 +835,15 @@ function endDrag() {
 	cursor: grabbing;
 }
 
-/* content wrapper — carries the select "expand" so it never collides with the
-   drag translateY (on .blk) or the FLIP move transform (also on .blk) */
+/* content wrapper — kept as the layer the drag translateY (on .blk) and the
+   FLIP move transform (also on .blk) do NOT share.
+
+   It used to scale(1.03) on select. Two things were wrong with that: it
+   resampled the text of the thing you were about to edit, and it grew the
+   foil out of the wash painted behind it on .blk, so a selected quote sat
+   inside a band that no longer lined up with it. */
 .blk-inner {
 	transform: translateZ(0);
-	transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-	transform-origin: center;
-}
-.blk.act.k-quote .blk-inner,
-.blk.act.k-book .blk-inner,
-.blk.act.k-image .blk-inner {
-	transform: scale(1.03);
 }
 
 /* directional drag arrows */
@@ -842,10 +864,14 @@ function endDrag() {
 	bottom: -14px;
 }
 
-/* action rail */
+/* ── Action rail ──
+   Pinned INSIDE the block's top-right corner. At top:-15px it hung above the
+   block and landed on top of the previous quote's credit line — the two are
+   only ever a few pixels apart, and the credit is the thing you are most
+   likely to be checking when you select the quote under it. */
 .rail {
 	position: absolute;
-	top: -15px;
+	top: 2px;
 	right: 4px;
 	z-index: 30;
 	display: inline-flex;
@@ -919,25 +945,6 @@ function endDrag() {
 	font-variant-numeric: lining-nums;
 }
 
-.addblk {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin: 14px auto 0;
-	padding: 10px 16px;
-	font-size: 13px;
-	color: var(--color-mono-400);
-	border: 1px dashed var(--color-mono-700);
-	border-radius: 12px;
-	cursor: pointer;
-	width: fit-content;
-	background: transparent;
-	transition: color 0.15s, border-color 0.15s;
-}
-.addblk:hover {
-	color: var(--color-essay);
-	border-color: var(--color-essay);
-}
 .tail {
 	height: 40vh;
 }

@@ -157,8 +157,8 @@ function act(fn: () => void) {
 	height: 100%;
 	min-height: 0;
 	overflow-y: auto;
-	background: #08070b;
-	border-right: 1px solid var(--color-mono-800);
+	background: #0b0b0f;
+	border-right: 1px solid #1c1a15;
 	padding: 12px 10px 28px;
 	scrollbar-width: none;
 }
@@ -173,7 +173,7 @@ function act(fn: () => void) {
 	padding: 2px 6px 10px;
 }
 .mark {
-	font-size: 13px;
+	font-size: 14px;
 	font-weight: 600;
 	font-style: italic;
 	color: var(--color-essay);
@@ -181,7 +181,7 @@ function act(fn: () => void) {
 }
 .ct {
 	font-size: 10px;
-	color: var(--color-mono-600);
+	color: var(--color-mono-400);
 	font-variant-numeric: lining-nums;
 }
 .newbtn {
@@ -214,8 +214,8 @@ function act(fn: () => void) {
 	padding: 7px 10px;
 	border-radius: 9px;
 	border: 1px solid var(--color-mono-800);
-	background: #0c0b10;
-	color: var(--color-mono-200);
+	background: #08080b;
+	color: var(--color-mono-50);
 	font: inherit;
 	font-size: 12px;
 	outline: none;
@@ -224,7 +224,7 @@ function act(fn: () => void) {
 	border-color: var(--color-essay);
 }
 .filter::placeholder {
-	color: var(--color-mono-600);
+	color: var(--color-mono-500);
 	font-style: italic;
 }
 
@@ -234,23 +234,23 @@ function act(fn: () => void) {
 	gap: 9px;
 	padding: 16px 6px 7px;
 	font-size: 9px;
-	font-weight: 600;
+	font-weight: 700;
 	letter-spacing: 0.18em;
 	text-transform: uppercase;
-	color: var(--color-mono-600);
+	color: var(--color-mono-300);
 }
 .sec::after {
 	content: '';
 	flex: 1;
 	height: 1px;
-	background: var(--color-mono-800);
+	background: #1f1d18;
 }
 
 .hint {
 	padding: 8px 6px;
 	font-size: 11.5px;
 	font-style: italic;
-	color: var(--color-mono-600);
+	color: var(--color-mono-400);
 }
 .hint.err {
 	color: #ff8fa3;
@@ -277,50 +277,65 @@ function act(fn: () => void) {
 	background: transparent;
 	cursor: pointer;
 	font: inherit;
-	padding: 8px 26px 9px 10px;
+	padding: 9px 26px 10px 11px;
 	border-radius: 10px;
 	color: inherit;
+	transition: background 0.14s;
 }
 .piece:hover {
-	background: #0e0d12;
+	background: #16151c;
 }
-/* The open piece wears the amber thread. */
+/* The open piece wears the amber thread — a 3px bar, an amber title and a
+   wash, because one of those alone was not findable at a glance. */
 .piece.here {
-	background: rgb(232 160 64 / 0.06);
-	box-shadow: inset 2px 0 0 var(--color-essay);
+	background: rgb(232 160 64 / 0.08);
+	box-shadow: inset 3px 0 0 var(--color-essay);
 }
 .pt {
 	display: block;
-	font-size: 12.5px;
+	font-size: 13px;
 	line-height: 1.3;
-	color: var(--color-mono-200);
+	color: var(--color-mono-50);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 .piece.here .pt {
-	color: var(--color-mono-50);
+	color: var(--color-essay);
+	font-weight: 600;
 }
+/* Untitled pieces are named by their opening words, so they are set in italic
+   — but NOT dimmed. They are the majority of the corpus; greying out most of
+   the rail was the single biggest reason it could not be read. */
 .pt.untitled {
 	font-style: italic;
-	color: var(--color-mono-400);
 }
 
 /* The mini deck rail — the shape of the piece at a glance. */
 .rail {
 	display: flex;
-	gap: 2px;
-	margin: 6px 0 5px;
+	gap: 3px;
+	margin: 7px 0 6px;
 }
 .rail i {
 	flex: 1;
 	max-width: 14px;
-	height: 2px;
+	height: 3px;
 	border-radius: 999px;
-	background: var(--color-mono-700);
+	background: var(--color-mono-600);
 }
+/* Sources are the other half of what an essay here IS — 84 quotes and 43
+   books against 221 paragraphs — so they carry the accent, and a glance at
+   the rail tells you whether a piece is argument or anthology. */
 .rail i.src {
 	background: var(--color-essay);
+	box-shadow: 0 0 6px rgb(232 160 64 / 0.45);
+}
+.piece.here .rail i {
+	background: var(--color-mono-500);
+}
+.piece.here .rail i.src {
+	background: var(--color-essay-bright);
 }
 
 .pm {
@@ -328,14 +343,14 @@ function act(fn: () => void) {
 	align-items: center;
 	gap: 6px;
 	font-size: 10px;
-	color: var(--color-mono-600);
+	color: var(--color-mono-400);
 	font-variant-numeric: lining-nums;
 }
 .pm .dot {
 	width: 2px;
 	height: 2px;
 	border-radius: 50%;
-	background: var(--color-mono-700);
+	background: var(--color-mono-600);
 }
 
 .kebab {
@@ -347,7 +362,7 @@ function act(fn: () => void) {
 	display: grid;
 	place-items: center;
 	border-radius: 6px;
-	color: var(--color-mono-600);
+	color: var(--color-mono-300);
 	font-size: 14px;
 	opacity: 0;
 	transition: opacity 0.15s;
@@ -385,7 +400,7 @@ function act(fn: () => void) {
 	text-align: left;
 	border: none;
 	background: transparent;
-	color: var(--color-mono-300);
+	color: var(--color-mono-100);
 	font: inherit;
 	font-size: 12px;
 	padding: 7px 9px;
@@ -408,14 +423,14 @@ function act(fn: () => void) {
 	border: 1px solid var(--color-mono-800);
 	border-radius: 9px;
 	background: transparent;
-	color: var(--color-mono-400);
+	color: var(--color-mono-200);
 	font: inherit;
 	font-size: 11.5px;
 	cursor: pointer;
 }
 .more:hover:not(:disabled) {
-	border-color: var(--color-mono-600);
-	color: var(--color-mono-100);
+	border-color: var(--color-essay);
+	color: var(--color-essay);
 }
 .more:disabled {
 	opacity: 0.5;
@@ -434,18 +449,18 @@ function act(fn: () => void) {
 	cursor: pointer;
 	font: inherit;
 	font-size: 11.5px;
-	color: var(--color-mono-400);
-	padding: 5px 8px;
+	color: var(--color-mono-200);
+	padding: 6px 8px;
 	border-radius: 7px;
 }
 .oitem:hover {
-	background: #0e0d12;
-	color: var(--color-mono-100);
+	background: #16151c;
+	color: var(--color-mono-50);
 }
 .oitem .g {
 	flex: 0 0 auto;
 	width: 12px;
-	color: var(--color-mono-600);
+	color: var(--color-mono-400);
 	font-size: 10px;
 }
 .oitem .lbl {
@@ -458,23 +473,33 @@ function act(fn: () => void) {
 .oitem .n {
 	flex: 0 0 auto;
 	font-size: 9px;
-	color: var(--color-mono-700);
+	color: var(--color-mono-500);
 	font-variant-numeric: lining-nums;
 }
-/* Sources carry the amber; prose stays quiet. */
-.oitem.quote .g,
-.oitem.book .g,
-.oitem.image .g {
+/* Each kind takes its own hue from the app's palette, so the outline is
+   navigable by colour before it is read: quotes the Quotes tab's green, books
+   the essay amber, images the thread purple. Prose stays plain. */
+.oitem.quote .g {
+	color: var(--color-quote);
+}
+.oitem.book .g {
 	color: var(--color-essay);
+}
+.oitem.image .g {
+	color: var(--color-thread);
 }
 .oitem.quote .lbl,
 .oitem.book .lbl,
 .oitem.image .lbl {
 	font-style: italic;
 	text-transform: capitalize;
+	color: var(--color-mono-300);
 }
 .oitem.header .lbl {
-	color: var(--color-mono-200);
-	font-weight: 500;
+	color: var(--color-mono-50);
+	font-weight: 600;
+}
+.oitem.para .lbl {
+	color: var(--color-mono-300);
 }
 </style>
