@@ -17,7 +17,9 @@ vi.mock('../../../composables/useSourceLibrary', () => ({
 	useSourceLibrary: () => ({
 		ensureLoaded: vi.fn(),
 		registerImage: vi.fn(),
-		quotes: { value: [] },
+		quotes: {
+			value: [{ id: 'q-1', quote: 'Quote.', creator: 'Aristotle' }],
+		},
 		books: { value: [] },
 		quoteById: { value: new Map() },
 		bookById: { value: new Map() },
@@ -137,5 +139,50 @@ describe('EssayWritingRoom — chrome', () => {
 
 		await room.find('.wr-scroll').trigger('scroll');
 		expect(room.find('.edchrome').classes()).not.toContain('writing');
+	});
+});
+
+describe('EssayWritingRoom \u2014 the rail', () => {
+	it('names every insert once \u2014 no two pills reading the same word', async () => {
+		const room = mountRoom();
+		await flushPromises();
+
+		// .text() runs each pill's glyph into its label, so compare the words.
+		const labels = room.findAll('.pill').map((p) => p.text().replace(/[^A-Za-z]/g, ''));
+		expect(labels).toEqual(['Quote', 'Book', 'Image', 'Header']);
+		// The rail used to carry two "recent quote" chips labelled with the
+		// quote's own opening words \u2014 so beside the Quote button it read
+		// "Quote / Book / Quote\u2026 / Quote\u2026", and the duplicates were the feature.
+		expect(room.findAll('.pill.recent')).toHaveLength(0);
+	});
+
+	it('keeps all four formatting controls in a cluster that cannot be cropped', async () => {
+		const room = mountRoom();
+		await flushPromises();
+
+		// `.fmt` was declared twice in this component's stylesheet: once as the
+		// container, and again \u2014 later, so it won \u2014 as a 30x30 grid cell. The
+		// four buttons were being laid out inside a box narrower than two of
+		// them, which is why B/I/U/H vanished off the bottom-right on a small
+		// window. One declaration now, and the cluster never shrinks.
+		const fmt = room.find('.wr-foot .fmt');
+		expect(fmt.exists()).toBe(true);
+		expect(fmt.findAll('.fmt-b').map((b) => b.text())).toEqual(['B', 'I', 'U', 'H']);
+	});
+});
+
+describe('EssayWritingRoom \u2014 the header', () => {
+	it('leads with the piece, and ends with exactly one filled control', async () => {
+		const room = mountRoom();
+		await flushPromises();
+
+		const top = room.find('.edtop');
+		// Identity first: the badge and the name are the start of the row, not
+		// the tail end of a pile of buttons in the far corner.
+		expect(top.find('.edbadge').text()).toBe('essay');
+		expect(top.find('.ednm .t').exists()).toBe(true);
+		// Tags and Present are quiet glyphs; Save is the only filled control.
+		expect(top.findAll('.wr-btn.gold')).toHaveLength(1);
+		expect(top.findAll('.itg').length).toBeGreaterThanOrEqual(1);
 	});
 });

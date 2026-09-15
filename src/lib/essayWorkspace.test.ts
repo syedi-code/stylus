@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	matchSlashCommand,
 	parsePastedQuote,
+	splitQuoteInput,
 	joinKind,
 	joinClassMap,
 	spineRow,
@@ -85,6 +86,43 @@ describe('parsePastedQuote', () => {
 		expect(parsePastedQuote('"short"', true)).toBeNull();
 		expect(parsePastedQuote('', true)).toBeNull();
 		expect(parsePastedQuote(`"${'x'.repeat(2500)}"`, true)).toBeNull();
+	});
+});
+
+describe('splitQuoteInput', () => {
+	it('pulls the four fields out of one pasted line', () => {
+		const d = splitQuoteInput(
+			'\u201cThe purpose of freedom is to create it for others.\u201d \u2014 Toni Morrison, Commencement Address, p. 3'
+		)!;
+		expect(d.text).toBe('The purpose of freedom is to create it for others.');
+		expect(d.who).toBe('Toni Morrison');
+		expect(d.work).toBe('Commencement Address');
+		expect(d.page).toBe('3');
+	});
+
+	it('takes the LAST dash as the boundary', () => {
+		// Quotes contain dashes constantly; attributions are always at the end.
+		const d = splitQuoteInput('A line \u2014 with an aside \u2014 and an end. \u2014 Someone')!;
+		expect(d.text).toBe('A line \u2014 with an aside \u2014 and an end.');
+		expect(d.who).toBe('Someone');
+	});
+
+	it('reads the parenthesised and italicised attribution forms too', () => {
+		expect(splitQuoteInput('A line. \u2014 Emerson (The Conduct of Life)')!.work).toBe(
+			'The Conduct of Life'
+		);
+		expect(splitQuoteInput('A line. \u2014 Emerson, *The Conduct of Life*')!.work).toBe(
+			'The Conduct of Life'
+		);
+	});
+
+	it('accepts a bare passage with no marks and no attribution', () => {
+		// Where parsePastedQuote declines \u2014 this one only runs because you
+		// pressed the button, so a half-split is better than nothing.
+		const d = splitQuoteInput('Just a line I typed out myself')!;
+		expect(d.text).toBe('Just a line I typed out myself');
+		expect(d.who).toBe('');
+		expect(splitQuoteInput('   ')).toBeNull();
 	});
 });
 

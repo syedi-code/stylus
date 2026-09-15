@@ -47,15 +47,19 @@ const hasYear = computed(() => props.year !== undefined && props.year !== null &
 </template>
 
 <style scoped>
+/* Alignment is a variable because the writing view needs BOTH: under a quote
+   the credit starts where the quote's first word starts (left), and once it
+   hangs in the margin beside the quote it has to run toward it (right). The
+   host sets --qcite-align / --qcite-justify; a slide never touches either. */
 .qcite {
-	text-align: right;
+	text-align: var(--qcite-align, right);
 }
 
 /* Compact — the three lines run together as one wrapping line. */
 .qcite.compact {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: flex-end;
+	justify-content: var(--qcite-justify, flex-end);
 	align-items: baseline;
 	gap: 0 6px;
 }

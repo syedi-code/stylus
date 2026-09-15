@@ -198,14 +198,26 @@ defineExpose({ focus, el: () => taRef.value });
 </template>
 
 <style scoped>
-/* prose — display + edit share type metrics so entering edit doesn't reflow */
+/* prose — display + edit share type metrics so entering edit doesn't reflow.
+   Set explicitly rather than inherited: the manuscript's body size is a
+   decision (17px, the mockup's), and `font: inherit` quietly took whatever
+   the surrounding app happened to be at. */
 .para,
 .para-view {
 	width: 100%;
 	font: inherit;
+	font-size: 17px;
 	line-height: var(--content-leading);
-	color: var(--color-mono-100);
-	padding: 4px 2px;
+	letter-spacing: -0.003em;
+	color: #e8e6e1;
+	padding: 3px 0;
+	text-wrap: pretty;
+}
+@media (max-width: 640px) {
+	.para,
+	.para-view {
+		font-size: 16px;
+	}
 }
 .para {
 	background: transparent;
@@ -240,6 +252,11 @@ defineExpose({ focus, el: () => taRef.value });
 	display: flex;
 	padding: 2px 0;
 }
+/* A header opens a section, so it takes more air above than a paragraph
+   does — the join classes on .blk cannot know that, they only see kinds. */
+:global(.blk.k-header:not(:first-child)) {
+	margin-top: 30px;
+}
 .hbadge {
 	max-width: 100%;
 	-webkit-user-select: none;
@@ -251,7 +268,7 @@ defineExpose({ focus, el: () => taRef.value });
 	font-size: 17px;
 	font-weight: 600;
 	letter-spacing: -0.01em;
-	color: var(--color-mono-50);
+	color: #faf8f4;
 	line-height: 1.24;
 	text-wrap: balance;
 }
