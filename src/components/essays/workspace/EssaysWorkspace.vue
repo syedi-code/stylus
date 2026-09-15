@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { fetchEssays, deleteEssay as deleteEssayApi, type Essay } from '../../../lib/api';
 import { usePagination } from '../../../composables/usePagination';
 import { parseBlocks } from '../../../composables/useEssayBlocks';
@@ -32,6 +32,13 @@ const pagination = usePagination<Essay, { search?: string }>({
 
 /** The piece being written. `null` means a new, unsaved one. */
 const currentId = ref<string | null>(null);
+/**
+ * True while the room is on a new, unsaved piece. App.vue hides the mobile
+ * "write" button on this: the tab IS the editor now, so once it has opened a
+ * blank piece the button has nothing left to do and was just sitting on top
+ * of the insert rail.
+ */
+const isNewPiece = computed(() => currentId.value === null);
 /** Bumped to force the room to remount on "new", so its draft starts clean. */
 const roomKey = ref(0);
 
@@ -95,33 +102,29 @@ async function onSaved() {
 
 /**
  * The room fills everything below the app header and scrolls internally, so
- * the page itself never scrolls behind it. The height is measured from this
- * element's own offset rather than hard-coded against the header: the header
- * is in normal flow and does not publish its height, and a magic number here
- * would silently break the moment it changes.
+ * the page itself never scrolls behind it.
+ *
+ * The height comes from `--app-header-h`, which AppHeader publishes with a
+ * ResizeObserver. It used to be measured from THIS element's own offset in
+ * onMounted, which is a measurement taken at the one moment it cannot be
+ * trusted: App.vue gives each tab its own `<transition>`, so `mode="out-in"`
+ * does not coordinate across them and the outgoing tab is still in the DOM,
+ * fading, while this one mounts. The offset came back as the full height of
+ * the feed being replaced, `calc(100dvh - that)` clamped to nothing, and the
+ * Essays tab opened blank — until a window resize re-measured it, which is
+ * exactly the shape of the bug that was reported.
  */
-const rootEl = ref<HTMLElement | null>(null);
-const roomHeight = ref('100dvh');
-function measure() {
-  const top = rootEl.value?.getBoundingClientRect().top ?? 0;
-  roomHeight.value = `calc(100dvh - ${Math.max(0, Math.round(top))}px)`;
-}
-onMounted(() => {
-  measure();
-  window.addEventListener('resize', measure);
-});
-onBeforeUnmount(() => window.removeEventListener('resize', measure));
 
 const roomRef = ref<InstanceType<typeof EssayWritingRoom> | null>(null);
 function goToBlock(bid: string) {
 	roomRef.value?.goToBlock?.(bid);
 }
 
-defineExpose({ openById, newEssay });
+defineExpose({ openById, newEssay, isNewPiece });
 </script>
 
 <template>
-	<div ref="rootEl" class="ws-root" :style="{ height: roomHeight }">
+	<div class="ws-root">
 		<EssayWritingRoom
 			:key="roomKey"
 			ref="roomRef"
@@ -157,6 +160,8 @@ defineExpose({ openById, newEssay });
 
 <style scoped>
 .ws-root {
+	/* Never a magic number, and never this element's own offset. */
+	height: calc(100dvh - var(--app-header-h, 0px));
 	min-height: 0;
 	overflow: hidden;
 }
