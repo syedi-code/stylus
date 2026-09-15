@@ -23,6 +23,16 @@ const props = defineProps<{
   /** Rendered as the Essays tab itself rather than inside a modal: it fills
    *  the tab area instead of the viewport, and there is nothing to close to. */
   inline?: boolean;
+  /**
+   * The writer ASKED for a blank piece, so say so.
+   *
+   * Not `essay == null` — that is also true for the moment between the tab
+   * mounting and the essay list arriving, which is how "New piece" came to be
+   * announced over an old essay on every cold load. Absence of a piece is a
+   * state the room passes through; starting one is an intent only the caller
+   * knows about.
+   */
+  announceNew?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -174,9 +184,9 @@ watch(() => [props.isOpen, props.essay?.id ?? '__new__'], ([open]) => {
       content.value = draftContent.value;
       tags.value = [...draftTags.value];
       tagInput.value = '';
-      // Only for a genuinely blank start — a restored draft is resumed work,
-      // not a new piece, and saying "new" over it would be a lie.
-      if (!draftContent.value.trim()) flashNewPiece();
+      // A restored draft is resumed work, not a new piece, and saying "new"
+      // over it would be a lie.
+      if (props.announceNew && !draftContent.value.trim()) flashNewPiece();
     }
     // Quotes / books resolve their display text via the shared library.
     // Force-refresh so foils reflect quote edits made since the last load.
@@ -405,13 +415,7 @@ defineExpose({ goToBlock });
         </div><!-- /.edchrome -->
 
         <!-- Writing area: the block surface, fills remaining height -->
-        <div class="wr-scroll relative flex-1 min-h-0 overflow-y-auto" @scroll.passive="stopWriting" @click="stopWriting">
-          <Transition name="flash">
-            <div v-if="startedNew" class="newflash" role="status">
-              <span class="nf-dot"></span>
-              <span class="nf-t"><b>New piece.</b> Nothing is saved until you do.</span>
-            </div>
-          </Transition>
+        <div class="wr-scroll flex-1 min-h-0 overflow-y-auto" @scroll.passive="stopWriting" @click="stopWriting">
           <EssayBlockEditor
             ref="editorRef"
             v-model:content="content"
@@ -419,6 +423,18 @@ defineExpose({ goToBlock });
             @typing="onTyping"
           />
         </div>
+
+        <!-- "New piece", as a strip above the rail.
+             In the manuscript it sat on the top of the column — which, on the
+             blank page it is announcing, is exactly where the caret is. Here
+             it covers nothing, and it needs no magic offset to clear a bar
+             whose height it would otherwise have to guess. -->
+        <Transition name="flash">
+          <div v-if="startedNew" class="newflash shrink-0" role="status">
+            <span class="nf-dot"></span>
+            <span class="nf-t"><b>New piece.</b> Nothing is saved until you do.</span>
+          </div>
+        </Transition>
 
         <!-- Bottom rail: INSERT first, then formatting.
              Inserting is the frequent act and it lives where the thumb is —
@@ -867,5 +883,60 @@ defineExpose({ goToBlock });
   color: var(--color-mono-50);
 }
 
+/* —— The rail ——
+   Neutral near-black, not the warm #0d0b08 it was. Gold is what this product
+   spends on quotes, book titles and the one primary control; a whole bar
+   tinted with it made the furniture compete with the manuscript above it. */
+.wr-foot {
+  background: #0a0a0c;
+  border-top: 1px solid var(--color-mono-800);
+}
 
+/* —— "New piece" —— */
+.newflash {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  overflow: hidden;
+  padding: 9px 16px;
+  background: #100d07;
+  border-top: 1px solid rgb(232 160 64 / 0.28);
+}
+.nf-dot {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgb(232 160 64 / 0.75);
+}
+.nf-t {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-mono-400);
+}
+.nf-t b {
+  color: var(--color-essay);
+  font-weight: 600;
+}
+/* max-height rather than transform, so the strip gives its space back to the
+   manuscript instead of leaving a blank band — the same reason the chrome
+   above collapses rather than sliding away. */
+.flash-enter-active,
+.flash-leave-active {
+  transition: max-height 0.22s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.22s ease,
+    padding 0.22s ease;
+}
+.flash-enter-from,
+.flash-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.flash-enter-to,
+.flash-leave-from {
+  max-height: 44px;
+  opacity: 1;
+}
 </style>
