@@ -57,7 +57,7 @@ change, it is a planned two-repo event, not a commit.
 |            | Branch    | Hostnames                                                                          | Talks to              |
 | ---------- | --------- | ---------------------------------------------------------------------------------- | --------------------- |
 | Production | `main`    | `stylus.socialeating.studio`, `anti.socialeating.studio`, `journal.ibrahimsyed.io` | alexandria production |
-| Staging    | `staging` | `staging.stylus.pages.dev`                                                         | alexandria staging    |
+| Staging    | `staging` | `staging.stylus-64v.pages.dev`                                                         | alexandria staging    |
 
 Merging into a branch deploys it (`.github/workflows`). The deploy action ends
 by POSTing `/api/session` and failing the run unless alexandria's own 401 comes
