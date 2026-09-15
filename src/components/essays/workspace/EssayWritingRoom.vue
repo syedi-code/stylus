@@ -53,6 +53,7 @@ const { ensureLoaded, registerImage } = useSourceLibrary();
 const writing = ref(false);
 let writingTimer = 0;
 function onTyping() {
+	clearFlash();
 	writing.value = true;
 	clearTimeout(writingTimer);
 	writingTimer = window.setTimeout(() => (writing.value = false), 2600);
@@ -121,6 +122,31 @@ const { draftContent, draftTags, restore: restoreDraft, clearDraft } = draft;
 
 const isEditMode = computed(() => !!props.essay);
 
+/**
+ * "A new piece has started."
+ *
+ * Asking for a new essay produced no visible event at all: the room is always
+ * open, so the only difference between "your last piece" and "a blank new one"
+ * was that the text went away — which reads as something breaking, not as
+ * something starting. Especially on a phone, where the button that did it is
+ * at the opposite end of the screen from the title that changed.
+ *
+ * So: a banner that names what happened, and the caret already in the first
+ * line. It clears itself, and any keystroke clears it sooner.
+ */
+const startedNew = ref(false);
+let startedTimer = 0;
+function flashNewPiece() {
+	startedNew.value = true;
+	clearTimeout(startedTimer);
+	startedTimer = window.setTimeout(() => (startedNew.value = false), 3200);
+}
+function clearFlash() {
+	if (!startedNew.value) return;
+	clearTimeout(startedTimer);
+	startedNew.value = false;
+}
+
 // Re-seeds on open AND whenever the piece changes — switching pieces in the
 // spine is now as common as opening the room at all.
 watch(() => [props.isOpen, props.essay?.id ?? '__new__'], ([open]) => {
@@ -148,6 +174,9 @@ watch(() => [props.isOpen, props.essay?.id ?? '__new__'], ([open]) => {
       content.value = draftContent.value;
       tags.value = [...draftTags.value];
       tagInput.value = '';
+      // Only for a genuinely blank start — a restored draft is resumed work,
+      // not a new piece, and saying "new" over it would be a lie.
+      if (!draftContent.value.trim()) flashNewPiece();
     }
     // Quotes / books resolve their display text via the shared library.
     // Force-refresh so foils reflect quote edits made since the last load.
@@ -376,7 +405,13 @@ defineExpose({ goToBlock });
         </div><!-- /.edchrome -->
 
         <!-- Writing area: the block surface, fills remaining height -->
-        <div class="wr-scroll flex-1 min-h-0 overflow-y-auto" @scroll.passive="stopWriting" @click="stopWriting">
+        <div class="wr-scroll relative flex-1 min-h-0 overflow-y-auto" @scroll.passive="stopWriting" @click="stopWriting">
+          <Transition name="flash">
+            <div v-if="startedNew" class="newflash" role="status">
+              <span class="nf-dot"></span>
+              <span class="nf-t"><b>New piece.</b> Nothing is saved until you do.</span>
+            </div>
+          </Transition>
           <EssayBlockEditor
             ref="editorRef"
             v-model:content="content"

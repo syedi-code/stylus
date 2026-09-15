@@ -186,3 +186,34 @@ describe('EssayWritingRoom \u2014 the header', () => {
 		expect(top.findAll('.itg').length).toBeGreaterThanOrEqual(1);
 	});
 });
+
+describe('EssayWritingRoom \u2014 starting a new piece', () => {
+	it('says that a new piece started, because nothing else visibly happens', async () => {
+		// The room is always open, so "new essay" used to look identical to the
+		// text disappearing \u2014 which reads as a fault, not as a beginning. On a
+		// phone the button that does it is at the far end of the screen from the
+		// only thing that changed.
+		const room = mountRoom({ essay: null });
+		await flushPromises();
+
+		const flash = room.find('.newflash');
+		expect(flash.exists()).toBe(true);
+		expect(flash.text()).toContain('New piece');
+	});
+
+	it('says nothing when an existing piece is opened', async () => {
+		const room = mountRoom();
+		await flushPromises();
+		expect(room.find('.newflash').exists()).toBe(false);
+	});
+
+	it('gets out of the way as soon as writing starts', async () => {
+		const room = mountRoom({ essay: null });
+		await flushPromises();
+		expect(room.find('.newflash').exists()).toBe(true);
+
+		await room.findComponent({ name: 'EssayBlockEditor' }).vm.$emit('typing');
+		await flushPromises();
+		expect(room.find('.newflash').exists()).toBe(false);
+	});
+});
