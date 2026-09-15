@@ -28,7 +28,7 @@ runs:
                   ;;
                 staging)
                   echo "branch=staging" >> "$GITHUB_OUTPUT"
-                  echo "site=https://staging.stylus.pages.dev" >> "$GITHUB_OUTPUT"
+                  echo "site=https://staging.stylus-64v.pages.dev" >> "$GITHUB_OUTPUT"
                   ;;
                 *)
                   echo "::error::Unknown environment '${{ inputs.environment }}' (expected staging or production)"
