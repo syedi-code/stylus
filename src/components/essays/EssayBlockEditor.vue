@@ -7,7 +7,7 @@ import {
 	type EmbedBlockKind,
 } from '../../composables/useEssayBlocks';
 import { usePresentationQuoteMode } from '../../composables/usePresentationQuoteMode';
-import EssayBlock from './EssayBlock.vue';
+import EssayBlock, { type PastedQuote } from './EssayBlock.vue';
 import BlockDeleteConfirm from './blocks/BlockDeleteConfirm.vue';
 
 /**
@@ -23,6 +23,8 @@ const content = defineModel<string>('content', { required: true });
 
 const emit = defineEmits<{
 	(e: 'requestInsert', kind: 'quote' | 'book' | 'image'): void;
+	/** Keystrokes are landing — the modal retracts its chrome while writing. */
+	(e: 'typing'): void;
 }>();
 
 const {
@@ -195,6 +197,76 @@ function onBlkKeydown(bid: string, e: KeyboardEvent) {
 	}
 }
 
+/**
+ * The insert seam.
+ *
+ * Before this, a new block could only be added after the SELECTED block, so
+ * putting a quote between two existing paragraphs meant selecting the right
+ * one first and hoping. The seam makes the gap itself the target: every join
+ * between two blocks (and the two ends) is a hit area that opens the insert
+ * rail aimed at exactly that position.
+ *
+ * `seamIndex` is the index the new block takes, i.e. the number of blocks
+ * above the seam. null means no seam is open and inserts go after the
+ * selection as before.
+ */
+const seamIndex = ref<number | null>(null);
+
+function openSeam(i: number) {
+	seamIndex.value = seamIndex.value === i ? null : i;
+	activeBid.value = null;
+	editingBid.value = null;
+}
+function closeSeam() {
+	seamIndex.value = null;
+}
+/** Where a new block should land, honouring an open seam. */
+function insertAt(): string | null {
+	if (seamIndex.value === null) return activeBid.value;
+	const i = seamIndex.value;
+	// insertAfter(null) prepends; otherwise after the block above the seam.
+	return i === 0 ? null : (blocks.value[i - 1]?.bid ?? null);
+}
+
+// ── Slash commands ──
+function onSlash(bid: string, kind: 'quote' | 'section' | 'book' | 'image') {
+	// The command was typed into this block, so the new thing belongs here.
+	activeBid.value = bid;
+	seamIndex.value = null;
+	if (kind === 'section') {
+		const b = blocks.value[indexOf(bid)];
+		// An empty paragraph that asked to be a header just becomes one.
+		if (b && !isEmbedBlock(b) && !b.text.trim()) {
+			b.kind = 'header';
+			sync();
+			editBlock(bid);
+			focusText(bid, 0);
+			return;
+		}
+		insertHeaderBlock();
+		return;
+	}
+	emit('requestInsert', kind);
+}
+
+// ── Paste-to-quote ──
+/** The pending offer: set the pasted passage as a real quote instead of prose. */
+const pasted = ref<{ bid: string; payload: PastedQuote } | null>(null);
+function onPastedQuote(bid: string, payload: PastedQuote) {
+	pasted.value = { bid, payload };
+}
+function dismissPaste() {
+	pasted.value = null;
+}
+/** Hand the parsed passage to the embed sheet, pre-filled. */
+function acceptPaste() {
+	const p = pasted.value;
+	pasted.value = null;
+	if (!p) return;
+	activeBid.value = p.bid;
+	emit('requestInsert', 'quote');
+}
+
 // ── Action rail ──
 function railEdit(bid: string) {
 	const b = blocks.value[indexOf(bid)];
@@ -270,7 +342,8 @@ const showAdd = ref(false);
 function chooseBlock(kind: 'text' | 'header' | 'quote' | 'book' | 'image') {
 	showAdd.value = false;
 	if (kind === 'text') {
-		const nb = insertAfter(activeBid.value, newTextBlock('para', ''));
+		const nb = insertAfter(insertAt(), newTextBlock('para', ''));
+		closeSeam();
 		editBlock(nb);
 		focusText(nb, 0);
 	} else if (kind === 'header') {
@@ -282,7 +355,8 @@ function chooseBlock(kind: 'text' | 'header' | 'quote' | 'book' | 'image') {
 
 // ── Methods the modal drives ──
 function insertHeaderBlock() {
-	const nb = insertAfter(activeBid.value, newTextBlock('header', ''));
+	const nb = insertAfter(insertAt(), newTextBlock('header', ''));
+	closeSeam();
 	editBlock(nb);
 	focusText(nb, 0);
 }
@@ -299,7 +373,8 @@ function insertEmbed(kind: EmbedBlockKind, id: string, params: EmbedParams = {})
 		}
 		return;
 	}
-	const nb = insertAfter(activeBid.value, newEmbedBlock(kind, id, params));
+	const nb = insertAfter(insertAt(), newEmbedBlock(kind, id, params));
+	closeSeam();
 	activeBid.value = nb;
 }
 
@@ -314,7 +389,16 @@ function goToBlock(bid: string) {
 	el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-defineExpose({ insertHeaderBlock, insertEmbed, wrapActiveSelection, activeBid, blocks, goToBlock });
+defineExpose({
+	insertHeaderBlock,
+	insertEmbed,
+	wrapActiveSelection,
+	activeBid,
+	blocks,
+	goToBlock,
+	seamIndex,
+	closeSeam,
+});
 
 // ── Pointer gestures (tap / long-press / drag) ──
 const dragBid = ref<string | null>(null);
@@ -422,9 +506,21 @@ function endDrag() {
 <template>
 	<div class="blocks" @click.self="deselectAll">
 		<TransitionGroup name="blk" tag="div" class="blk-list">
+			<template v-for="(block, i) in blocks" :key="block.bid">
+			<!-- The gap ABOVE each block is itself an insert target, so a
+			     quote can land between two existing paragraphs without first
+			     selecting the right one and hoping. -->
 			<div
-				v-for="block in blocks"
-				:key="block.bid"
+				class="seam"
+				:class="{ open: seamIndex === i }"
+				role="button"
+				:aria-label="`Insert before block ${i + 1}`"
+				@click.stop="openSeam(i)"
+			>
+				<span class="ln"></span>
+				<span class="plus">＋</span>
+			</div>
+			<div
 				:ref="(el) => registerBlkEl(block.bid, el)"
 				class="blk"
 				:class="[
@@ -452,6 +548,9 @@ function endDrag() {
 						@merge-back="onMergeBack(block.bid)"
 						@cross="(d, c) => onCross(block.bid, d, c)"
 						@exit-edit="exitEdit(block.bid)"
+						@typing="emit('typing')"
+						@slash="(k) => onSlash(block.bid, k)"
+						@pasted-quote="(pq) => onPastedQuote(block.bid, pq)"
 					/>
 				</div>
 
@@ -493,6 +592,32 @@ function endDrag() {
 						@cancel="confirmBid = null"
 					/>
 				</div>
+
+				<!-- Paste-to-quote. Pasting a passage with its attribution is
+				     how most quotes arrive; retyping it into the sheet was the
+				     slowest path in the editor. -->
+				<div v-if="pasted && pasted.bid === block.bid" class="pq">
+					<span class="pq-txt">
+						That looks like a quote<template v-if="pasted.payload.creator">
+						by <b>{{ pasted.payload.creator }}</b></template>. Set it as one?
+					</span>
+					<button type="button" class="pq-yes" @click.stop="acceptPaste">Set it in</button>
+					<button type="button" class="pq-no" @click.stop="dismissPaste">Keep as prose</button>
+				</div>
+			</div>
+			</template>
+
+			<!-- …and one at the foot, so you can always add to the end. -->
+			<div
+				key="seam-end"
+				class="seam"
+				:class="{ open: seamIndex === blocks.length }"
+				role="button"
+				aria-label="Insert at the end"
+				@click.stop="openSeam(blocks.length)"
+			>
+				<span class="ln"></span>
+				<span class="plus">＋</span>
 			</div>
 		</TransitionGroup>
 
@@ -529,6 +654,114 @@ function endDrag() {
 		max-width: 680px;
 		margin: 0 auto;
 	}
+}
+
+/* ── The insert seam ──
+   16px of hit area collapsed into a 0-height gap (negative margins), so it
+   costs no rhythm until it is used. The rule and the ＋ only appear on hover
+   or once opened — on touch there is no hover, so the ＋ is always faintly
+   present at phone width (see below). */
+.seam {
+	position: relative;
+	height: 16px;
+	margin: -8px 0;
+	z-index: 5;
+	cursor: pointer;
+}
+.seam .ln {
+	position: absolute;
+	left: 6px;
+	right: 6px;
+	top: 50%;
+	height: 1px;
+	background: linear-gradient(90deg, var(--color-essay), rgb(232 160 64 / 0.12) 55%, transparent);
+	opacity: 0;
+	transition: opacity 0.16s ease;
+}
+.seam .plus {
+	position: absolute;
+	left: -2px;
+	top: 50%;
+	transform: translateY(-50%) scale(0.72);
+	width: 23px;
+	height: 23px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	background: var(--color-mono-800);
+	border: 1px solid var(--line);
+	color: var(--color-essay);
+	font-size: 14px;
+	line-height: 1;
+	opacity: 0;
+	transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (hover: hover) {
+	.seam:hover .ln,
+	.seam:hover .plus {
+		opacity: 1;
+	}
+	.seam:hover .plus {
+		transform: translateY(-50%) scale(1);
+	}
+}
+/* No hover on a phone — keep the ＋ quietly visible instead of invisible. */
+@media (hover: none) {
+	.seam .plus {
+		opacity: 0.4;
+	}
+}
+.seam.open .ln,
+.seam.open .plus {
+	opacity: 1;
+}
+.seam.open .plus {
+	transform: translateY(-50%) scale(1);
+	border-color: var(--color-essay);
+	background: var(--color-mono-900);
+}
+
+/* ── Paste-to-quote offer ── */
+.pq {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin: 8px 6px 0;
+	padding: 8px 10px;
+	border: 1px solid var(--line);
+	border-left: 2px solid var(--color-essay);
+	border-radius: 9px;
+	background: var(--color-mono-900);
+}
+.pq-txt {
+	flex: 1;
+	min-width: 160px;
+	font-size: 11.5px;
+	line-height: 1.4;
+	color: var(--color-mono-400);
+}
+.pq-txt b {
+	color: var(--color-mono-200);
+	font-weight: 500;
+}
+.pq button {
+	border: none;
+	font: inherit;
+	font-size: 11.5px;
+	padding: 5px 10px;
+	border-radius: 7px;
+	cursor: pointer;
+	flex: 0 0 auto;
+}
+.pq-yes {
+	background: var(--color-essay);
+	color: var(--color-essay-text);
+	font-weight: 600;
+}
+.pq-no {
+	background: transparent;
+	color: var(--color-mono-400);
 }
 
 .blk {
