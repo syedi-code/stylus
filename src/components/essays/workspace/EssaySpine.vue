@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { Essay } from '../../../lib/api';
-import { parseBlocks, isEmbedBlock, type EditorBlock } from '../../../composables/useEssayBlocks';
-import { essayName, essayWordCount, relativeDate } from '../../../lib/essayDisplay';
+import type { EditorBlock } from '../../../composables/useEssayBlocks';
+import { spineRow, filterEssays, outlineOf, type SpineRow } from '../../../lib/essayWorkspace';
 
 /**
  * The spine — navigation for the whole Essays tab.
@@ -46,47 +46,12 @@ const emit = defineEmits<{
 const filter = ref('');
 const menuFor = ref<string | null>(null);
 
-interface Row {
-	essay: Essay;
-	name: string;
-	untitled: boolean;
-	words: number;
-	when: string;
-	/** One tick per block: true = a source (quote/book/image). */
-	ticks: boolean[];
-}
-
-const rows = computed<Row[]>(() => {
-	const q = filter.value.trim().toLowerCase();
-	return props.essays
-		.filter((e) => !q || (e.content ?? '').toLowerCase().includes(q))
-		.map((e) => {
-			const n = essayName(e.content ?? '');
-			// Cap the rail: past a dozen the shape reads the same and the row
-			// would start to wrap.
-			const blocks = parseBlocks(e.content ?? '').slice(0, 12);
-			return {
-				essay: e,
-				name: n.name,
-				untitled: n.untitled,
-				words: essayWordCount(e.content ?? ''),
-				when: relativeDate(e.updated_at ?? e.created_at ?? ''),
-				ticks: blocks.map((b) => isEmbedBlock(b)),
-			};
-		});
-});
-
-/** The open piece's outline. Embeds show what they are; prose shows its opening. */
-const outline = computed(() =>
-	(props.currentBlocks ?? []).map((b, i) => ({
-		bid: b.bid,
-		n: i + 1,
-		kind: b.kind,
-		label: isEmbedBlock(b)
-			? b.kind
-			: (b.text.replace(/[*_`#<>{}]/g, '').trim() || (b.kind === 'header' ? 'Untitled section' : 'Empty')),
-	}))
+const rows = computed<SpineRow[]>(() =>
+	filterEssays(props.essays, filter.value).map(spineRow)
 );
+
+/** The open piece's outline — see lib/essayWorkspace. */
+const outline = computed(() => outlineOf(props.currentBlocks ?? []));
 
 const GLYPH: Record<string, string> = {
 	quote: '❝',
