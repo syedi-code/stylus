@@ -53,7 +53,7 @@ export function isTextBlock(b: EditorBlock): b is TextBlock {
 	return b.kind === 'para' || b.kind === 'header';
 }
 
-// Matches EssayCard's HEADER_RE exactly so the editor and the read renderer
+// Matches essayDisplay.ts HEADER_RE exactly so the editor and the read renderer
 // agree on what a section header is (single-line paragraph starting `# `).
 const HEADER_RE = /^#\s+(.+)$/;
 

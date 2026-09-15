@@ -48,14 +48,14 @@ export function allTextureAssets(): string[] {
 
 const instances = new Map<string, Ref<QuoteMode>>();
 
-function load(key: string): QuoteMode {
+function load(key: string, fallback: QuoteMode): QuoteMode {
 	try {
 		const raw = localStorage.getItem(key);
 		if (raw && (ORDER as string[]).includes(raw)) return raw as QuoteMode;
 	} catch {
 		// localStorage unavailable
 	}
-	return 'textured';
+	return fallback;
 }
 
 function save(key: string, m: QuoteMode): void {
@@ -94,11 +94,21 @@ export function texturePositionForSeed(seed: string): string {
 	return `${x}% ${y}%`;
 }
 
-export function usePresentationQuoteMode(entity: string = 'quote') {
+/**
+ * @param fallback what an entity shows before anyone has chosen a mode. The
+ *   presentation surfaces open on the textured card; the WRITING view opens on
+ *   'plain', because a texture and a gilt ring behind every one of a page of
+ *   quotes is decoration you have to read past to write. Texture stays one tap
+ *   away on the foil's rail — opt-in, not the resting state.
+ */
+export function usePresentationQuoteMode(
+	entity: string = 'quote',
+	fallback: QuoteMode = 'textured'
+) {
 	const storageKey = `${BASE_KEY}-${entity}`;
 
 	if (!instances.has(storageKey)) {
-		instances.set(storageKey, ref(load(storageKey)));
+		instances.set(storageKey, ref(load(storageKey, fallback)));
 	}
 	const mode = instances.get(storageKey)!;
 
@@ -108,10 +118,10 @@ export function usePresentationQuoteMode(entity: string = 'quote') {
 		save(storageKey, next);
 	}
 
-	/** Force back to the default rounded card. */
+	/** Force back to this surface's resting mode. */
 	function reset() {
-		mode.value = 'textured';
-		save(storageKey, 'textured');
+		mode.value = fallback;
+		save(storageKey, fallback);
 	}
 
 	return {

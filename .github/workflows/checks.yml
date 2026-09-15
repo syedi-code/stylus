@@ -1,0 +1,28 @@
+# Checks never deploy. Deploys never gate a PR.
+name: Checks
+
+on:
+    pull_request:
+        branches: [main, staging]
+    push:
+        branches: [main, staging]
+
+concurrency:
+    group: checks-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    checks:
+        name: Lint, test, build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+            - uses: actions/setup-node@v5
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'npm'
+            - run: npm ci
+            - run: npm run lint
+            - run: npm test
+            # vue-tsc -b && vite build: the typecheck as well as the bundle.
+            - run: npm run build

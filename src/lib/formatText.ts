@@ -1,3 +1,5 @@
+import { paletteIndexForName, sliceName } from './bookAttribution';
+
 export const escapeHtml = (text: string): string => {
 	return text
 		.replace(/&/g, '&amp;')
@@ -60,6 +62,28 @@ export const formatMarkdown = (text: string): string => {
 		/&lt;((?:(?!&lt;|&gt;)[\s\S])+?)&gt;/g,
 		'<span class="gold-underline">$1</span>'
 	);
+
+	// ::Name:: → the surname in its hashed palette color, so a thinker named
+	// mid-sentence wears the same color as the citation row under the quote they
+	// came from. Only the surname takes the color — first names and suffixes
+	// stay in the surrounding text color — which is exactly how BookAttribution
+	// renders a structured author field, and is why the span is sliced rather
+	// than colored whole. `sliceName` also means ::King::, ::Martin Luther King::
+	// and a book's "Martin Luther King Jr." all land on one slot — it is the
+	// surname token that converges, so an initialism (::MLK::) is a different
+	// person to the hash, and would need an alias table to read otherwise.
+	//
+	// Placed ahead of the `code` rule so it can never match a colon inside an
+	// emitted class or style attribute, and its own output carries no doubled
+	// colon, so it cannot re-match itself.
+	result = result.replace(/::([^:]+)::/g, (whole, inner: string) => {
+		const { firstParts, lastName, suffix } = sliceName(inner);
+		const slot = paletteIndexForName(lastName);
+		// Nothing hashable inside the marker — leave the source text visible
+		// rather than silently swallowing it.
+		if (slot < 0) return whole;
+		return `${firstParts}<span class="author-hl author-c${slot}">${lastName}</span>${suffix}`;
+	});
 
 	// `code` → <code>code</code>
 	result = result.replace(

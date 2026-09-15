@@ -12,7 +12,8 @@
 		"test:watch": "vitest",
 		"lint": "eslint .",
 		"format": "prettier --write .",
-		"deploy": "npm run build && wrangler pages deploy dist"
+		"deploy:prod": "npm run build && wrangler pages deploy dist --project-name stylus --branch main",
+		"deploy:staging": "npm run build && wrangler pages deploy dist --project-name stylus --branch staging"
 	},
 	"dependencies": {
 		"@tailwindcss/vite": "^4.1.17",
@@ -25,9 +26,11 @@
 		"@eslint/js": "^9.39.1",
 		"@types/node": "^24.10.1",
 		"@vitejs/plugin-vue": "^6.0.1",
+		"@vue/test-utils": "^2.5.0",
 		"@vue/tsconfig": "^0.8.1",
 		"eslint": "^9.39.1",
 		"eslint-config-prettier": "^10.1.8",
+		"happy-dom": "^20.14.5",
 		"prettier": "^3.6.2",
 		"typescript": "~5.9.3",
 		"typescript-eslint": "^8.47.0",
