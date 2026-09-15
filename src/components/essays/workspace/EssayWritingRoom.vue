@@ -518,10 +518,20 @@ defineExpose({ goToBlock });
   }
 }
 
+/* The width is pinned three ways on purpose. `flex: 0 0 258px` alone is not a
+   width: a flex item's default `min-width: auto` lets its CONTENT'S min-content
+   size override the basis, and piece titles are `white-space: nowrap`. On prod,
+   where most pieces are untitled and named by their opening line, the dock
+   grew to the width of the longest first sentence. `min-width: 0` removes that
+   floor; width/max-width say what the column is. */
 .spine-dock {
   display: none;
   flex: 0 0 258px;
+  width: 258px;
+  min-width: 0;
+  max-width: 258px;
   min-height: 0;
+  overflow: hidden;
 }
 /* Docked only when there is room for it beside a full measure of prose. */
 @media (min-width: 1100px) {
