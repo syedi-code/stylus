@@ -32,7 +32,36 @@ const tagInput = ref('');
 const tags = ref<string[]>([]);
 const submitting = ref(false);
 const editorRef = ref<InstanceType<typeof EssayBlockEditor> | null>(null);
-const { ensureLoaded, registerImage } = useSourceLibrary();
+const { ensureLoaded, registerImage, quotes } = useSourceLibrary();
+
+/**
+ * Writing mode. On a phone the keyboard already takes half the screen; the
+ * chrome above the manuscript takes another slice for information you are not
+ * reading while mid-sentence. So it retracts on a keystroke and comes back the
+ * moment you stop, scroll, or tap.
+ *
+ * It COLLAPSES rather than sliding away: a transform would leave its height
+ * reserved and blank, which is the mystery gap above the first paragraph.
+ */
+const writing = ref(false);
+let writingTimer = 0;
+function onTyping() {
+	writing.value = true;
+	clearTimeout(writingTimer);
+	writingTimer = window.setTimeout(() => (writing.value = false), 2600);
+}
+function stopWriting() {
+	clearTimeout(writingTimer);
+	writing.value = false;
+}
+
+/**
+ * Recent quotes, as one-tap chips on the insert rail. Re-citing something you
+ * just used is constant in this corpus — 84 quotes across 49 essays, many of
+ * them several from the same book in a row — and it was a four-step trip
+ * through the embed sheet every time.
+ */
+const recentQuotes = computed(() => quotes.value.slice(0, 2));
 
 /**
  * Deck readout. The essay's own name (its first section header, or the opening
@@ -50,6 +79,11 @@ const wordCount = computed(() => essayWordCount(content.value));
 const sourceCount = computed(
 	() => (content.value.match(/\[\[(?:quote|book|image):/g) ?? []).length
 );
+
+/** Re-cite a recent quote straight from the rail, no sheet. */
+function insertRecentQuote(id: string) {
+  editorRef.value?.insertEmbed('quote', id, {});
+}
 
 const sheetOpen = ref(false);
 const sheetInitialKind = ref<'quote' | 'book'>('quote');
@@ -267,7 +301,7 @@ const handleKeydown = (e: KeyboardEvent) => {
              and never by one of the fixed-height rows inside it: with
              `box-sizing: border-box` a 47px notch inset eats a short row
              whole and slices the controls in it. -->
-        <div class="edchrome shrink-0">
+        <div class="edchrome shrink-0" :class="{ writing }">
         <EssayDeckRail
           :blocks="editorRef?.blocks ?? []"
           :active-bid="editorRef?.activeBid ?? null"
@@ -320,20 +354,6 @@ const handleKeydown = (e: KeyboardEvent) => {
           </div>
         </div>
 
-        <!-- Toolbar — insert tiles. Ordered by what actually gets inserted:
-             across the corpus, 84 quotes and 43 books against 6 images and
-             ZERO section headers. Header used to sit first, nearest the
-             thumb, for a block type no essay has ever contained; it moves
-             last. Formatting lives on the bottom bar (thumb-reachable and
-             above the keyboard). -->
-        <div class="wr-tools flex items-center gap-1.5 px-3 py-1.5 overflow-x-auto">
-          <button type="button" @click="openSheet('quote')" class="ttile primary" title="Insert quote"><span class="g">❝</span>Quote</button>
-          <button type="button" @click="openSheet('book')" class="ttile" title="Insert book"><span class="g">▤</span>Book</button>
-          <button type="button" @click="triggerImageUpload" :disabled="imageUploading" class="ttile" title="Insert image"><span class="g">▦</span>{{ imageUploading ? '…' : 'Image' }}</button>
-          <button type="button" @click="insertHeader" class="ttile" title="Section header"><span class="g">＃</span>Header</button>
-          <input ref="imageFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="handleImageSelected" />
-        </div>
-
         <!-- Status — the deck, plus the hard character limit. -->
         <div class="wr-status flex items-center gap-2 px-4 pb-1.5 text-[10.5px]">
           <span class="n">{{ blockCount }} {{ blockCount === 1 ? 'slide' : 'slides' }}</span>
@@ -348,24 +368,53 @@ const handleKeydown = (e: KeyboardEvent) => {
         </div><!-- /.edchrome -->
 
         <!-- Writing area: the block surface, fills remaining height -->
-        <div class="wr-scroll flex-1 min-h-0 overflow-y-auto">
-          <EssayBlockEditor ref="editorRef" v-model:content="content" @request-insert="handleRequestInsert" />
+        <div class="wr-scroll flex-1 min-h-0 overflow-y-auto" @scroll.passive="stopWriting" @click="stopWriting">
+          <EssayBlockEditor
+            ref="editorRef"
+            v-model:content="content"
+            @request-insert="handleRequestInsert"
+            @typing="onTyping"
+          />
         </div>
 
-        <!-- Bottom bar: text formatting — thumb-reachable, pinned above the
-             soft keyboard on mobile. Acts on the active block's selection. -->
+        <!-- Bottom rail: INSERT first, then formatting.
+             Inserting is the frequent act and it lives where the thumb is —
+             the tiles used to sit at the top of the modal, the furthest point
+             from both thumb and caret on a phone, which is where most of this
+             writing happens. Ordered by the corpus: 84 quotes and 43 books
+             against 6 images and zero section headers. -->
         <div
-          class="wr-foot fmtbar shrink-0 flex items-center gap-1 px-4 py-2"
+          class="wr-foot fmtbar shrink-0 flex items-center gap-1.5 px-3 py-2"
           :style="{
             paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
             transform: keyboardOffset ? `translateY(-${keyboardOffset}px)` : undefined,
           }"
         >
-          <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('**', '**')" title="Bold (**text**)" class="fmt font-bold">B</button>
-          <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('*', '*')" title="Italics (*text*)" class="fmt italic">I</button>
-          <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('&lt;', '&gt;')" title="Underline (&lt;text&gt;)" class="fmt" style="text-decoration: underline; text-decoration-color: rgba(232,200,130,0.85); text-underline-offset: 2px; text-decoration-thickness: 1.5px;">U</button>
-          <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('{', '}')" title="Highlight ({text})" class="fmt" style="color:#e8d0a8;">H</button>
-          <span class="ml-auto text-[10px] text-mono-600 hidden sm:inline shrink-0">Ctrl+Enter to save</span>
+          <div class="pills flex items-center gap-1.5 overflow-x-auto">
+            <button type="button" @click="openSheet('quote')" class="pill primary" title="Insert quote"><span class="g">❝</span>Quote</button>
+            <button type="button" @click="openSheet('book')" class="pill" title="Insert book"><span class="g">▤</span>Book</button>
+            <!-- One tap to re-cite something recent. -->
+            <button
+              v-for="q in recentQuotes"
+              :key="q.id"
+              type="button"
+              class="pill recent"
+              :title="q.quote"
+              @click="insertRecentQuote(q.id)"
+            >
+              <span class="g">❝</span><span class="rq">{{ q.quote.slice(0, 26) }}…</span>
+            </button>
+            <button type="button" @click="triggerImageUpload" :disabled="imageUploading" class="pill" title="Insert image"><span class="g">▦</span>{{ imageUploading ? '…' : 'Image' }}</button>
+            <button type="button" @click="insertHeader" class="pill" title="Section header"><span class="g">＃</span>Header</button>
+            <input ref="imageFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="handleImageSelected" />
+          </div>
+
+          <div class="fmt flex items-center gap-1 shrink-0">
+            <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('**', '**')" title="Bold (**text**)" class="fmt-b font-bold">B</button>
+            <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('*', '*')" title="Italics (*text*)" class="fmt-b italic">I</button>
+            <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('&lt;', '&gt;')" title="Underline (&lt;text&gt;)" class="fmt-b" style="text-decoration: underline; text-decoration-color: rgba(232,200,130,0.85); text-underline-offset: 2px; text-decoration-thickness: 1.5px;">U</button>
+            <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('{', '}')" title="Highlight ({text})" class="fmt-b" style="color:#e8d0a8;">H</button>
+          </div>
         </div>
 
         <!-- Embed picker sheet -->
@@ -413,6 +462,16 @@ const handleKeydown = (e: KeyboardEvent) => {
 .edchrome {
   padding-top: env(safe-area-inset-top, 0px);
   border-bottom: 1px solid var(--line);
+  /* Collapses while writing — max-height, not transform, so the space it was
+     holding goes back to the manuscript instead of sitting blank. */
+  overflow: hidden;
+  max-height: 200px;
+  transition: max-height 0.28s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.2s ease;
+}
+.edchrome.writing {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* top bar */
@@ -605,57 +664,104 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 
 /* toolbar */
-.wr-tools {
-  border-bottom: 1px solid var(--line);
+/* ── The insert rail ──
+   Every insert affordance is the same shape: glyph + label in a pill. Quote is
+   filled because it is primary; that is the only difference between them. */
+.pills {
+  flex: 1;
+  min-width: 0;
+  scrollbar-width: none;
+  /* The row scrolls, so the last pill fades under the formatting cluster
+     rather than being guillotined by its edge. */
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent);
 }
-.ttile {
+.pills::-webkit-scrollbar {
+  display: none;
+}
+.pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 11px;
-  background: var(--color-mono-900);
-  border: 1px solid var(--line);
-  color: var(--color-mono-200);
-  font-size: 12px;
-  cursor: pointer;
+  gap: 7px;
   flex: 0 0 auto;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-.ttile .g {
-  font-size: 14px;
-  color: var(--color-mono-500);
+  padding: 9px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
   line-height: 1;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-mono-300);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-/* Quote is filled because it is the primary insert — 84 of the 133 embeds in
-   the corpus are quotes. That is the only difference between the tiles. */
-.ttile.primary {
+.pill .g {
+  font-size: 14px;
+  line-height: 0;
+  position: relative;
+  top: 1px;
+  color: var(--color-mono-500);
+}
+.pill:hover {
+  border-color: var(--color-essay);
+  color: var(--color-essay);
+}
+.pill:hover .g {
+  color: var(--color-essay);
+}
+.pill:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.pill.primary {
   background: var(--color-essay);
   border-color: var(--color-essay);
   color: var(--color-essay-text);
   font-weight: 600;
   box-shadow: inset 0 1px 0 rgb(255 245 220 / 0.5);
 }
-.ttile.primary .g {
+.pill.primary .g {
   color: rgb(20 13 3 / 0.65);
 }
-.ttile.primary:hover {
+.pill.primary:hover {
   background: var(--color-essay-bright);
   border-color: var(--color-essay-bright);
   color: var(--color-essay-text);
 }
-.ttile:hover {
-  border-color: var(--gold);
-  color: var(--gold);
+.pill.recent {
+  max-width: 190px;
+}
+.pill.recent .rq {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
+  color: var(--color-mono-400);
+}
+.fmt {
+  border-left: 1px solid var(--line);
+  padding-left: 7px;
+}
+.fmt-b {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--color-mono-300);
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.fmt-b:hover {
   background: var(--color-mono-800);
+  color: var(--color-mono-50);
 }
-.ttile:hover .g {
-  color: var(--gold);
-}
-.ttile:disabled {
-  opacity: 0.5;
-  cursor: wait;
-}
+
+/* Quote is filled because it is the primary insert — 84 of the 133 embeds in
+   the corpus are quotes. That is the only difference between the tiles. */
 .wr-sep {
   width: 1px;
   height: 20px;
