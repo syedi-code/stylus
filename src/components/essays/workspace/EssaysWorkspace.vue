@@ -41,6 +41,13 @@ const currentId = ref<string | null>(null);
 const isNewPiece = computed(() => currentId.value === null);
 /** Bumped to force the room to remount on "new", so its draft starts clean. */
 const roomKey = ref(0);
+/**
+ * Set only by `newEssay()` — i.e. only when someone actually pressed Write.
+ * The room used to infer it from having no essay, but it has no essay during
+ * the first load too, so every cold start announced a new piece and then
+ * quietly opened the most recent one underneath the notice.
+ */
+const startedNew = ref(false);
 
 const current = computed<Essay | null>(
 	() => pagination.items.value.find((e) => e.id === currentId.value) ?? null
@@ -63,15 +70,18 @@ watch(current, (e) => {
 
 function openEssay(essay: Essay) {
 	currentId.value = essay.id;
+	startedNew.value = false;
 	roomKey.value += 1;
 }
 /** Also the entry point for deep links from other tabs. */
 function openById(id: string) {
 	currentId.value = id;
+	startedNew.value = false;
 	roomKey.value += 1;
 }
 function newEssay() {
 	currentId.value = null;
+	startedNew.value = true;
 	roomKey.value += 1;
 }
 
@@ -131,6 +141,7 @@ defineExpose({ openById, newEssay, isNewPiece });
 			inline
 			:is-open="true"
 			:essay="current"
+			:announce-new="startedNew"
 			@saved="onSaved"
 			@present="(e) => emit('present', e)"
 			@content="(c: string) => (liveContent = c)"
