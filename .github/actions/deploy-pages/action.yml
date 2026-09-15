@@ -1,92 +1,94 @@
 name: Deploy to Cloudflare Pages
 description: >-
-  Builds and deploys stylus to one environment. The single implementation both
-  Deploy workflows call, so staging and production cannot drift apart.
+    Builds and deploys stylus to one environment. The single implementation both
+    Deploy workflows call, so staging and production cannot drift apart.
 
 inputs:
-  environment:
-    description: 'Target environment: staging | production'
-    required: true
-  api-token:
-    description: Cloudflare API token
-    required: true
-  account-id:
-    description: Cloudflare account id
-    required: true
+    environment:
+        description: 'Target environment: staging | production'
+        required: true
+    api-token:
+        description: Cloudflare API token
+        required: true
+    account-id:
+        description: Cloudflare account id
+        required: true
 
 runs:
-  using: composite
-  steps:
-    - name: Resolve target
-      id: target
-      shell: bash
-      run: |
-        case "${{ inputs.environment }}" in
-          production)
-            echo "branch=main" >> "$GITHUB_OUTPUT"
-            echo "site=https://stylus.socialeating.studio" >> "$GITHUB_OUTPUT"
-            ;;
-          staging)
-            echo "branch=staging" >> "$GITHUB_OUTPUT"
-            echo "site=https://staging.stylus.pages.dev" >> "$GITHUB_OUTPUT"
-            ;;
-          *)
-            echo "::error::Unknown environment '${{ inputs.environment }}' (expected staging or production)"
-            exit 1
-            ;;
-        esac
+    using: composite
+    steps:
+        - name: Resolve target
+          id: target
+          shell: bash
+          run: |
+              case "${{ inputs.environment }}" in
+                production)
+                  echo "branch=main" >> "$GITHUB_OUTPUT"
+                  echo "site=https://stylus.socialeating.studio" >> "$GITHUB_OUTPUT"
+                  ;;
+                staging)
+                  echo "branch=staging" >> "$GITHUB_OUTPUT"
+                  echo "site=https://staging.stylus.pages.dev" >> "$GITHUB_OUTPUT"
+                  ;;
+                *)
+                  echo "::error::Unknown environment '${{ inputs.environment }}' (expected staging or production)"
+                  exit 1
+                  ;;
+              esac
 
-    # Deploying Pages needs a different token permission than deploying a
-    # worker. Ask once, up front, rather than after a full build.
-    - name: Preflight - can this token see the Pages project?
-      shell: bash
-      env:
-        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
-        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
-      run: |
-        url="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/stylus"
-        code=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url" || echo 000)
-        if [ "$code" = "200" ]; then exit 0; fi
-        echo "::error title=Pages deploy cannot run::CLOUDFLARE_API_TOKEN cannot read the Pages project 'stylus' (HTTP $code). Add 'Account -> Cloudflare Pages -> Edit' to the token and update the repo secret."
-        exit 1
+        # Deploying Pages needs a different token permission than deploying a
+        # worker. Ask once, up front, rather than after a full build.
+        - name: Preflight - can this token see the Pages project?
+          shell: bash
+          env:
+              CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+              CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+          run: |
+              url="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/stylus"
+              code=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url" || echo 000)
+              if [ "$code" = "200" ]; then exit 0; fi
+              echo "::error title=Pages deploy cannot run::CLOUDFLARE_API_TOKEN cannot read the Pages project 'stylus' (HTTP $code). Add 'Account -> Cloudflare Pages -> Edit' to the token and update the repo secret."
+              exit 1
 
-    - name: Build
-      shell: bash
-      run: npm run build
+        - name: Build
+          shell: bash
+          run: npm run build
 
-    - name: Deploy
-      id: deploy
-      shell: bash
-      env:
-        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
-        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
-      run: npx wrangler pages deploy dist --project-name stylus --branch ${{ steps.target.outputs.branch }}
+        - name: Deploy
+          id: deploy
+          shell: bash
+          env:
+              CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+              CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+          run:
+              npx wrangler pages deploy dist --project-name stylus --branch ${{
+              steps.target.outputs.branch }}
 
-    # The login page sits in front of the site, but /api/* is bypassed and
-    # proxied to alexandria. An unauthenticated POST /api/session coming back
-    # as alexandria's own 401 proves the Pages Function, WORKER_URL and the
-    # worker are wired together.
-    - name: Smoke test - the proxy reaches alexandria
-      id: smoke
-      shell: bash
-      run: |
-        for attempt in 1 2 3 4 5 6 7 8 9 10; do
-          body=$(curl -sS -X POST "${{ steps.target.outputs.site }}/api/session" || true)
-          if echo "$body" | grep -q JWT_VERIFICATION_FAILED; then echo "$body"; exit 0; fi
-          sleep 6
-        done
-        echo "::error::${{ steps.target.outputs.site }}/api/session never answered as alexandria. Last response: $body"
-        exit 1
+        # The login page sits in front of the site, but /api/* is bypassed and
+        # proxied to alexandria. An unauthenticated POST /api/session coming back
+        # as alexandria's own 401 proves the Pages Function, WORKER_URL and the
+        # worker are wired together.
+        - name: Smoke test - the proxy reaches alexandria
+          id: smoke
+          shell: bash
+          run: |
+              for attempt in 1 2 3 4 5 6 7 8 9 10; do
+                body=$(curl -sS -X POST "${{ steps.target.outputs.site }}/api/session" || true)
+                if echo "$body" | grep -q JWT_VERIFICATION_FAILED; then echo "$body"; exit 0; fi
+                sleep 6
+              done
+              echo "::error::${{ steps.target.outputs.site }}/api/session never answered as alexandria. Last response: $body"
+              exit 1
 
-    - name: Summary
-      if: always()
-      shell: bash
-      run: |
-        {
-          echo "## Deployed to ${{ inputs.environment }}"
-          echo ""
-          echo "| what | target | outcome |"
-          echo "|---|---|---|"
-          echo "| stylus | Pages \`stylus\` branch \`${{ steps.target.outputs.branch }}\` | ${{ steps.deploy.outcome || 'skipped' }} |"
-          echo "| proxy → alexandria | ${{ steps.target.outputs.site }}/api/session | ${{ steps.smoke.outcome || 'skipped' }} |"
-        } >> "$GITHUB_STEP_SUMMARY"
+        - name: Summary
+          if: always()
+          shell: bash
+          run: |
+              {
+                echo "## Deployed to ${{ inputs.environment }}"
+                echo ""
+                echo "| what | target | outcome |"
+                echo "|---|---|---|"
+                echo "| stylus | Pages \`stylus\` branch \`${{ steps.target.outputs.branch }}\` | ${{ steps.deploy.outcome || 'skipped' }} |"
+                echo "| proxy → alexandria | ${{ steps.target.outputs.site }}/api/session | ${{ steps.smoke.outcome || 'skipped' }} |"
+              } >> "$GITHUB_STEP_SUMMARY"
