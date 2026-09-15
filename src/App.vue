@@ -642,7 +642,11 @@ watch([threadsSearch], () => {
     </button>
 
     <!-- Amber FAB for essays tab -->
-    <button v-if="isMobile && currentTab === 'essays'" @click="essaysRef?.newEssay()" class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-essay active:bg-essay-bright rounded-full shadow-lg shadow-essay/30 flex items-center justify-center text-black transition-all active:scale-95" aria-label="New Essay">
+    <!-- Mobile "write" button. Hidden once the room is already on a blank
+         piece — tapping it then does nothing visible, and it sits on top of
+         the editor's own insert rail. Lifted clear of that rail while it is
+         showing, so it never covers the Quote/Book/Image/Header pills. -->
+    <button v-if="isMobile && currentTab === 'essays' && !essaysRef?.isNewPiece" @click="essaysRef?.newEssay()" class="fixed right-5 z-40 w-14 h-14 bg-essay active:bg-essay-bright rounded-full shadow-lg shadow-essay/30 flex items-center justify-center text-black transition-all active:scale-95" style="bottom: calc(4.75rem + env(safe-area-inset-bottom))" aria-label="New Essay">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
         <path d="m15 5 4 4" />
