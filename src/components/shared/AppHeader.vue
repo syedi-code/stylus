@@ -117,9 +117,8 @@ onBeforeUnmount(() => {
           <polygon points="11,36 25,12 39,36" fill="currentColor" clip-path="url(#leftCrack)" />
           <polygon points="11,36 25,12 39,36" fill="currentColor" clip-path="url(#rightCrack)" />
         </svg>
-        <span class="hidden sm:inline-flex items-baseline gap-1.5 whitespace-nowrap">
-          <span class="text-[15px] font-semibold tracking-tight text-white">antisocial</span>
-          <span class="text-[13.5px] font-medium tracking-tight text-mono-500">eating</span>
+        <span class="hidden sm:inline-flex items-baseline whitespace-nowrap">
+          <span class="text-[15px] font-semibold tracking-tight text-white">stylus</span>
         </span>
       </h1>
 
