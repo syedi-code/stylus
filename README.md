@@ -1,7 +1,15 @@
 # stylus
 
+| Deployment | Branch    | URL                                    |
+| ---------- | --------- | -------------------------------------- |
+| Production | `main`    | <https://stylus.socialeating.studio>   |
+| Staging    | `staging` | <https://staging.stylus-64v.pages.dev> |
+
+Both sit behind Cloudflare Access, so an unauthenticated visit redirects to the
+login rather than showing anything.
+
 Notes, thoughts, quotes and essays — the writing half of the system. Vue 3 +
-TypeScript + Vite, deployed to Cloudflare Pages at `stylus.socialeating.studio`.
+TypeScript + Vite, deployed to Cloudflare Pages.
 
 stylus holds no data of its own. Everything comes from **alexandria**, the
 backend, over `/api/*`.
