@@ -9,14 +9,11 @@ import {
     fetchBookById,
     deleteNote,
     createThought,
-    fetchThreadsForEntities,
-    fetchThreadsForEntity,
     fetchConnectionsForEntities,
     fetchAuthorById,
     type Note,
     type Book,
     type Author,
-    type Thread,
 } from '../../lib/api';
 import { usePagination } from '../../composables/usePagination';
 import NoteCard from './NoteCard.vue';
@@ -31,8 +28,6 @@ defineProps<{
 const emit = defineEmits<{
     (e: 'edit', note: Note): void;
     (e: 'present', note: Note): void;
-    (e: 'addToThread', note: Note): void;
-    (e: 'navigateToThread', threadId: string): void;
     (e: 'viewInLibrary', authorId: string): void;
 }>();
 
@@ -221,13 +216,12 @@ const handleCaptureSaved = () => {
 };
 
 // ============================================================================
-// Note enrichment — shared books map + batched thread/author lookups
+// Note enrichment — shared books map + batched author lookups
 // ============================================================================
 
 const filterBooks = ref<Book[]>([]);
 const booksById = computed(() => new Map(filterBooks.value.map((b) => [b.id, b])));
 const extraBooks = ref<Map<string, Book | null>>(new Map());
-const noteThreads = ref<Map<string, Thread>>(new Map());
 const noteAuthors = ref<Map<string, Author>>(new Map());
 const enrichedNoteIds = new Set<string>();
 
@@ -277,18 +271,6 @@ const enrichNotes = async (notes: Note[]) => {
 
     await Promise.all([
         (async () => {
-            try {
-                const rows = await fetchThreadsForEntities('note', newIds);
-                const next = new Map(noteThreads.value);
-                for (const row of rows) {
-                    if (!next.has(row.entity_id)) next.set(row.entity_id, row);
-                }
-                noteThreads.value = next;
-            } catch (err) {
-                console.error('Failed to load threads for notes:', err);
-            }
-        })(),
-        (async () => {
             if (noBookIds.length === 0) return;
             try {
                 const conns = await fetchConnectionsForEntities('note', noBookIds, 'author');
@@ -331,20 +313,6 @@ watch(dealNotes, (notes) => {
 watch(pagination.items, (items) => {
     if (items.length) enrichNotes(items);
 });
-
-/** Refresh the latest-thread label for one note (after thread membership changes). */
-const refreshNoteThread = async (noteId: string) => {
-    try {
-        const threads = await fetchThreadsForEntity('note', noteId);
-        const next = new Map(noteThreads.value);
-        const latest = threads.sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
-        if (latest) next.set(noteId, latest);
-        else next.delete(noteId);
-        noteThreads.value = next;
-    } catch (err) {
-        console.error('Failed to refresh note thread:', err);
-    }
-};
 
 // ============================================================================
 // Card actions
@@ -449,7 +417,6 @@ defineExpose({
         if (mode.value === 'search') await runSearch();
         await refreshDeal();
     },
-    refreshNoteThread,
 });
 </script>
 
@@ -532,7 +499,7 @@ defineExpose({
 
                     <!-- Dealt cards -->
                     <template v-else>
-                        <NoteCard v-for="(note, i) in dealNotes" :key="`${dealKey}-${note.id}`" :note="note" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" :latestThread="noteThreads.get(note.id) ?? null" variant="deal" class="deal-in" :class="{ 'convert-out': note.id === convertingId }" :style="{ animationDelay: `${i * 60}ms` }" @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @addToThread="emit('addToThread', $event)" @convertToThought="handleConvertToThought" @navigateToThread="emit('navigateToThread', $event)" />
+                        <NoteCard v-for="(note, i) in dealNotes" :key="`${dealKey}-${note.id}`" :note="note" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" variant="deal" class="deal-in" :class="{ 'convert-out': note.id === convertingId }" :style="{ animationDelay: `${i * 60}ms` }" @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
 
                         <!-- End of the deal — finite by design -->
                         <div class="flex flex-col items-center gap-3 pt-2 pb-4">
@@ -600,7 +567,7 @@ defineExpose({
                     </div>
 
                     <template v-else>
-                        <NoteCard v-for="note in searchNotes" :key="note.id" :note="note" :class="{ 'convert-out': note.id === convertingId }" :searchQuery="searchQuery" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" :latestThread="noteThreads.get(note.id) ?? null" clamp @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @addToThread="emit('addToThread', $event)" @convertToThought="handleConvertToThought" @navigateToThread="emit('navigateToThread', $event)" />
+                        <NoteCard v-for="note in searchNotes" :key="note.id" :note="note" :class="{ 'convert-out': note.id === convertingId }" :searchQuery="searchQuery" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" clamp @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
 
                         <!-- Infinite scroll sentinel -->
                         <div ref="scrollSentinel" class="h-1"></div>

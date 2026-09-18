@@ -38,7 +38,6 @@ const emit = defineEmits<{
 	(e: 'goToBlock', bid: string): void;
 	(e: 'copy', essay: Essay): void;
 	(e: 'delete', essay: Essay): void;
-	(e: 'addToThread', essay: Essay): void;
 	(e: 'loadMore'): void;
 	(e: 'retry'): void;
 }>();
@@ -123,7 +122,6 @@ function act(fn: () => void) {
 
 			<span v-if="menuFor === r.essay.id" class="menu" @click.stop>
 				<button type="button" @click="act(() => emit('copy', r.essay))">Copy text</button>
-				<button type="button" @click="act(() => emit('addToThread', r.essay))">Add to thread…</button>
 				<button v-if="isAdmin" type="button" class="danger" @click="act(() => emit('delete', r.essay))">Delete</button>
 			</span>
 		</button>
@@ -478,7 +476,7 @@ function act(fn: () => void) {
 }
 /* Each kind takes its own hue from the app's palette, so the outline is
    navigable by colour before it is read: quotes the Quotes tab's green, books
-   the essay amber, images the thread purple. Prose stays plain. */
+   the essay amber, images a lavender. Prose stays plain. */
 .oitem.quote .g {
 	color: var(--color-quote);
 }
@@ -486,7 +484,7 @@ function act(fn: () => void) {
 	color: var(--color-essay);
 }
 .oitem.image .g {
-	color: var(--color-thread);
+	color: var(--color-image);
 }
 .oitem.quote .lbl,
 .oitem.book .lbl,

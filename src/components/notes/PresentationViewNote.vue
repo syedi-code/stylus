@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import type { Note, Book, Author, Thread } from '../../lib/api';
-import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, fetchThreadsForEntity } from '../../lib/api';
+import type { Note, Book, Author } from '../../lib/api';
+import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../../composables/usePresentationFontSize';
 import { useTypography } from '../../composables/useTypography';
@@ -22,17 +22,15 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
     (e: 'close'): void;
-    (e: 'navigateToThread', threadId: string): void;
 }>();
 
 const showFontControls = ref(false);
-// Version + thread metadata is hidden by default; toggled by the info button
+// Version metadata is hidden by default; toggled by the info button
 // in the top-left chrome so the presentation surface stays minimal.
 const showMeta = ref(false);
 const book = ref<Book | null>(null);
 const pdfUrl = ref<string | null>(null);
 const connectedAuthor = ref<Author | null>(null);
-const latestThread = ref<Thread | null>(null);
 
 const parsePrintPage = (pageStr: string | undefined): number | null => {
     if (!pageStr) return null;
@@ -74,7 +72,7 @@ const { hyphenation, toggle: toggleHyphenation } = usePresentationHyphenation('n
 const { chromeVisible, poke } = useAutoChrome(2800);
 
 // Date footer (a la Thoughts), revealed by the meta toggle alongside the
-// version badge + parent-thread chip.
+// version badge.
 const formattedDate = computed(() => {
     if (!props.note) return '';
     const date = new Date(props.note.created_at);
@@ -97,26 +95,15 @@ const formattedTime = computed(() => {
     });
 });
 
-watch(() => props.isOpen, async (isOpen) => {
+watch(() => props.isOpen, (isOpen) => {
     if (isOpen) {
         poke();
         loadBook();
         loadAuthorConnection();
-        if (props.note) {
-            try {
-                const threads = await fetchThreadsForEntity('note', props.note.id);
-                latestThread.value = threads.length
-                    ? threads.sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]
-                    : null;
-            } catch {
-                latestThread.value = null;
-            }
-        }
     } else {
         book.value = null;
         pdfUrl.value = null;
         connectedAuthor.value = null;
-        latestThread.value = null;
     }
 });
 
@@ -208,8 +195,8 @@ const loadAuthorConnection = async () => {
                             </svg>
                         </button>
 
-                        <!-- Meta toggle: reveals version badge + parent thread name
-                         + the created-at date footer. Tag icon reads as
+                        <!-- Meta toggle: reveals the version badge + the
+                         created-at date footer. Tag icon reads as
                          "show labels/badges". -->
                         <button @click.stop="showMeta = !showMeta" class="p-2 text-mono-500 hover:text-mono-200 transition-colors cursor-pointer" :class="showMeta ? 'text-accent' : ''" :aria-label="showMeta ? 'Hide note metadata' : 'Show note metadata'">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -221,18 +208,14 @@ const loadAuthorConnection = async () => {
                 </PresentationChrome>
 
                 <div ref="cardRef" class="w-full max-w-xl flex flex-col overflow-y-auto px-6 sm:px-8 -translate-y-[2vh]" :style="{ maxHeight: `calc(100vh - ${VERTICAL_MARGIN * 2 + (showFontControls ? 80 : 0)}px)` }" @click.stop>
-                    <!-- Type badge. Version + parent-thread chip is hidden by
-                         default; the tag toggle in the top chrome reveals them.
-                         Book attribution below is independent and always shown
+                    <!-- Type badge. The version badge is hidden by default;
+                         the tag toggle in the top chrome reveals it. Book
+                         attribution below is independent and always shown
                          when a book is linked. -->
                     <div class="mb-1.5 flex items-center gap-2">
                         <span class="bg-accent text-accent-text px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
                             note
                         </span>
-                        <button v-show="showMeta && latestThread" @click.stop="latestThread && emit('navigateToThread', latestThread.id)" class="inline-flex items-baseline gap-1 cursor-pointer group/thread">
-                            <span class="text-[10.5px] italic text-mono-500 group-hover/thread:text-mono-400 transition-colors">in</span>
-                            <span class="text-[11.5px] font-medium text-thread-muted group-hover/thread:text-thread transition-colors max-w-[240px] truncate">{{ latestThread?.name }}</span>
-                        </button>
                     </div>
 
                     <!-- Book Attribution -->
