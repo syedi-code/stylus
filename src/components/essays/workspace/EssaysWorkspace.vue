@@ -5,6 +5,8 @@ import { usePagination } from '../../../composables/usePagination';
 import { parseBlocks } from '../../../composables/useEssayBlocks';
 import EssaySpine from './EssaySpine.vue';
 import EssayWritingRoom from './EssayWritingRoom.vue';
+import PresentationViewEssay from '../PresentationViewEssay.vue';
+import CaptureFab from '../../shared/CaptureFab.vue';
 
 /**
  * The Essays tab, whole.
@@ -14,15 +16,11 @@ import EssayWritingRoom from './EssayWritingRoom.vue';
  * tab drops you straight into the piece you touched last, because that is
  * what you came to do — the list was a toll gate in front of it.
  *
- * All of the tab's state and actions live here rather than in App.vue, which
- * previously carried the pagination, five handlers and the modal wiring for
- * this one tab inline.
+ * All of the tab's state and actions live here, presenting included.
  */
 const props = defineProps<{ isAdmin?: boolean }>();
 
-const emit = defineEmits<{
-	(e: 'present', essay: Essay): void;
-}>();
+const presenting = ref<Essay | null>(null);
 
 const pagination = usePagination<Essay, { search?: string }>({
 	pageSize: 30,
@@ -32,8 +30,8 @@ const pagination = usePagination<Essay, { search?: string }>({
 /** The piece being written. `null` means a new, unsaved one. */
 const currentId = ref<string | null>(null);
 /**
- * True while the room is on a new, unsaved piece. App.vue hides the mobile
- * "write" button on this: the tab IS the editor now, so once it has opened a
+ * True while the room is on a new, unsaved piece. The mobile "write" button
+ * hides on this: the tab IS the editor now, so once it has opened a
  * blank piece the button has nothing left to do and was just sitting on top
  * of the insert rail.
  */
@@ -142,7 +140,7 @@ defineExpose({ openById, newEssay, isNewPiece });
 			:essay="current"
 			:announce-new="startedNew"
 			@saved="onSaved"
-			@present="(e) => emit('present', e)"
+			@present="presenting = $event"
 			@content="(c: string) => (liveContent = c)"
 		>
 			<template #spine>
@@ -164,6 +162,19 @@ defineExpose({ openById, newEssay, isNewPiece });
 				/>
 			</template>
 		</EssayWritingRoom>
+
+		<PresentationViewEssay :isOpen="!!presenting" :essay="presenting" @close="presenting = null" />
+
+		<!-- Lifted clear of the editor's insert rail so it never covers the
+		     Quote/Book/Image/Header pills. -->
+		<CaptureFab
+			v-if="!isNewPiece"
+			label="New Essay"
+			icon="pen"
+			class="bg-essay active:bg-essay-bright shadow-essay/30 text-black"
+			style="right: 1.25rem; bottom: calc(4.75rem + env(safe-area-inset-bottom))"
+			@click="newEssay"
+		/>
 	</div>
 </template>
 

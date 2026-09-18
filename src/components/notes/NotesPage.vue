@@ -1,5 +1,12 @@
+<script lang="ts">
+import { ref } from 'vue';
+
+// Module scope so the toggle outlives the tab: switching away and back keeps it.
+const showVersionBadge = ref(true);
+</script>
+
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { computed, watch, onMounted, onUnmounted } from 'vue';
 import {
     fetchShuffleNotes,
     fetchNotes,
@@ -16,7 +23,12 @@ import {
     type Author,
 } from '../../lib/api';
 import { usePagination } from '../../composables/usePagination';
+import { keepingScroll } from '../../lib/scroll';
 import NoteCard from './NoteCard.vue';
+import EditNoteModal from './EditNoteModal.vue';
+import PresentationViewNote from './PresentationViewNote.vue';
+import MobileNoteCapture from './MobileNoteCapture.vue';
+import CaptureFab from '../shared/CaptureFab.vue';
 import NoteCardSkeleton from './NoteCardSkeleton.vue';
 import CaptureForm from '../shared/CaptureForm.vue';
 import BookLinePicker from '../library/BookLinePicker.vue';
@@ -26,12 +38,12 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-    (e: 'edit', note: Note): void;
-    (e: 'present', note: Note): void;
     (e: 'viewInLibrary', authorId: string): void;
 }>();
 
-const showVersionBadge = defineModel<boolean>('showVersionBadge', { default: true });
+const editingNote = ref<Note | null>(null);
+const presentingNote = ref<Note | null>(null);
+const captureOpen = ref(false);
 
 // ============================================================================
 // Mode: shuffle (default, ambient rediscovery) | search (intentional)
@@ -402,22 +414,25 @@ onUnmounted(() => {
     document.removeEventListener('click', handleSettingsClickOutside);
 });
 
-defineExpose({
-    reload: async (replaced?: { oldId: string; note: Note }) => {
-        // An edit creates a new note that supersedes the old id — swap it into
-        // the deal in place so the card updates (refreshDeal fetches by id and
-        // would otherwise re-read the stale, superseded version).
-        if (replaced) {
-            dealNotes.value = dealNotes.value.map((n) =>
-                n.id === replaced.oldId
-                    ? { ...replaced.note, last_surfaced_at: n.last_surfaced_at }
-                    : n
-            );
-        }
-        if (mode.value === 'search') await runSearch();
-        await refreshDeal();
-    },
-});
+const reload = async (replaced?: { oldId: string; note: Note }) => {
+    // An edit creates a new note that supersedes the old id — swap it into
+    // the deal in place so the card updates (refreshDeal fetches by id and
+    // would otherwise re-read the stale, superseded version).
+    if (replaced) {
+        dealNotes.value = dealNotes.value.map((n) =>
+            n.id === replaced.oldId
+                ? { ...replaced.note, last_surfaced_at: n.last_surfaced_at }
+                : n
+        );
+    }
+    if (mode.value === 'search') await runSearch();
+    await refreshDeal();
+};
+
+const handleSaved = (replaced?: { oldId: string; note: Note }) => {
+    editingNote.value = null;
+    return keepingScroll(() => reload(replaced));
+};
 </script>
 
 <template>
@@ -499,7 +514,7 @@ defineExpose({
 
                     <!-- Dealt cards -->
                     <template v-else>
-                        <NoteCard v-for="(note, i) in dealNotes" :key="`${dealKey}-${note.id}`" :note="note" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" variant="deal" class="deal-in" :class="{ 'convert-out': note.id === convertingId }" :style="{ animationDelay: `${i * 60}ms` }" @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
+                        <NoteCard v-for="(note, i) in dealNotes" :key="`${dealKey}-${note.id}`" :note="note" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" variant="deal" class="deal-in" :class="{ 'convert-out': note.id === convertingId }" :style="{ animationDelay: `${i * 60}ms` }" @edit="editingNote = $event" @copy="handleCopy" @present="presentingNote = $event" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
 
                         <!-- End of the deal — finite by design -->
                         <div class="flex flex-col items-center gap-3 pt-2 pb-4">
@@ -567,7 +582,7 @@ defineExpose({
                     </div>
 
                     <template v-else>
-                        <NoteCard v-for="note in searchNotes" :key="note.id" :note="note" :class="{ 'convert-out': note.id === convertingId }" :searchQuery="searchQuery" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" clamp @edit="emit('edit', $event)" @copy="handleCopy" @present="emit('present', $event)" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
+                        <NoteCard v-for="note in searchNotes" :key="note.id" :note="note" :class="{ 'convert-out': note.id === convertingId }" :searchQuery="searchQuery" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" clamp @edit="editingNote = $event" @copy="handleCopy" @present="presentingNote = $event" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
 
                         <!-- Infinite scroll sentinel -->
                         <div ref="scrollSentinel" class="h-1"></div>
@@ -579,6 +594,11 @@ defineExpose({
                 </div>
             </div>
         </transition>
+
+        <EditNoteModal :isOpen="!!editingNote" :note="editingNote" @close="editingNote = null" @saved="handleSaved" />
+        <PresentationViewNote :isOpen="!!presentingNote" :note="presentingNote" :showVersionBadge="showVersionBadge" @close="presentingNote = null" />
+        <MobileNoteCapture :isOpen="captureOpen" @close="captureOpen = false" @saved="reload()" />
+        <CaptureFab label="Quick Note" class="bg-accent active:bg-accent-bright shadow-accent/30 text-white" @click="captureOpen = true" />
     </div>
 </template>
 

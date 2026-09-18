@@ -2,20 +2,47 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import {
 	fetchLibraryBooks,
+	fetchBookById,
+	type Book,
 	type LibraryBook,
 	type LibraryDecade,
 } from '../../lib/api';
 import LibraryDetailPane from './LibraryDetailPane.vue';
+import EditBookModal from './EditBookModal.vue';
 
 const props = defineProps<{
 	isAdmin?: boolean;
 	initialBookId?: string;
 }>();
 
-const emit = defineEmits<{
-	(e: 'addBook'): void;
-	(e: 'editBook', bookId: string): void;
-}>();
+// `editingBook` is null both for "closed" and for "adding", so the modal's
+// visibility has to be tracked on its own.
+const bookModalOpen = ref(false);
+const editingBook = ref<Book | null>(null);
+
+function addBook() {
+	editingBook.value = null;
+	bookModalOpen.value = true;
+}
+
+async function editBook(bookId: string) {
+	try {
+		editingBook.value = await fetchBookById(bookId);
+		bookModalOpen.value = true;
+	} catch (err) {
+		console.error('Failed to load book for edit:', err);
+	}
+}
+
+function closeBookModal() {
+	bookModalOpen.value = false;
+	editingBook.value = null;
+}
+
+function onBookSaved() {
+	closeBookModal();
+	load();
+}
 
 type DecadeFilter = LibraryDecade | 'any';
 type PdfFilter = 'any' | 'yes' | 'no';
@@ -172,7 +199,6 @@ function handleDetailRefresh() {
 // Mobile: filters live in a collapsible row triggered by a button.
 const mobileFiltersOpen = ref(false);
 
-defineExpose({ reload: load });
 </script>
 
 <template>
@@ -189,7 +215,7 @@ defineExpose({ reload: load });
 					</button>
 					<button
 						class="px-3 py-1.5 bg-essay text-essay-text rounded-md text-xs font-medium hover:bg-essay-bright cursor-pointer"
-						@click="emit('addBook')"
+						@click="addBook"
 					>
 						+ Add book
 					</button>
@@ -436,7 +462,7 @@ defineExpose({ reload: load });
 					v-if="selectedBookId"
 					:book-id="selectedBookId"
 					:is-admin="isAdmin"
-					@edit="emit('editBook', $event)"
+					@edit="editBook"
 					@refresh="handleDetailRefresh"
 				/>
 				<div
@@ -447,5 +473,10 @@ defineExpose({ reload: load });
 				</div>
 			</aside>
 		</div>
+
+		<!-- The modal is position:fixed but does not teleport itself. -->
+		<Teleport to="body">
+			<EditBookModal :isOpen="bookModalOpen" :book="editingBook" @close="closeBookModal" @saved="onBookSaved" />
+		</Teleport>
 	</div>
 </template>
