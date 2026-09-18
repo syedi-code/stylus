@@ -22,7 +22,6 @@ const props = defineProps<{ isAdmin?: boolean }>();
 
 const emit = defineEmits<{
 	(e: 'present', essay: Essay): void;
-	(e: 'addToThread', essay: Essay): void;
 }>();
 
 const pagination = usePagination<Essay, { search?: string }>({
@@ -160,7 +159,6 @@ defineExpose({ openById, newEssay, isNewPiece });
 					@go-to-block="goToBlock"
 					@copy="copyEssay"
 					@delete="removeEssay"
-					@add-to-thread="(e) => emit('addToThread', e)"
 					@load-more="pagination.loadMore()"
 					@retry="pagination.loadInitial()"
 				/>

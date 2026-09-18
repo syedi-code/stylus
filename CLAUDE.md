@@ -22,7 +22,7 @@ npm run deploy:staging  # and to staging
 ## Layout
 
 ```text
-src/components/   by domain: notes, quotes, thoughts, threads, essays, library
+src/components/   by domain: notes, quotes, thoughts, essays, library
 src/composables/  reusable stateful logic
 src/lib/          api client, auth, formatting, the essay token grammar
 functions/api/    the Pages Function that proxies /api/* to alexandria

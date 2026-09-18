@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted } from 'vue';
-import { getSignedFileUrlCached, type Note, type Book, type Author, type Thread } from '../../lib/api';
+import { getSignedFileUrlCached, type Note, type Book, type Author } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
 import { useDynamicContentFontSize } from '../../composables/useDynamicContentFontSize';
 import AuthorPopover from '../library/AuthorPopover.vue';
@@ -15,8 +15,6 @@ const props = defineProps<{
   book?: Book | null;
   /** Author connected directly to the note (only relevant when there is no book). */
   connectedAuthor?: Author | null;
-  /** Most recently updated thread containing this note. */
-  latestThread?: Thread | null;
   /** Clamp long content with a fade + expand toggle (used in search results). */
   clamp?: boolean;
   /** 'deal' = shuffle card (provenance, plaque type); 'list' = dense results. */
@@ -29,9 +27,7 @@ const emit = defineEmits<{
   (e: 'present', note: Note): void;
   (e: 'delete', note: Note): void;
   (e: 'viewInLibrary', authorId: string): void;
-  (e: 'addToThread', note: Note): void;
   (e: 'convertToThought', note: Note): void;
-  (e: 'navigateToThread', threadId: string): void;
 }>();
 
 // Signed PDF URL — shared per-path cache dedupes requests across cards
@@ -289,13 +285,6 @@ const toggleExpand = (e: Event) => {
               <path d="m15 5 4 4" />
             </svg>
           </button>
-          <button @click.stop="emit('addToThread', note)" class="flex p-1.5 text-mono-500 hover:text-purple-400 hover:bg-purple-500/10 rounded cursor-pointer transition-all active:scale-95" title="Add to Thread">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" />
-              <path d="M12 8v8" />
-              <path d="M8 12h8" />
-            </svg>
-          </button>
           <button @click.stop="emit('convertToThought', note)" class="flex p-1.5 text-mono-500 hover:text-rose-400 hover:bg-rose-500/10 rounded cursor-pointer transition-all active:scale-95" title="Convert to Thought">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 18h6" />
@@ -363,13 +352,6 @@ const toggleExpand = (e: Event) => {
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
           <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-        </svg>
-      </button>
-      <button @click.stop="emit('addToThread', note)" class="flex-1 h-8 rounded-md bg-mono-800 text-mono-300 flex items-center justify-center active:bg-mono-700 transition-colors" title="Add to Thread">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" />
-          <path d="M12 8v8" />
-          <path d="M8 12h8" />
         </svg>
       </button>
       <button @click.stop="emit('convertToThought', note)" class="flex-1 h-8 rounded-md bg-mono-800 text-mono-300 flex items-center justify-center active:bg-rose-500/10 active:text-rose-400 transition-colors" title="Convert to Thought">

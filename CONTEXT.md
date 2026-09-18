@@ -25,8 +25,9 @@ inline as `[[quote:UUID]]` tokens.
 _Avoid_: article, post, piece
 
 **Thread**:
-Retired. Superseded by Essay. Still wired into the header and still shipping
-~750 lines; worth its own decision, not this one's.
+Gone. Superseded by Essay, and removed from the client in September 2026 — the
+tab, the components and the API wrapper. alexandria still serves `/threads/*`,
+because its API is additive-only; nothing here calls it.
 
 ## Works — the half that lives elsewhere
 
