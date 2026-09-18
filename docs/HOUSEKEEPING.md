@@ -259,13 +259,15 @@ it does.
 
 ## 5. TODO — carried forward
 
-- [ ] **Break `App.vue` into child components until no logic remains in it.** It
-      is still the app's junk drawer: it owns quotes state, loading, search and
-      its 300 ms debounce, plus every modal and every mobile FAB. Every other
-      tab already owns itself (`NotesPage`, `ThoughtsList`, `EssaysWorkspace`,
-      `LibraryPage`); quotes is the last tab whose state lives in the root.
-      Extracting `QuotesPage.vue` with a `reload()` on `defineExpose`, matching
-      the `NotesPage` convention, is the first step.
+- [x] ~~Break `App.vue` into child components until no logic remains in it.~~
+      Done in PR #10. Each tab owns its own edit, presentation and
+      mobile-capture surfaces (`ThoughtsList` already did); `ThoughtsPage` is
+      new; one `CaptureFab` replaces four hand-copied buttons; auth boot moved
+      to `useAppBoot`. App.vue's script is one ref and one composable call.
+- [x] ~~Desktop tabs.~~ Third design, PR #10: plain title-case words in white,
+      set like the note bodies, with a hover hairline that draws left to right
+      and a hue underline that slides to the active tab. No rail, no icons, no
+      uppercase.
 - [ ] Decide the font question above. It gates everything else.
 - [ ] Add a `LICENSE`.
 - [ ] Audit **alexandria** the same way; `notes.jsonl` is probably there.
@@ -286,4 +288,4 @@ it does.
       held by `refs/oldmain`, `refs/oldstaging` and the reflog.
 
       git update-ref -d refs/oldmain && git update-ref -d refs/oldstaging
-                  git reflog expire --expire=now --all && git gc --prune=now --aggressive
+                      git reflog expire --expire=now --all && git gc --prune=now --aggressive
