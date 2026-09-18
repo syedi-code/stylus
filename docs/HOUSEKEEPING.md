@@ -6,6 +6,17 @@ with no memory of the session that produced it.
 
 Branch: `chore/drop-threads`, cut fresh from `main` at `45321b6`.
 
+State of play: the housekeeping work is merged to both `main` (PR #5) and
+`staging` (PR #6) and deployed to both. History has since been rewritten to
+purge the unreferenced licensed fonts — see section 1 — so **`main` and
+`staging` were force-pushed and every commit hash below the rewrite changed.**
+Anyone holding an older clone must re-clone or hard-reset; a plain `git pull`
+will try to merge the two histories together.
+
+A verified full backup of the pre-rewrite history is at
+`../stylus-prefilter-backup.bundle` (19 MB, `git bundle verify` clean). Keep it
+until the rewrite is known good, then delete it.
+
 ---
 
 ## 1. Open-source readiness audit
@@ -37,8 +48,8 @@ opened.
 ### Secret scan
 
 Every text blob in history (all branches, all commits) was scanned for JWTs,
-`sk-` / `ghp_` / `AKIA` prefixed keys, PEM private key headers, `Bearer`
-tokens, and assigned `password` / `api_key` literals. Two hits, both benign:
+`sk-` / `ghp_` / `AKIA` prefixed keys, PEM private key headers, `Bearer` tokens,
+and assigned `password` / `api_key` literals. Two hits, both benign:
 
 - `package-lock.json` — npm `integrity` hashes matching the base64 shape. Noise.
 - `.env.example` — `VITE_API_KEY=123456789abcdef0123456789abcdef`, an obvious
@@ -51,47 +62,69 @@ are correctly referenced rather than inlined. `WORKER_URL` is in `wrangler.toml`
 deliberately and is not a secret — see the comment there for why it cannot live
 in the dashboard.
 
-### The actual blocker: commercially licensed fonts
+### The licensed fonts — partly purged, partly still here
 
-`public/fonts/` is 6.1 MB of retail typefaces committed as binaries:
+`public/fonts/` held 7.1 MB of retail typefaces committed as binaries, from Klim
+Type Foundry (Tiempos, Söhne) and Commercial Type (Lyon Text). They split into
+two groups with very different stakes, and only one group has been dealt with.
 
-| Family                           | Foundry                     |
-| -------------------------------- | --------------------------- |
-| Tiempos Text, Tiempos Headline   | Klim Type Foundry, via VLLG |
-| Söhne Mono (Bold/Medium/Regular) | Klim Type Foundry           |
-| Lyon Text                        | Commercial Type             |
+**Purged from history** (5.3 MB, 15 blobs) — licensed material that _nothing
+referenced_, so removing it changed no pixel:
 
-Also committed: `Tiempos.zip` (2.7 MB — the original purchase archive, still in
-history) and `vllg_TiemposHeadline.pdf` / `vllg_TiemposText.pdf`, the vendor
-specimen PDFs, which are a receipt for the license as much as anything.
+| Removed                                | Why it was here                     |
+| -------------------------------------- | ----------------------------------- |
+| `Tiempos.zip` (2.7 MB)                 | the original purchase archive       |
+| `Tiempos/TiemposHeadline/*.otf` (× 12) | a whole family, never `@font-face`d |
+| `vllg_TiemposHeadline.pdf` (1.1 MB)    | vendor specimen                     |
+| `vllg_TiemposText.pdf` (0.9 MB)        | vendor specimen                     |
 
-These are paid, per-seat licenses. Publishing the binaries in a public
-repository redistributes them to anyone who clones it. Separately, they are
-`.otf` desktop files being served over HTTP as webfonts, which is usually a
-distinct and separately-priced license tier from desktop use.
+Done with `git filter-repo --invert-paths` over every ref, then force-pushed to
+`main` and `staging`. Verified before pushing: the tree diff against the
+pre-rewrite `main` is exactly those 15 paths and nothing else; every surviving
+file is the _same blob hash_; both branches kept their full commit count (245
+and 244). Production and staging both redeployed green afterwards, alexandria
+smoke test included.
 
-This has not been checked against the actual EULAs and is not legal advice, but
-it is the one finding that genuinely stands between this repo and a public one.
-Options, cheapest first:
+**Still in the repo** (1.8 MB, 13 blobs) — the faces `@font-face` actually
+serves, and which the app cannot render without:
 
-1. **Delete the fonts from the working tree and from history**, ship the repo
-   with a free fallback stack, and document what the intended faces are. Since
-   `public/_headers` already treats fonts as immutable name-versioned assets,
-   they can be served from a private bucket instead. This is the only option
-   that also sheds ~9 MB of history.
-2. Keep the repo private and open a scrubbed mirror.
-3. Read the EULAs and confirm whether a public repo is permitted. Unlikely.
+- `Tiempos/TiemposText/*.otf` × 8 — the body face, `--font-body`
+- `SohneMono-{Regular,Medium,Bold}.otf` × 3 — `--font-mono`, used for numerals
 
-Note that option 1 _does_ require the history rewrite that `notes.jsonl` turned
-out not to need — the fonts are in old commits, not just `HEAD`.
+These are still paid, per-seat licenses, still `.otf` desktop files being served
+as webfonts (usually a separately-priced tier), and **publishing this repo would
+still redistribute them.** Nothing here is legal advice and the EULAs have not
+been read. Removing them is a decision with a runtime cost, so it was
+deliberately left open:
+
+1. Host them privately (R2 or similar) and point `@font-face` at that URL. Prod
+   keeps its typography; the repo becomes publishable.
+2. Swap to an open serif/mono stack of similar character. No hosting needed, but
+   the app's look changes on every surface.
+3. Keep the repo private and publish a scrubbed mirror.
+
+### A dangling `@font-face`: Lyon Text
+
+`src/style.css` declares `'Lyon Text'` from
+`/fonts/LyonText/Lyon Text Regular.otf`, **but that file is not in the repo and
+has not been for some time** — it was added and later deleted, well before this
+housekeeping pass. The build says so on every run:
+
+```
+/fonts/LyonText/Lyon Text Regular.otf ... didn't resolve at build time
+```
+
+So that `@font-face` 404s in production and the rule never applies. Either
+restore the file or delete the declaration; right now it is dead weight that
+also misstates which foundries this project depends on.
 
 ### Missing before a public release
 
 - **No `LICENSE` file.** `package.json` says `"private": true` and declares no
   license, so the code is currently all-rights-reserved by default. Pick one.
-- **`.gitignore` does not cover `.wrangler/`**, wrangler's local state
-  directory. It shows up as untracked noise in every `git status`.
-- `.env.example` still names `VITE_API_KEY`, which nothing reads. Stale.
+- `.gitignore` did not cover `.wrangler/`, wrangler's local state directory.
+  Fixed.
+- `.env.example` named a `VITE_API_KEY` that nothing reads. Fixed.
 - `README.md` should say that the app is inert without an alexandria instance,
   since there is no mock or fixture mode. A cloner cannot run this standalone.
 
@@ -151,15 +184,63 @@ this removal is client-side only. Nothing was asked of alexandria.
 
 ---
 
-## 3. TODO — carried forward
+## 3. Unreferenced components — left in place, needing a decision
 
-- [ ] **Break `App.vue` into child components until no logic remains in it.**
-      It is still the app's junk drawer: it owns quotes state, loading, search
-      and its 300 ms debounce, plus every modal and every mobile FAB. Every
-      other tab already owns itself (`NotesPage`, `ThoughtsList`,
-      `EssaysWorkspace`, `LibraryPage`); quotes is the last tab whose state
-      lives in the root. Extracting `QuotesPage.vue` with a `reload()` on
-      `defineExpose`, matching the `NotesPage` convention, is the first step.
+A sweep for components nothing imports. These were **not** deleted: dead code is
+one thing, but each of these is a capability someone may have meant to wire up,
+and that is a product call.
+
+Orphaned by the threads removal, though their wiring was already dead:
+
+- `library/AuthorManager.vue` and `library/EditAuthorModal.vue` — both were
+  imported by `App.vue`, but nothing ever set `showAuthorModal` to `true` and
+  `AuthorManager` was imported without ever being rendered. So **there is
+  currently no way to edit an author in the UI**, and there was not one before
+  this branch either. Either wire it to `LibraryPage` or drop both.
+- `essays/EssayReferenceChips.vue` — its only caller was `ThreadViewEssay`.
+
+Already orphaned on `main` before this branch, untouched for 4–6 months:
+
+- `essays/EssayEndSlide.vue`
+- `library/BookManager.vue`
+- `shared/FilterBar.vue`
+
+Nothing here is reachable, so nothing here ships — they cost repository noise,
+not bundle size.
+
+---
+
+## 4. TODO — carried forward
+
+- [ ] **Break `App.vue` into child components until no logic remains in it.** It
+      is still the app's junk drawer: it owns quotes state, loading, search and
+      its 300 ms debounce, plus every modal and every mobile FAB. Every other
+      tab already owns itself (`NotesPage`, `ThoughtsList`, `EssaysWorkspace`,
+      `LibraryPage`); quotes is the last tab whose state lives in the root.
+      Extracting `QuotesPage.vue` with a `reload()` on `defineExpose`, matching
+      the `NotesPage` convention, is the first step.
 - [ ] Decide the font question above. It gates everything else.
 - [ ] Add a `LICENSE`.
 - [ ] Audit **alexandria** the same way; `notes.jsonl` is probably there.
+- [ ] Decide on the six unreferenced components in section 3 — in particular
+      that author editing has no route into it from the UI.
+- [ ] **Delete the three merged branches on GitHub** — `chore/drop-threads`,
+      `chore/tab-title-stylus`, `chore/wordmark-and-deploy-links`. They still
+      point at pre-rewrite commits, so the purged font blobs stay reachable
+      through them and the purge is not yet complete on the remote:
+
+      git push origin --delete chore/drop-threads chore/tab-title-stylus chore/wordmark-and-deploy-links
+
+- [ ] **Then ask GitHub Support to garbage-collect the repository.** GitHub
+      keeps `refs/pull/<n>/head` for every PR ever opened, forever, and those
+      refs still point at the old commits. Deleting branches does not remove
+      them, so the purged blobs remain fetchable by SHA from PRs #1–#6 until
+      GitHub runs `gc` server-side. This is the step people forget, and it is
+      the difference between a purge and the appearance of one.
+- [ ] Resolve the Lyon Text `@font-face` that points at a file the repo does not
+      contain.
+- [ ] Once the rewrite is trusted, reclaim local disk: the old objects are still
+      held by `refs/oldmain`, `refs/oldstaging` and the reflog.
+
+      git update-ref -d refs/oldmain && git update-ref -d refs/oldstaging
+          git reflog expire --expire=now --all && git gc --prune=now --aggressive
