@@ -170,7 +170,7 @@ onBeforeUnmount(() => {
       <!-- Desktop: a segmented rail with a thumb that slides to the active
            tab, tinted with that tab's hue. -->
       <div class="hidden sm:flex flex-1 justify-center">
-        <nav ref="navEl" class="tab-rail relative inline-flex items-center gap-0.5 p-1 rounded-xl bg-mono-900/70 border border-mono-800" :style="{ '--tab': activeHue }">
+        <nav ref="navEl" class="tab-rail relative inline-flex items-center gap-0.5 p-1 rounded-[10px] bg-mono-900/70 border border-mono-800" :style="{ '--tab': activeHue }">
           <span
             class="thumb"
             :class="{ 'thumb-ready': thumbReady }"
@@ -183,12 +183,12 @@ onBeforeUnmount(() => {
             :key="tab.key"
             :data-active="currentTab === tab.key"
             @click="selectTab(tab.key)"
-            class="tab relative z-10 flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-[0.14em] cursor-pointer"
+            class="tab"
             :style="{ '--tab': tab.hue }"
             :aria-current="currentTab === tab.key ? 'page' : undefined"
           >
-            <TabIcon :tab="tab.key" :size="14" class="shrink-0" />
-            <span>{{ tab.label }}</span>
+            <TabIcon :tab="tab.key" :size="13" />
+            <span class="lbl">{{ tab.label }}</span>
           </button>
         </nav>
       </div>
@@ -291,19 +291,48 @@ onBeforeUnmount(() => {
     box-shadow 0.34s ease;
 }
 
+/* The label register the app already uses for section headings (see the essay
+   spine's `.sec`): 9.5px, 700, 0.18em, uppercase. Tiempos goes mushy set
+   uppercase at a text size with loose tracking, which is what the first pass
+   got wrong — small, heavy and widely tracked is what reads as a label. */
 .tab {
-  color: var(--color-mono-500);
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  /* Constant across states on purpose: a weight change on activation would
+     re-measure the thumb mid-slide and make it stutter. */
+  color: var(--color-mono-400);
+  cursor: pointer;
   transition: color 0.2s ease;
 }
+/* Letter-spacing adds a trailing gap after the last letter, which pushes the
+   label visibly left of centre in its pill. Pull it back. */
+.lbl {
+  margin-right: -0.18em;
+}
 .tab:hover {
-  color: var(--color-mono-200);
+  color: var(--color-mono-100);
 }
 .tab[data-active='true'] {
   color: var(--tab);
 }
 /* The icon leads the eye, so it carries the hue a step earlier than the label. */
 .tab:hover :deep(svg) {
-  color: color-mix(in srgb, var(--tab) 70%, var(--color-mono-200));
+  color: color-mix(in srgb, var(--tab) 70%, var(--color-mono-100));
+}
+.tab :deep(svg) {
+  flex-shrink: 0;
 }
 .tab:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--tab) 60%, transparent);
