@@ -704,6 +704,17 @@ function endDrag() {
 	z-index: 5;
 	cursor: pointer;
 }
+/* The mark stays a hairline; the target around it is a thumb. Without this
+   the gap between two paragraphs was a 16px strip to hit. */
+.seam::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	height: 44px;
+	transform: translateY(-50%);
+}
 .seam .ln {
 	position: absolute;
 	left: 6px;
@@ -870,9 +881,17 @@ function endDrag() {
    block and landed on top of the previous quote's credit line — the two are
    only ever a few pixels apart, and the credit is the thing you are most
    likely to be checking when you select the quote under it. */
+/* The rail sits in a strip the block opens for it, not on top of anything.
+   At the block's top-right it covered the opening line of the very quote
+   whose size it was changing — and across the corpus most embedded quotes
+   carry a custom size, so that control is used on nearly every one. Simply
+   pushing it below the body then landed it on the citation instead. */
+.blk.act:has(.rail) {
+	padding-bottom: 46px;
+}
 .rail {
 	position: absolute;
-	top: 2px;
+	bottom: 2px;
 	right: 4px;
 	z-index: 30;
 	display: inline-flex;

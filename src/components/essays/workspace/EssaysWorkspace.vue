@@ -33,7 +33,6 @@ import EssaySpine from './EssaySpine.vue';
 import EssayWritingRoom from './EssayWritingRoom.vue';
 import PresentationViewEssay from '../PresentationViewEssay.vue';
 import EssayRoomSkeleton from './EssayRoomSkeleton.vue';
-import CaptureFab from '../../shared/CaptureFab.vue';
 
 /**
  * The Essays tab, whole.
@@ -204,6 +203,7 @@ defineExpose({ openById, newEssay, isNewPiece });
 					:essay="current"
 					:announce-new="startedNew"
 					@saved="onSaved"
+					@new="newEssay"
 					@present="presenting = $event"
 					@content="(c: string) => (liveContent = c)"
 				>
@@ -231,16 +231,6 @@ defineExpose({ openById, newEssay, isNewPiece });
 
 		<PresentationViewEssay :isOpen="!!presenting" :essay="presenting" @close="presenting = null" />
 
-		<!-- Lifted clear of the editor's insert rail so it never covers the
-		     Quote/Book/Image/Header pills. -->
-		<CaptureFab
-			v-if="!booting && !isNewPiece"
-			label="New Essay"
-			icon="pen"
-			class="bg-essay active:bg-essay-bright shadow-essay/30 text-black"
-			style="right: 1.25rem; bottom: calc(4.75rem + env(safe-area-inset-bottom))"
-			@click="newEssay"
-		/>
 	</div>
 </template>
 
