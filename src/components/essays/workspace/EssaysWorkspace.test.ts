@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import type { Essay } from '../../../lib/api';
 
@@ -30,6 +30,14 @@ const ESSAYS: Essay[] = [
 		created_at: '2026-01-01T00:00:00.000Z',
 		updated_at: '2026-01-01T00:00:00.000Z',
 	} as unknown as Essay,
+	{
+		id: 'e-2',
+		content: 'An older piece.',
+		tags: [],
+		references: [],
+		created_at: '2025-12-01T00:00:00.000Z',
+		updated_at: '2025-12-01T00:00:00.000Z',
+	} as unknown as Essay,
 ];
 
 const items = ref<Essay[]>([]);
@@ -43,6 +51,13 @@ vi.mock('../../../composables/usePagination', () => ({
 			items.value = ESSAYS;
 		}),
 		loadMore: vi.fn(),
+		refresh: vi.fn(async () => {
+			items.value = ESSAYS;
+		}),
+		seed: vi.fn((known: Essay[]) => {
+			items.value = known;
+		}),
+		hasMore: ref(false),
 		removeItem: vi.fn(),
 	}),
 }));
@@ -51,7 +66,7 @@ vi.mock('../../../lib/api', async () => {
 	return { ...actual, fetchEssays: vi.fn(async () => []), deleteEssay: vi.fn() };
 });
 
-import EssaysWorkspace from './EssaysWorkspace.vue';
+import EssaysWorkspace, { resetWorkspaceCache } from './EssaysWorkspace.vue';
 
 function mountWorkspace() {
 	return mount(EssaysWorkspace, {
@@ -69,8 +84,13 @@ function mountWorkspace() {
 	});
 }
 
+// Mounted workspaces share the mocked list; a stale one would keep writing
+// the tab cache from under the next case.
+enableAutoUnmount(afterEach);
+
 beforeEach(() => {
 	items.value = [];
+	resetWorkspaceCache();
 });
 
 describe('EssaysWorkspace — the height', () => {
@@ -126,5 +146,32 @@ describe('EssaysWorkspace — which piece is open', () => {
 		// floating button has nothing left to do and sits on the insert rail.
 		expect(ws.vm.isNewPiece).toBe(true);
 		expect(ws.findComponent({ name: 'EssayWritingRoom' }).props('essay')).toBeNull();
+	});
+});
+
+describe('EssaysWorkspace — arriving', () => {
+	it('shows the room in outline until the list lands, never a blank new piece', async () => {
+		const ws = mountWorkspace();
+
+		// Mounted without an essay the room IS an untitled piece with a live
+		// publish button; it must not appear before there is a piece to show.
+		expect(ws.findComponent({ name: 'EssayRoomSkeleton' }).exists()).toBe(true);
+		expect(ws.findComponent({ name: 'EssayWritingRoom' }).exists()).toBe(false);
+
+		await flushPromises();
+		expect(ws.findComponent({ name: 'EssayRoomSkeleton' }).exists()).toBe(false);
+		expect(ws.findComponent({ name: 'EssayWritingRoom' }).props('essay')).toMatchObject({ id: 'e-1' });
+	});
+
+	it('comes back to the piece you left, at once, without the outline', async () => {
+		const first = mountWorkspace();
+		await flushPromises();
+		first.vm.openById('e-2');
+		await flushPromises();
+		first.unmount();
+
+		const again = mountWorkspace();
+		expect(again.findComponent({ name: 'EssayRoomSkeleton' }).exists()).toBe(false);
+		expect(again.findComponent({ name: 'EssayWritingRoom' }).props('essay')).toMatchObject({ id: 'e-2' });
 	});
 });

@@ -24,7 +24,7 @@ import EssayQuoteCite from './EssayQuoteCite.vue';
  */
 const props = defineProps<{ block: EmbedBlock }>();
 
-const { quoteById, bookById } = useSourceLibrary();
+const { quoteById, bookById, loaded } = useSourceLibrary();
 // Keyed -v2 so the shipped 'textured' preference does not survive as the
 // resting state for people who already opened the old writing room.
 const { mode } = usePresentationQuoteMode('essay-write-v2', 'plain');
@@ -72,13 +72,15 @@ const textureStyle = computed(() =>
 			<div class="fb-inner">
 				<blockquote class="quote-card fb-quote qbody" :class="typographyClass" :style="{ fontSize: `${baseFontSize}px` }">
 					<template v-if="quote"><span class="qc-body"><span class="qc-mark">&ldquo;</span><span v-html="html"></span><span class="qc-mark">&rdquo;</span></span></template>
+					<span v-else-if="!loaded" class="pending" aria-label="Loading quote"><i></i><i></i></span>
 					<span v-else class="missing">quote unavailable</span>
 				</blockquote>
 			</div>
 		</div>
 		<blockquote v-else class="quote-card qbody" :class="[typographyClass, mode === 'textured' ? 'is-textured tex-bg' : '']" :style="[{ fontSize: `${baseFontSize}px` }, mode === 'textured' ? textureStyle : {}]">
 			<template v-if="quote"><span class="qc-body"><span class="qc-mark">&ldquo;</span><span v-html="html"></span><span class="qc-mark">&rdquo;</span></span></template>
-			<span v-else class="missing">quote unavailable</span>
+			<span v-else-if="!loaded" class="pending" aria-label="Loading quote"><i></i><i></i></span>
+					<span v-else class="missing">quote unavailable</span>
 		</blockquote>
 
 		<EssayQuoteCite class="cite" compact :author="author" :title="title" :year="year" :page="page" />
@@ -117,6 +119,38 @@ const textureStyle = computed(() =>
 	border-radius: 0;
 	background: none;
 	box-shadow: none;
+}
+/* The catalogue arrives after the page does. Until it has, a quote is a
+   quiet outline in its own measure — not "unavailable", which it isn't. */
+.qbody .pending {
+	display: flex;
+	flex-direction: column;
+	gap: 0.45em;
+	padding: 0.2em 0;
+}
+.qbody .pending i {
+	display: block;
+	height: 0.62em;
+	border-radius: 3px;
+	background: linear-gradient(90deg, rgb(232 208 168 / 0.06) 0%, rgb(232 208 168 / 0.13) 50%, rgb(232 208 168 / 0.06) 100%);
+	background-size: 200% 100%;
+	animation: sheen 1.7s ease-in-out infinite;
+}
+.qbody .pending i:last-child {
+	width: 62%;
+}
+@keyframes sheen {
+	from {
+		background-position: 100% 0;
+	}
+	to {
+		background-position: -100% 0;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.qbody .pending i {
+		animation: none;
+	}
 }
 .qbody .missing {
 	font-style: italic;

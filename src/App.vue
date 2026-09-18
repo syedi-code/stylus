@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useAppBoot } from './composables/useAppBoot';
+import { showAuthorInLibrary } from './composables/useLibrary';
 import AppHeader from './components/shared/AppHeader.vue';
 import NotesPage from './components/notes/NotesPage.vue';
 import ThoughtsPage from './components/thoughts/ThoughtsPage.vue';
@@ -20,7 +21,7 @@ const currentTab = ref('notes');
 
     <main class="w-full">
       <transition name="fade" mode="out-in">
-        <NotesPage v-if="currentTab === 'notes' && ready" :isAdmin="isAdmin" @viewInLibrary="currentTab = 'library'" />
+        <NotesPage v-if="currentTab === 'notes' && ready" :isAdmin="isAdmin" @viewInLibrary="(id) => { showAuthorInLibrary(id); currentTab = 'library'; }" />
       </transition>
 
       <transition name="fade" mode="out-in">
@@ -28,18 +29,15 @@ const currentTab = ref('notes');
       </transition>
 
       <transition name="fade" mode="out-in">
-        <QuotesPage v-if="currentTab === 'quotes'" :isAdmin="isAdmin" @viewInLibrary="currentTab = 'library'" />
+        <QuotesPage v-if="currentTab === 'quotes'" :isAdmin="isAdmin" @viewInLibrary="(id) => { showAuthorInLibrary(id); currentTab = 'library'; }" />
       </transition>
 
       <transition name="fade" mode="out-in">
         <EssaysWorkspace v-if="currentTab === 'essays'" :isAdmin="isAdmin" />
       </transition>
 
-      <!-- Fills from below the header to the bottom edge, no trailing footer gap. -->
       <transition name="fade" mode="out-in">
-        <div v-if="currentTab === 'library'" class="w-full flex flex-col" style="min-height: calc(100vh - 56px)">
-          <LibraryPage :isAdmin="isAdmin" />
-        </div>
+        <LibraryPage v-if="currentTab === 'library'" :isAdmin="isAdmin" />
       </transition>
     </main>
 
