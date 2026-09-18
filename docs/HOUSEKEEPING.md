@@ -6,6 +6,10 @@ with no memory of the session that produced it.
 
 Branch: `chore/drop-threads`, cut fresh from `main` at `45321b6`.
 
+State of play: merged to `staging` as PR #6 and deployed (the deploy's
+`POST /api/session` smoke test against alexandria passed). PR #5 into `main` is
+open and holds the same three commits, unmerged.
+
 ---
 
 ## 1. Open-source readiness audit
