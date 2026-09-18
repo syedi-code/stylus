@@ -16,7 +16,7 @@ function mountHeader(props: Record<string, unknown> = {}) {
 	});
 }
 
-const TABS = ['notes', 'thoughts', 'quotes', 'essays', 'library'];
+const TABS = ['Notes', 'Thoughts', 'Quotes', 'Essays', 'Library'];
 
 describe('AppHeader', () => {
 	it('renders exactly the live tabs, in order, in the desktop rail', () => {
@@ -27,7 +27,7 @@ describe('AppHeader', () => {
 	});
 
 	it('no longer offers threads', () => {
-		expect(mountHeader().text()).not.toContain('threads');
+		expect(mountHeader().text().toLowerCase()).not.toContain('threads');
 	});
 
 	it('marks the active tab, and only the active tab', () => {
@@ -35,7 +35,7 @@ describe('AppHeader', () => {
 			'nav .tab[data-active="true"]'
 		);
 		expect(active).toHaveLength(1);
-		expect(active[0].text()).toBe('essays');
+		expect(active[0].text()).toBe('Essays');
 	});
 
 	it('reports the tab you pick', async () => {
@@ -44,15 +44,21 @@ describe('AppHeader', () => {
 		expect(wrapper.emitted('update:currentTab')).toEqual([['quotes']]);
 	});
 
-	it('gives every tab its own hue, so none share the active tint', () => {
-		const hues = mountHeader()
-			.findAll('nav .tab')
-			.map((n) => n.attributes('style'));
+	it('underlines the active tab in its own hue', () => {
+		const hues = TABS.map((_, i) =>
+			mountHeader({ currentTab: ['notes', 'thoughts', 'quotes', 'essays', 'library'][i] })
+				.find('nav .indicator')
+				.attributes('style')
+				?.match(/background:\s*([^;]+)/)?.[1]
+		);
+		expect(hues.every(Boolean)).toBe(true);
 		expect(new Set(hues).size).toBe(TABS.length);
 	});
 
-	it('renders a thumb for the rail to slide', () => {
-		expect(mountHeader().find('nav .thumb').exists()).toBe(true);
+	it('keeps the labels in title case, not shouted', () => {
+		for (const label of mountHeader().findAll('nav .tab .lbl')) {
+			expect(label.text()).toMatch(/^[A-Z][a-z]+$/);
+		}
 	});
 
 	it('logs out from the account popover', async () => {

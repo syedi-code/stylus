@@ -17,16 +17,16 @@ const accountOpen = ref(false); // desktop avatar popover
 const rootEl = ref<HTMLElement | null>(null);
 
 /**
- * One hue per tab, taken straight from the palette in style.css. Everything
- * tinted — the desktop thumb, the active label, the mobile row — derives from
- * this single value via `--tab`, so a new tab is one line here and no CSS.
+ * One hue per tab, taken straight from the palette in style.css. The only
+ * places it shows are the active tab's underline and the mobile row; the
+ * labels themselves stay white. A new tab is one line here and no CSS.
  */
 const tabs = [
-  { key: 'notes', label: 'notes', hue: 'var(--color-accent-bright)' },
-  { key: 'thoughts', label: 'thoughts', hue: 'var(--color-rose-bright)' },
-  { key: 'quotes', label: 'quotes', hue: 'var(--color-quote-bright)' },
-  { key: 'essays', label: 'essays', hue: 'var(--color-essay-bright)' },
-  { key: 'library', label: 'library', hue: '#e8d0a8' },
+  { key: 'notes', label: 'Notes', hue: 'var(--color-accent-bright)' },
+  { key: 'thoughts', label: 'Thoughts', hue: 'var(--color-rose-bright)' },
+  { key: 'quotes', label: 'Quotes', hue: 'var(--color-quote-bright)' },
+  { key: 'essays', label: 'Essays', hue: 'var(--color-essay-bright)' },
+  { key: 'library', label: 'Library', hue: '#e8d0a8' },
 ] as const;
 
 const activeTab = computed(() => tabs.find((t) => t.key === props.currentTab));
@@ -69,29 +69,30 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /**
- * The sliding thumb behind the active desktop tab.
+ * The underline under the active desktop tab, which slides to the next one.
  *
- * Measured rather than derived from CSS: the labels are different widths and
- * the webfont lands after first paint, so a percentage-based thumb sits wrong
- * until something re-renders. The ResizeObserver below covers both the font
- * swap and any resize; `nextTick` covers the tab change itself.
+ * Measured against the label, not the button, so it is exactly as wide as the
+ * word. Remeasured on tab change, on any header resize, and once the webfont
+ * lands — the swap from fallback serif to Tiempos changes every label's width
+ * without resizing the header, so the observer alone would miss it.
  */
 const navEl = ref<HTMLElement | null>(null);
-const thumb = ref({ x: 0, w: 0 });
-const thumbReady = ref(false);
+const indicator = ref({ x: 0, y: 0, w: 0 });
+const indicatorReady = ref(false);
 
-function measureThumb() {
+function measureIndicator() {
   const nav = navEl.value;
-  if (!nav) return;
-  const active = nav.querySelector<HTMLElement>('[data-active="true"]');
-  if (!active) return;
-  thumb.value = { x: active.offsetLeft, w: active.offsetWidth };
-  // First measurement lands untransitioned, so the thumb doesn't fly in
-  // from the left edge on mount.
-  if (!thumbReady.value) requestAnimationFrame(() => { thumbReady.value = true; });
+  const label = nav?.querySelector<HTMLElement>('[data-active="true"] .lbl');
+  if (!nav || !label) return;
+  const n = nav.getBoundingClientRect();
+  const l = label.getBoundingClientRect();
+  indicator.value = { x: l.left - n.left, y: l.bottom - n.top + 3, w: l.width };
+  // First measurement lands untransitioned, so it doesn't fly in from the
+  // left edge on mount.
+  if (!indicatorReady.value) requestAnimationFrame(() => { indicatorReady.value = true; });
 }
 
-watch(() => props.currentTab, () => nextTick(measureThumb));
+watch(() => props.currentTab, () => nextTick(measureIndicator));
 
 /**
  * Publish the header's height as `--app-header-h` on the document root.
@@ -115,13 +116,14 @@ onMounted(() => {
   document.addEventListener('click', onDocumentClick);
   document.addEventListener('keydown', onKeydown);
 
-  measureThumb();
+  measureIndicator();
+  document.fonts?.ready.then(measureIndicator);
 
   if (rootEl.value && typeof ResizeObserver !== 'undefined') {
     headerRO = new ResizeObserver(([entry]) => {
       const h = Math.round(entry.target.getBoundingClientRect().height);
       document.documentElement.style.setProperty('--app-header-h', `${h}px`);
-      measureThumb();
+      measureIndicator();
     });
     headerRO.observe(rootEl.value);
   }
@@ -161,35 +163,34 @@ onBeforeUnmount(() => {
         aria-label="Toggle navigation"
         :aria-expanded="menuOpen"
       >
-        <span class="text-base font-semibold tracking-tight truncate" :style="{ color: activeHue }">{{ currentTab }}</span>
+        <span class="text-base font-semibold tracking-tight truncate" :style="{ color: activeHue }">{{ activeTab?.label }}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 transition-transform duration-200" :class="menuOpen ? 'rotate-180 text-mono-400' : 'text-mono-600'">
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
-      <!-- Desktop: a segmented rail with a thumb that slides to the active
-           tab, tinted with that tab's hue. -->
+      <!-- Desktop: plain words. White, title case, set like the note bodies;
+           a hairline draws in on hover and the active tab's hue slides
+           underneath. -->
       <div class="hidden sm:flex flex-1 justify-center">
-        <nav ref="navEl" class="tab-rail relative inline-flex items-center gap-0.5 p-1 rounded-[10px] bg-mono-900/70 border border-mono-800" :style="{ '--tab': activeHue }">
-          <span
-            class="thumb"
-            :class="{ 'thumb-ready': thumbReady }"
-            :style="{ transform: `translateX(${thumb.x}px)`, width: `${thumb.w}px` }"
-            aria-hidden="true"
-          ></span>
-
+        <nav ref="navEl" class="relative flex items-center gap-7">
           <button
             v-for="tab in tabs"
             :key="tab.key"
             :data-active="currentTab === tab.key"
             @click="selectTab(tab.key)"
             class="tab"
-            :style="{ '--tab': tab.hue }"
             :aria-current="currentTab === tab.key ? 'page' : undefined"
           >
-            <TabIcon :tab="tab.key" :size="13" />
-            <span class="lbl">{{ tab.label }}</span>
+            <span class="lbl typography-prose">{{ tab.label }}</span>
           </button>
+
+          <span
+            class="indicator"
+            :class="{ 'indicator-ready': indicatorReady }"
+            :style="{ transform: `translate(${indicator.x}px, ${indicator.y}px)`, width: `${indicator.w}px`, background: activeHue }"
+            aria-hidden="true"
+          ></span>
         </nav>
       </div>
 
@@ -253,90 +254,72 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* ── Desktop tab rail ───────────────────────────────────────────────────── */
+/* ── Desktop tabs ───────────────────────────────────────────────────────── */
 
-/* A hairline of the active hue along the rail's top edge, so the nav reads as
-   belonging to the tab you are on even at a glance. */
-.tab-rail::before {
-  content: '';
-  position: absolute;
-  inset: -1px 0 auto;
-  height: 1px;
-  border-radius: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    color-mix(in srgb, var(--tab) 55%, transparent),
-    transparent
-  );
-}
-
-.thumb {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--tab) 15%, transparent);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--tab) 38%, transparent),
-    0 2px 10px -2px color-mix(in srgb, var(--tab) 30%, transparent);
-}
-/* Transitions only after the first measurement — see measureThumb(). */
-.thumb-ready {
-  transition:
-    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 0.34s ease,
-    box-shadow 0.34s ease;
-}
-
-/* The label register the app already uses for section headings (see the essay
-   spine's `.sec`): 9.5px, 700, 0.18em, uppercase. Tiempos goes mushy set
-   uppercase at a text size with loose tracking, which is what the first pass
-   got wrong — small, heavy and widely tracked is what reads as a label. */
+/* Tiempos at the note-body setting — regular weight, the prose features from
+   `.typography-prose` — with a hair of negative tracking. Weight never changes
+   with state, so the active word keeps its width and the underline its fit. */
 .tab {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 13px;
+  padding: 6px 0;
   border: none;
   background: transparent;
-  border-radius: 8px;
   font: inherit;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  /* Constant across states on purpose: a weight change on activation would
-     re-measure the thumb mid-slide and make it stutter. */
-  color: var(--color-mono-400);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  color: rgb(255 255 255 / 0.5);
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color 0.25s ease;
 }
-/* Letter-spacing adds a trailing gap after the last letter, which pushes the
-   label visibly left of centre in its pill. Pull it back. */
-.lbl {
-  margin-right: -0.18em;
-}
-.tab:hover {
-  color: var(--color-mono-100);
-}
+.tab:hover,
 .tab[data-active='true'] {
-  color: var(--tab);
-}
-/* The icon leads the eye, so it carries the hue a step earlier than the label. */
-.tab:hover :deep(svg) {
-  color: color-mix(in srgb, var(--tab) 70%, var(--color-mono-100));
-}
-.tab :deep(svg) {
-  flex-shrink: 0;
+  color: #fff;
 }
 .tab:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--tab) 60%, transparent);
-  outline-offset: 2px;
+  outline: 1px solid rgb(255 255 255 / 0.6);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+/* The hover line draws in from the left and leaves to the right, so a pass
+   of the cursor across the row reads as one continuous stroke. */
+.lbl {
+  position: relative;
+  display: inline-block;
+}
+.lbl::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1px;
+  background: rgb(255 255 255 / 0.55);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tab:not([data-active='true']):hover .lbl::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* The active line, in the tab's hue, one pixel heavier than the hover line so
+   the two never read as the same mark. */
+.indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 1px;
+  pointer-events: none;
+}
+/* Transitions only after the first measurement — see measureIndicator(). */
+.indicator-ready {
+  transition:
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.42s ease;
 }
 
 /* ── Mobile panel row ───────────────────────────────────────────────────── */
@@ -396,7 +379,8 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thumb-ready,
+  .indicator-ready,
+  .lbl::after,
   .panel-enter-active,
   .panel-leave-active,
   .fade-enter-active,
