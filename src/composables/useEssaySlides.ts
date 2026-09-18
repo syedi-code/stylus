@@ -34,7 +34,10 @@ export function useEssaySlides(essay: Ref<Essay | null>) {
 	// same catalogue the editor foils read — so the deck is never missing an
 	// embed just because the join didn't come along.
 	const { quoteById, bookById, imageUrl, ensureLoaded } = useSourceLibrary();
-	ensureLoaded();
+	// Fire-and-forget: the deck renders from `references` without it, so a
+	// failed fetch only costs the fallback, and must not surface as an
+	// unhandled rejection.
+	ensureLoaded().catch((err) => console.error('Failed to load source library:', err));
 
 	function synthReference(parsed: ParsedToken): EssayReference | undefined {
 		const base = { id: '', entity_id: parsed.id, position: 0, params: parsed.params } as const;
