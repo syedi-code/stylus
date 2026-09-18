@@ -3,17 +3,24 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { fetchQuotes, deleteQuote, type Quote } from '../../lib/api';
 import QuoteCard from './QuoteCard.vue';
 import QuoteCaptureForm from './QuoteCaptureForm.vue';
+import EditQuoteModal from './EditQuoteModal.vue';
+import PresentationViewQuote from './PresentationViewQuote.vue';
+import MobileQuoteCapture from './MobileQuoteCapture.vue';
 import ConfirmModal from '../shared/ConfirmModal.vue';
+import CaptureFab from '../shared/CaptureFab.vue';
+import { keepingScroll } from '../../lib/scroll';
 
 defineProps<{
   isAdmin?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: 'edit', quote: Quote): void;
-  (e: 'present', quote: Quote): void;
   (e: 'viewInLibrary', authorId: string): void;
 }>();
+
+const editingQuote = ref<Quote | null>(null);
+const presentingQuote = ref<Quote | null>(null);
+const captureOpen = ref(false);
 
 const quotes = ref<Quote[]>([]);
 const loading = ref(false);
@@ -80,13 +87,16 @@ const handleCopy = async (quote: Quote) => {
   if (quote.quote) await navigator.clipboard.writeText(quote.quote);
 };
 
-onMounted(load);
+const handleSaved = () => {
+  editingQuote.value = null;
+  return keepingScroll(load);
+};
 
-defineExpose({ reload: load });
+onMounted(load);
 </script>
 
 <template>
-  <div class="space-y-8">
+  <div class="max-w-3xl mx-auto px-4 mt-4 sm:mt-8 pb-20 space-y-8">
     <!-- Desktop capture; mobile uses the FAB sheet instead -->
     <div class="hidden sm:block">
       <QuoteCaptureForm @saved="load" />
@@ -122,8 +132,8 @@ defineExpose({ reload: load });
           :index="i"
           :searchQuery="search"
           :isAdmin="isAdmin"
-          @edit="emit('edit', $event)"
-          @present="emit('present', $event)"
+          @edit="editingQuote = $event"
+          @present="presentingQuote = $event"
           @viewInLibrary="emit('viewInLibrary', $event)"
           @copy="handleCopy"
           @delete="deleting = $event"
@@ -139,5 +149,10 @@ defineExpose({ reload: load });
       @confirm="confirmDelete"
       @cancel="deleting = null"
     />
+
+    <EditQuoteModal :isOpen="!!editingQuote" :quote="editingQuote" @close="editingQuote = null" @saved="handleSaved" />
+    <PresentationViewQuote :isOpen="!!presentingQuote" :quote="presentingQuote" @close="presentingQuote = null" />
+    <MobileQuoteCapture :isOpen="captureOpen" @close="captureOpen = false" @saved="load" />
+    <CaptureFab label="Quick Quote" class="bg-quote active:bg-quote-bright shadow-quote/30 text-quote-text" @click="captureOpen = true" />
   </div>
 </template>
