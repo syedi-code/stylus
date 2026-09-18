@@ -23,14 +23,14 @@ function possessiveSuffix(a: ParsedAuthor): string {
 //     line below (kept off the title row to leave room for long titles).
 //
 // Variants:
-//   - card / thread / presentation: vertically stacked
+//   - card / presentation: vertically stacked
 //   - chip: single inline baseline-aligned row (essay reference chips)
 //   - note: single line possessive — "{Author}'s {Title}, p. X" + year below
 //
 // `dash` prepends an em-dash to the author row (quote-style attribution).
 // `align="end"` produces the right-aligned quote presentation block.
 
-type Variant = 'card' | 'thread' | 'presentation' | 'chip' | 'note';
+type Variant = 'card' | 'presentation' | 'chip' | 'note';
 
 const props = withDefaults(
     defineProps<{
@@ -92,8 +92,6 @@ const titleSize = computed(() => {
         case 'card':
             // Match year size — title differentiates by italic.
             return 'text-[13px]';
-        case 'thread':
-            return 'text-[13px]';
         case 'note':
             // Match the author/meta size — title differentiates by weight + italic, not size.
             return 'text-[12px]';
@@ -116,7 +114,6 @@ const metaSize = computed(() => {
         case 'card':
             // Author bigger than the title — matches the presentation hierarchy.
             return 'text-[15px]';
-        case 'thread':
         case 'chip':
         case 'note':
             return 'text-[12px]';
@@ -134,8 +131,6 @@ const yearSize = computed(() => {
         case 'card':
             // Match title size.
             return 'text-[13px]';
-        case 'thread':
-            return 'text-[12px]';
         case 'chip':
             return 'text-[11px]';
         case 'note':
@@ -167,7 +162,6 @@ const pageSize = computed(() => {
             return 'text-[14px] sm:text-[16px]';
         case 'card':
             return 'text-[12px]';
-        case 'thread':
         case 'chip':
         case 'note':
             return 'text-[10.5px]';

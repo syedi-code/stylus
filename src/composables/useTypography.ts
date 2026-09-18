@@ -1,7 +1,7 @@
 import { computed, type Ref, type ComputedRef } from 'vue';
 
 export type EntityType = 'note' | 'quote' | 'thought';
-export type ViewContext = 'card' | 'thread' | 'presentation';
+export type ViewContext = 'card' | 'presentation';
 
 /**
  * Content-length-aware font sizing and typographic class selection.
@@ -12,7 +12,6 @@ export type ViewContext = 'card' | 'thread' | 'presentation';
  *
  * Font-size tiers are tuned per entity × view context:
  *   - Card:         Quotes scale 12–18 px; Notes/Thoughts stay fixed 14 px
- *   - Thread:       All scale, ~2 px smaller than presentation
  *   - Presentation: All scale, largest sizes for immersive reading
  */
 export function useTypography(
@@ -59,14 +58,6 @@ function getQuoteFontSize(view: ViewContext, len: number): number {
 			if (len < 1200) return 13;
 			return 12;
 
-		case 'thread':
-			if (len < 80) return 19;
-			if (len < 200) return 17;
-			if (len < 400) return 15;
-			if (len < 700) return 13;
-			if (len < 1200) return 12;
-			return 11;
-
 		case 'presentation':
 			if (len < 80) return 22;
 			if (len < 200) return 20;
@@ -83,12 +74,6 @@ function getProseSize(view: ViewContext, len: number): number {
 		case 'card':
 			// Fixed size — stays compact in the grid
 			return 14;
-
-		case 'thread':
-			if (len < 200) return 14;
-			if (len < 500) return 13;
-			if (len < 1000) return 12;
-			return 11;
 
 		case 'presentation':
 			if (len < 200) return 15;

@@ -11,11 +11,6 @@ defineProps<{
 	isAdmin?: boolean;
 }>();
 
-const emit = defineEmits<{
-	(e: 'addToThread', thought: Thought): void;
-	(e: 'navigateToThread', threadId: string): void;
-}>();
-
 const pagination = usePagination<Thought, { q?: string }>({
 	fetchFn: (params) => fetchThoughts(params),
 	pageSize: 50,
@@ -181,7 +176,7 @@ defineExpose({ reload: loadThoughts });
 					{{ group.label }}
 				</h3>
 				<div class="space-y-3">
-					<ThoughtCard v-for="thought in group.thoughts" :key="thought.id" :thought="thought" :isAdmin="isAdmin" @delete="handleDelete" @edit="handleEdit" @present="presentingThought = $event" @addToThread="emit('addToThread', $event)" />
+					<ThoughtCard v-for="thought in group.thoughts" :key="thought.id" :thought="thought" :isAdmin="isAdmin" @delete="handleDelete" @edit="handleEdit" @present="presentingThought = $event" />
 				</div>
 			</div>
 

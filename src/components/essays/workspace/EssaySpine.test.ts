@@ -6,7 +6,7 @@ import type { Essay } from '../../../lib/api';
 
 /**
  * The spine replaced the essay index, so it is now the ONLY way to reach a
- * piece or to copy / delete / thread one. These cover the things whose loss
+ * piece or to copy / delete one. These cover the things whose loss
  * would be silent: a row per piece, the shape rail, which piece reads as open,
  * and the actions that used to live on index rows.
  */
@@ -78,13 +78,12 @@ describe('EssaySpine — pieces', () => {
 });
 
 describe('EssaySpine — the actions the index used to own', () => {
-	it('offers copy and add-to-thread, and hides delete from non-admins', async () => {
+	it('offers copy, and hides delete from non-admins', async () => {
 		const spine = mountSpine({ isAdmin: false });
 		await spine.findAll('.piece')[0].find('.kebab').trigger('click');
 
 		const items = spine.findAll('.menu button').map((b) => b.text());
 		expect(items).toContain('Copy text');
-		expect(items).toContain('Add to thread…');
 		expect(items).not.toContain('Delete');
 	});
 
