@@ -63,6 +63,7 @@ function mountWorkspace() {
 					template: '<div class="stub-room"><slot name="spine" /></div>',
 				},
 				EssaySpine: { name: 'EssaySpine', template: '<div class="stub-spine" />' },
+				PresentationViewEssay: true,
 			},
 		},
 	});
