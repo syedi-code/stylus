@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import TabIcon from './TabIcon.vue';
 
 const props = defineProps<{
   currentTab: string;
@@ -15,18 +16,21 @@ const menuOpen = ref(false); // mobile nav panel
 const accountOpen = ref(false); // desktop avatar popover
 const rootEl = ref<HTMLElement | null>(null);
 
+/**
+ * One hue per tab, taken straight from the palette in style.css. Everything
+ * tinted — the desktop thumb, the active label, the mobile row — derives from
+ * this single value via `--tab`, so a new tab is one line here and no CSS.
+ */
 const tabs = [
-  { key: 'notes', label: 'notes', color: 'accent', titleClass: 'text-accent-bright', iconClass: 'text-accent-bright', tint: 'rgba(41,82,255,0.12)', activeText: '#5e84ff' },
-  { key: 'thoughts', label: 'thoughts', color: 'rose', titleClass: 'text-rose-bright', iconClass: 'text-rose', tint: 'rgba(244,63,94,0.12)', activeText: '#fb7185' },
-  { key: 'quotes', label: 'quotes', color: 'quote', titleClass: 'text-quote-bright', iconClass: 'text-quote', tint: 'rgba(95,194,148,0.12)', activeText: '#7ed4a8' },
-  { key: 'essays', label: 'essays', color: 'essay', titleClass: 'text-essay-bright', iconClass: 'text-essay', tint: 'rgba(232,160,64,0.12)', activeText: '#f0b860' },
-  { key: 'library', label: 'library', color: 'accent', titleClass: 'text-accent-bright', iconClass: 'text-[#e8d0a8]', tint: 'rgba(41,82,255,0.12)', activeText: '#5e84ff' },
-  { key: 'threads', label: 'threads', color: 'purple', titleClass: 'text-purple-400', iconClass: 'text-purple-400', tint: 'rgba(192,132,252,0.12)', activeText: '#c084fc' },
+  { key: 'notes', label: 'notes', hue: 'var(--color-accent-bright)' },
+  { key: 'thoughts', label: 'thoughts', hue: 'var(--color-rose-bright)' },
+  { key: 'quotes', label: 'quotes', hue: 'var(--color-quote-bright)' },
+  { key: 'essays', label: 'essays', hue: 'var(--color-essay-bright)' },
+  { key: 'library', label: 'library', hue: '#e8d0a8' },
 ] as const;
 
-const currentTitleClass = computed(
-  () => tabs.find((t) => t.key === props.currentTab)?.titleClass ?? 'text-accent-bright',
-);
+const activeTab = computed(() => tabs.find((t) => t.key === props.currentTab));
+const activeHue = computed(() => activeTab.value?.hue ?? 'var(--color-accent-bright)');
 
 const avatarLetter = computed(() => props.userEmail?.[0]?.toLowerCase() ?? '·');
 
@@ -65,11 +69,36 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 /**
+ * The sliding thumb behind the active desktop tab.
+ *
+ * Measured rather than derived from CSS: the labels are different widths and
+ * the webfont lands after first paint, so a percentage-based thumb sits wrong
+ * until something re-renders. The ResizeObserver below covers both the font
+ * swap and any resize; `nextTick` covers the tab change itself.
+ */
+const navEl = ref<HTMLElement | null>(null);
+const thumb = ref({ x: 0, w: 0 });
+const thumbReady = ref(false);
+
+function measureThumb() {
+  const nav = navEl.value;
+  if (!nav) return;
+  const active = nav.querySelector<HTMLElement>('[data-active="true"]');
+  if (!active) return;
+  thumb.value = { x: active.offsetLeft, w: active.offsetWidth };
+  // First measurement lands untransitioned, so the thumb doesn't fly in
+  // from the left edge on mount.
+  if (!thumbReady.value) requestAnimationFrame(() => { thumbReady.value = true; });
+}
+
+watch(() => props.currentTab, () => nextTick(measureThumb));
+
+/**
  * Publish the header's height as `--app-header-h` on the document root.
  *
  * A full-height tab (the Essays manuscript) has to fill from under this
  * header to the bottom of the viewport. Measuring its OWN offset to work that
- * out is what broke: the six tab transitions in App.vue are separate
+ * out is what broke: the tab transitions in App.vue are separate
  * `<transition>` elements, so `mode="out-in"` does not coordinate between
  * them — the outgoing tab is still in the DOM, mid-fade, when the incoming
  * one mounts and measures. Its top came back as "below the whole previous
@@ -86,10 +115,13 @@ onMounted(() => {
   document.addEventListener('click', onDocumentClick);
   document.addEventListener('keydown', onKeydown);
 
+  measureThumb();
+
   if (rootEl.value && typeof ResizeObserver !== 'undefined') {
     headerRO = new ResizeObserver(([entry]) => {
       const h = Math.round(entry.target.getBoundingClientRect().height);
       document.documentElement.style.setProperty('--app-header-h', `${h}px`);
+      measureThumb();
     });
     headerRO.observe(rootEl.value);
   }
@@ -129,29 +161,37 @@ onBeforeUnmount(() => {
         aria-label="Toggle navigation"
         :aria-expanded="menuOpen"
       >
-        <span class="text-base font-semibold tracking-tight truncate" :class="currentTitleClass">{{ currentTab }}</span>
+        <span class="text-base font-semibold tracking-tight truncate" :style="{ color: activeHue }">{{ currentTab }}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 transition-transform duration-200" :class="menuOpen ? 'rotate-180 text-mono-400' : 'text-mono-600'">
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
-      <!-- Desktop: inline tabs -->
-      <nav class="hidden sm:flex flex-1 justify-center gap-1.5 text-xs font-medium tracking-wide uppercase">
-        <button v-for="tab in tabs" :key="tab.key" @click="$emit('update:currentTab', tab.key)" class="px-4 py-1.5 rounded-md border border-transparent transition-all duration-200 cursor-pointer" :class="{
-          'bg-accent text-white border-accent': currentTab === tab.key && tab.color === 'accent',
-          'bg-rose text-white border-rose': currentTab === tab.key && tab.color === 'rose',
-          'bg-purple-600 text-white border-purple-600': currentTab === tab.key && tab.color === 'purple',
-          'bg-essay text-black border-essay': currentTab === tab.key && tab.color === 'essay',
-          'bg-quote text-quote-text border-quote': currentTab === tab.key && tab.color === 'quote',
-          'text-mono-500 hover:text-white': currentTab !== tab.key && tab.color === 'accent',
-          'text-mono-500 hover:text-rose-bright': currentTab !== tab.key && tab.color === 'rose',
-          'text-mono-500 hover:text-purple-400': currentTab !== tab.key && tab.color === 'purple',
-          'text-mono-500 hover:text-essay-bright': currentTab !== tab.key && tab.color === 'essay',
-          'text-mono-500 hover:text-quote-bright': currentTab !== tab.key && tab.color === 'quote',
-        }">
-          {{ tab.label }}
-        </button>
-      </nav>
+      <!-- Desktop: a segmented rail with a thumb that slides to the active
+           tab, tinted with that tab's hue. -->
+      <div class="hidden sm:flex flex-1 justify-center">
+        <nav ref="navEl" class="tab-rail relative inline-flex items-center gap-0.5 p-1 rounded-[10px] bg-mono-900/70 border border-mono-800" :style="{ '--tab': activeHue }">
+          <span
+            class="thumb"
+            :class="{ 'thumb-ready': thumbReady }"
+            :style="{ transform: `translateX(${thumb.x}px)`, width: `${thumb.w}px` }"
+            aria-hidden="true"
+          ></span>
+
+          <button
+            v-for="tab in tabs"
+            :key="tab.key"
+            :data-active="currentTab === tab.key"
+            @click="selectTab(tab.key)"
+            class="tab"
+            :style="{ '--tab': tab.hue }"
+            :aria-current="currentTab === tab.key ? 'page' : undefined"
+          >
+            <TabIcon :tab="tab.key" :size="13" />
+            <span class="lbl">{{ tab.label }}</span>
+          </button>
+        </nav>
+      </div>
 
       <!-- Avatar -->
       <button
@@ -183,17 +223,10 @@ onBeforeUnmount(() => {
           :key="tab.key"
           @click="selectTab(tab.key)"
           class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold tracking-tight cursor-pointer transition-colors"
-          :class="currentTab === tab.key ? '' : 'text-mono-300 active:bg-mono-800'"
-          :style="currentTab === tab.key ? { background: tab.tint, color: tab.activeText } : undefined"
+          :class="currentTab === tab.key ? 'row-active' : 'text-mono-300 active:bg-mono-800'"
+          :style="{ '--tab': tab.hue }"
         >
-          <span class="flex shrink-0" :class="tab.iconClass">
-            <svg v-if="tab.key === 'notes'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-            <svg v-else-if="tab.key === 'thoughts'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-6 6c0 2.5 1.5 3.7 2.3 4.8.5.8.7 1.4.7 2.2h6c0-.8.2-1.4.7-2.2C16.5 12.7 18 11.5 18 9a6 6 0 0 0-6-6Z" /><path d="M9 19h6" /></svg>
-            <svg v-else-if="tab.key === 'quotes'" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M10 8c-2.8 0-5 2.2-5 5 0 1.9 1.5 3.4 3.4 3.4.3 0 .6 0 .9-.1-.5 1.3-1.6 2.3-3 2.6l.5 1.6c3.1-.7 5.2-3.4 5.2-6.7V13c0-2.8-.9-5-2-5Zm9 0c-2.8 0-5 2.2-5 5 0 1.9 1.5 3.4 3.4 3.4.3 0 .6 0 .9-.1-.5 1.3-1.6 2.3-3 2.6l.5 1.6c3.1-.7 5.2-3.4 5.2-6.7V13c0-2.8-.9-5-2-5Z" transform="scale(0.85) translate(2,2)" /></svg>
-            <svg v-else-if="tab.key === 'essays'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M8 13h8" /><path d="M8 17h5" /></svg>
-            <svg v-else-if="tab.key === 'library'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" /></svg>
-            <svg v-else width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5" r="2.2" /><circle cx="18" cy="12" r="2.2" /><circle cx="8" cy="19" r="2.2" /><path d="M7.8 6.3 16 10.8" /><path d="M16.2 13.6 9.8 17.7" /></svg>
-          </span>
+          <TabIcon :tab="tab.key" :size="17" class="shrink-0" />
           <span class="flex-1 text-left">{{ tab.label }}</span>
           <svg v-if="currentTab === tab.key" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
         </button>
@@ -220,6 +253,100 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* ── Desktop tab rail ───────────────────────────────────────────────────── */
+
+/* A hairline of the active hue along the rail's top edge, so the nav reads as
+   belonging to the tab you are on even at a glance. */
+.tab-rail::before {
+  content: '';
+  position: absolute;
+  inset: -1px 0 auto;
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--tab) 55%, transparent),
+    transparent
+  );
+}
+
+.thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tab) 15%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--tab) 38%, transparent),
+    0 2px 10px -2px color-mix(in srgb, var(--tab) 30%, transparent);
+}
+/* Transitions only after the first measurement — see measureThumb(). */
+.thumb-ready {
+  transition:
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.34s ease,
+    box-shadow 0.34s ease;
+}
+
+/* The label register the app already uses for section headings (see the essay
+   spine's `.sec`): 9.5px, 700, 0.18em, uppercase. Tiempos goes mushy set
+   uppercase at a text size with loose tracking, which is what the first pass
+   got wrong — small, heavy and widely tracked is what reads as a label. */
+.tab {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  /* Constant across states on purpose: a weight change on activation would
+     re-measure the thumb mid-slide and make it stutter. */
+  color: var(--color-mono-400);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+/* Letter-spacing adds a trailing gap after the last letter, which pushes the
+   label visibly left of centre in its pill. Pull it back. */
+.lbl {
+  margin-right: -0.18em;
+}
+.tab:hover {
+  color: var(--color-mono-100);
+}
+.tab[data-active='true'] {
+  color: var(--tab);
+}
+/* The icon leads the eye, so it carries the hue a step earlier than the label. */
+.tab:hover :deep(svg) {
+  color: color-mix(in srgb, var(--tab) 70%, var(--color-mono-100));
+}
+.tab :deep(svg) {
+  flex-shrink: 0;
+}
+.tab:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tab) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* ── Mobile panel row ───────────────────────────────────────────────────── */
+.row-active {
+  color: var(--tab);
+  background: color-mix(in srgb, var(--tab) 12%, transparent);
+}
+
+/* ── Popover chrome ─────────────────────────────────────────────────────── */
+
 /* Caret pointing at the trigger */
 .nav-panel::before {
   content: '';
@@ -269,6 +396,7 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .thumb-ready,
   .panel-enter-active,
   .panel-leave-active,
   .fade-enter-active,

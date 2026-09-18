@@ -26,7 +26,6 @@ const emit = defineEmits<{
   (e: 'copy', quote: Quote): void;
   (e: 'present', quote: Quote): void;
   (e: 'viewInLibrary', authorId: string): void;
-  (e: 'addToThread', quote: Quote): void;
   (e: 'delete', quote: Quote): void;
 }>();
 
@@ -206,12 +205,6 @@ const surfaceStyle = computed(() => ({
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
               <path d="m15 5 4 4" />
-            </svg>
-          </button>
-          <button @click.stop="emit('addToThread', quote)" class="flex-1 h-8 rounded-md bg-mono-800 hover:bg-mono-700 text-mono-300 hover:text-purple-400 flex items-center justify-center transition-colors cursor-pointer" title="Add to Thread">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" />
-              <path d="M12 8v8" /><path d="M8 12h8" />
             </svg>
           </button>
           <button @click.stop="emit('delete', quote)" class="flex-1 h-8 rounded-md bg-mono-800 hover:bg-red-500/20 text-mono-300 hover:text-red-400 flex items-center justify-center transition-colors cursor-pointer" title="Delete Quote">
