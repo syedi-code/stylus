@@ -40,6 +40,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'saved'): void;
   (e: 'present', essay: Essay): void;
+  (e: 'new'): void;
   /** Live content, so the spine can outline what is being written rather
    *  than what was last saved. */
   (e: 'content', content: string): void;
@@ -213,6 +214,19 @@ watch(tags, (v) => { draftTags.value = [...v]; }, { deep: true });
 
 const charCount = computed(() => content.value.length);
 const MAX_CHARS = 20000;
+/** The ceiling is worth a row only once it is in sight. */
+const nearLimit = computed(() => charCount.value > MAX_CHARS * 0.8);
+
+/**
+ * Whether anything would be lost by walking away. Across the corpus a piece is
+ * a revision far more often than a first draft, so "is this saved?" is the
+ * question the room is asked most, and the check mark is the only place to
+ * answer it.
+ */
+const dirty = computed(() => content.value.trim() !== (props.essay?.content ?? '').trim());
+const justSaved = ref(false);
+const saveError = ref<string | null>(null);
+let savedTimer = 0;
 
 const canSubmit = computed(() =>
   content.value.trim().length > 0 &&
@@ -236,10 +250,6 @@ function openSheet(kind: 'quote' | 'book', seed?: QuoteDraft) {
 function handleEmbedSelect(ref: EssayReferenceInput) {
   const kind = ref.entity_type === 'quote' ? 'quote' : 'book';
   editorRef.value?.insertEmbed(kind, ref.entity_id);
-}
-
-function insertHeader() {
-  editorRef.value?.insertHeaderBlock();
 }
 
 // The block editor's ＋ Add-block picker (and foil "replace") ask the modal to
@@ -308,10 +318,17 @@ const handleSubmit = async () => {
       await createEssay(baseInput);
     }
     clearDraft();
+    saveError.value = null;
+    justSaved.value = true;
+    clearTimeout(savedTimer);
+    savedTimer = window.setTimeout(() => (justSaved.value = false), 1800);
     emit('saved');
     emit('close');
   } catch (err: any) {
     console.error('Failed to save essay:', err?.response?.data ?? err);
+    // Silence here meant a failed save looked exactly like a good one, and
+    // the piece is a revision far more often than it is a first draft.
+    saveError.value = 'That didn’t save. Your writing is still here — try again.';
   } finally {
     submitting.value = false;
   }
@@ -363,6 +380,12 @@ defineExpose({ goToBlock });
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h11M4 18h7" /></svg>
           </button>
           <button v-if="!inline" type="button" @click="emit('close')" class="wr-btn">‹ Close</button>
+          <!-- New piece. It used to be a floating button over the bottom-right
+               of the manuscript, where it sat on top of the prose; here it
+               covers nothing. Phone only — the docked spine has its own. -->
+          <button type="button" class="newpiece" title="New piece" aria-label="Start a new piece" @click="emit('new')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
 
           <!-- The deck's own identity vocabulary, from EssaySlide /
                EssayHeaderSlide: an ESSAY chip, then the piece's name in
@@ -372,7 +395,7 @@ defineExpose({ goToBlock });
             <span class="t truncate" :class="{ untitled: name.untitled }">{{ name.name }}</span>
           </div>
           <div class="relative flex items-center gap-0.5 shrink-0">
-            <button type="button" class="itg" :class="{ on: tags.length }" title="Tags" aria-label="Tags" @click="showTags = !showTags">
+            <button type="button" class="itg tagbtn" :class="{ on: tags.length }" title="Tags" aria-label="Tags" @click="showTags = !showTags">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" /></svg>
             </button>
             <button v-if="content.trim().length > 0" type="button" class="itg" title="Present" @click="handlePresent" aria-label="Present essay">
@@ -383,8 +406,9 @@ defineExpose({ goToBlock });
               @click="handleSubmit"
               :disabled="!canSubmit"
               class="wr-btn gold icon"
-              :title="isEditMode ? 'Save' : 'Publish'"
-              :aria-label="isEditMode ? 'Save' : 'Publish'"
+              :class="{ dirty, saved: justSaved }"
+              :title="dirty ? (isEditMode ? 'Save changes' : 'Publish') : 'Saved'"
+              :aria-label="dirty ? (isEditMode ? 'Save changes' : 'Publish') : 'Saved'"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
             </button>
@@ -408,16 +432,23 @@ defineExpose({ goToBlock });
           </div>
         </div>
 
-        <!-- Status — the deck, plus the hard character limit. -->
+        <!-- The deck's numbers. A phone gives this row 43px it needs for
+             prose, and across the corpus the median piece is ~110 words
+             against a 20,000 character ceiling — so the count is desk
+             furniture, and only the ceiling is worth interrupting for. -->
         <div class="wr-status flex items-center gap-2 px-4 pb-1.5 text-[10.5px]">
           <span class="n">{{ blockCount }} {{ blockCount === 1 ? 'slide' : 'slides' }}</span>
           <span class="b"></span>
           <span class="n">{{ wordCount }} {{ wordCount === 1 ? 'word' : 'words' }}</span>
           <span class="b"></span>
           <span class="n">{{ sourceCount === 0 ? 'no sources' : `${sourceCount} ${sourceCount === 1 ? 'source' : 'sources'}` }}</span>
-          <span class="ml-auto shrink-0 tabular-nums" :class="charCount > MAX_CHARS ? 'text-red-400' : 'text-mono-700'">
+          <span v-if="nearLimit" class="ml-auto shrink-0 tabular-nums" :class="charCount > MAX_CHARS ? 'text-red-400' : 'text-mono-700'">
             {{ charCount.toLocaleString() }} / {{ MAX_CHARS.toLocaleString() }}
           </span>
+        </div>
+        <!-- On a phone the ceiling is the only number that can stop a save. -->
+        <div v-if="nearLimit" class="wr-limit">
+          {{ charCount.toLocaleString() }} / {{ MAX_CHARS.toLocaleString() }} characters
         </div>
         </div><!-- /.edchrome -->
 
@@ -437,7 +468,14 @@ defineExpose({ goToBlock });
              it covers nothing, and it needs no magic offset to clear a bar
              whose height it would otherwise have to guess. -->
         <Transition name="flash">
-          <div v-if="startedNew" class="newflash shrink-0" role="status">
+          <div v-if="saveError" class="savefail shrink-0" role="alert">
+            <span class="nf-t">{{ saveError }}</span>
+            <button type="button" class="sf-retry" @click="handleSubmit">Try again</button>
+          </div>
+        </Transition>
+
+        <Transition name="flash">
+          <div v-if="startedNew && !saveError" class="newflash shrink-0" role="status">
             <span class="nf-dot"></span>
             <span class="nf-t"><b>New piece.</b> Nothing is saved until you do.</span>
           </div>
@@ -461,19 +499,24 @@ defineExpose({ goToBlock });
                so a rail whose first control is Quote read "Quote / Book /
                Quote... / Quote...", and the duplicates were the feature.
                Re-citing is one search in the sheet's Library pane instead. -->
-          <div class="pills flex items-center gap-1.5 overflow-x-auto">
+          <div class="pills flex items-center gap-1.5">
             <button type="button" @click="openSheet('quote')" class="pill primary" title="Insert quote"><span class="g">❝</span>Quote</button>
             <button type="button" @click="openSheet('book')" class="pill" title="Insert book"><span class="g">▤</span>Book</button>
-                        <button type="button" @click="triggerImageUpload" :disabled="imageUploading" class="pill" title="Insert image"><span class="g">▦</span>{{ imageUploading ? '…' : 'Image' }}</button>
-            <button type="button" @click="insertHeader" class="pill" title="Section header"><span class="g">＃</span>Header</button>
+            <!-- Four images against 87 quotes and 44 books: it keeps its place
+                 in the rail but not a word of it. Header is gone — not one
+                 piece in the corpus has ever used a section header. -->
+            <button type="button" @click="triggerImageUpload" :disabled="imageUploading" class="pill icon" title="Insert image" aria-label="Insert image"><span class="g">{{ imageUploading ? '…' : '▦' }}</span></button>
             <input ref="imageFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="handleImageSelected" />
           </div>
 
+          <!-- Ordered by the corpus: 109 highlights, 96 italics, 28 gold
+               underlines, 2 bolds. The bar read B I U H, which is that list
+               backwards. -->
           <div class="fmt flex items-center gap-0.5 shrink-0">
-            <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('**', '**')" title="Bold (**text**)" class="fmt-b font-bold">B</button>
+            <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('{', '}')" title="Highlight ({text})" class="fmt-b" style="color:#e8d0a8;">H</button>
             <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('*', '*')" title="Italics (*text*)" class="fmt-b italic">I</button>
             <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('&lt;', '&gt;')" title="Underline (&lt;text&gt;)" class="fmt-b" style="text-decoration: underline; text-decoration-color: rgba(232,200,130,0.85); text-underline-offset: 2px; text-decoration-thickness: 1.5px;">U</button>
-            <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('{', '}')" title="Highlight ({text})" class="fmt-b" style="color:#e8d0a8;">H</button>
+            <button type="button" @mousedown.prevent @click="editorRef?.wrapActiveSelection('**', '**')" title="Bold (**text**)" class="fmt-b font-bold">B</button>
           </div>
         </div>
 
@@ -961,5 +1004,113 @@ defineExpose({ goToBlock });
 .flash-leave-from {
   max-height: 44px;
   opacity: 1;
+}
+
+/* ── The phone's room ── */
+
+/* New piece, in the top bar. The floating button this replaces sat over the
+   bottom-right of the manuscript and covered the prose under it. */
+.newpiece {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-essay);
+  cursor: pointer;
+}
+.newpiece svg {
+  width: 17px;
+  height: 17px;
+}
+.newpiece:active {
+  background: rgb(232 160 64 / 0.14);
+}
+/* The docked spine carries its own Write button. */
+@media (min-width: 1100px) {
+  .room-layout.is-inline .newpiece {
+    display: none;
+  }
+}
+
+/* Not one piece in the corpus carries a tag; the phone's top row has better
+   uses for 34px. It stays on a desk, where the row is not the constraint. */
+.tagbtn {
+  display: none;
+}
+@media (min-width: 640px) {
+  .tagbtn {
+    display: grid;
+  }
+}
+
+/* Save, as a state rather than a button that always looks the same: filled
+   while there is something to save, a quiet outline when there is not, and a
+   moment of green when it lands. A ring around the filled gold check was the
+   first attempt — gold on gold, invisible. */
+.wr-btn.gold.icon {
+  transition:
+    background-color 0.25s ease,
+    box-shadow 0.25s ease,
+    color 0.25s ease,
+    transform 0.12s ease;
+}
+.wr-btn.gold.icon:not(.dirty):not(.saved) {
+  background: transparent;
+  color: rgb(232 160 64 / 0.8);
+  box-shadow: inset 0 0 0 1px rgb(232 160 64 / 0.3);
+}
+.wr-btn.gold.icon.saved {
+  background: #7ed4a8;
+  color: #08130d;
+}
+
+/* The character ceiling, once it is close enough to matter. */
+.wr-limit {
+  padding: 0 16px 6px;
+  font-size: 10.5px;
+  color: #f0b860;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A save that failed says so where the save button is, not in the console. */
+.savefail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgb(244 63 94 / 0.1);
+  border-top: 1px solid rgb(244 63 94 / 0.25);
+  color: #fda4af;
+  font-size: 12.5px;
+}
+.sf-retry {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid rgb(253 164 175 / 0.4);
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: #fda4af;
+  cursor: pointer;
+}
+
+/* An icon-only insert, for the one that is rarely used. */
+.pill.icon {
+  padding-left: 11px;
+  padding-right: 11px;
+  gap: 0;
+}
+
+/* The deck's numbers are desk furniture; a phone needs the row for prose. */
+@media (max-width: 639px) {
+  .wr-status {
+    display: none;
+  }
 }
 </style>

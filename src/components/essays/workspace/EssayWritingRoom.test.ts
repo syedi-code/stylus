@@ -145,20 +145,25 @@ describe('EssayWritingRoom — chrome', () => {
 });
 
 describe('EssayWritingRoom — the rail', () => {
-	it('names every insert once — no two pills reading the same word', async () => {
+	it('carries the inserts the corpus actually uses, and no header', async () => {
 		const room = mountRoom();
 		await flushPromises();
 
 		// .text() runs each pill's glyph into its label, so compare the words.
+		// Quote and book are named; the image keeps its place in the rail but
+		// not a word of it — four images against 87 quotes and 44 books. The
+		// header pill is gone: not one piece in the corpus has ever used one
+		// (it stays in the block picker, which is where it belongs).
 		const labels = room.findAll('.pill').map((p) => p.text().replace(/[^A-Za-z]/g, ''));
-		expect(labels).toEqual(['Quote', 'Book', 'Image', 'Header']);
+		expect(labels).toEqual(['Quote', 'Book', '']);
+		expect(room.find('.pill.icon').attributes('aria-label')).toBe('Insert image');
 		// The rail used to carry two "recent quote" chips labelled with the
 		// quote's own opening words — so beside the Quote button it read
 		// "Quote / Book / Quote… / Quote…", and the duplicates were the feature.
 		expect(room.findAll('.pill.recent')).toHaveLength(0);
 	});
 
-	it('keeps all four formatting controls in a cluster that cannot be cropped', async () => {
+	it('orders the formatting controls the way the writing uses them', async () => {
 		const room = mountRoom();
 		await flushPromises();
 
@@ -169,7 +174,9 @@ describe('EssayWritingRoom — the rail', () => {
 		// window. One declaration now, and the cluster never shrinks.
 		const fmt = room.find('.wr-foot .fmt');
 		expect(fmt.exists()).toBe(true);
-		expect(fmt.findAll('.fmt-b').map((b) => b.text())).toEqual(['B', 'I', 'U', 'H']);
+		// 109 highlights, 96 italics, 28 gold underlines, 2 bolds. The bar read
+		// B I U H, which is that list backwards.
+		expect(fmt.findAll('.fmt-b').map((b) => b.text())).toEqual(['H', 'I', 'U', 'B']);
 	});
 });
 
