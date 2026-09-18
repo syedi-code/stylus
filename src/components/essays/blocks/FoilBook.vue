@@ -12,10 +12,10 @@ import type { EmbedBlock } from '../../../composables/useEssayBlocks';
  */
 const props = defineProps<{ block: EmbedBlock }>();
 
-const { bookById } = useSourceLibrary();
+const { bookById, loaded } = useSourceLibrary();
 
 const book = computed(() => bookById.value.get(props.block.id));
-const title = computed(() => book.value?.title ?? 'book unavailable');
+const title = computed(() => book.value?.title ?? (loaded.value ? 'book unavailable' : ''));
 const authors = computed(() => parseAuthors(book.value?.author));
 </script>
 
@@ -26,7 +26,8 @@ const authors = computed(() => parseAuthors(book.value?.author));
 			<span class="edge"></span>
 		</div>
 		<div class="meta">
-			<div class="btitle">{{ title }}</div>
+			<div v-if="title" class="btitle">{{ title }}</div>
+			<div v-else class="pending" aria-label="Loading book"><i></i><i></i></div>
 			<div v-if="authors.length" class="bau">
 				<template v-for="(a, i) in authors" :key="i">
 					<span v-if="i > 0"> &amp; </span><span class="fp">{{ a.firstParts }}</span><span class="ln" :style="{ color: a.color }">{{ a.lastName }}</span><span v-if="a.suffix" class="fp">{{ a.suffix }}</span>
@@ -45,6 +46,39 @@ const authors = computed(() => parseAuthors(book.value?.author));
 	-webkit-user-select: none;
 	user-select: none;
 	-webkit-touch-callout: none;
+}
+
+/* Until the catalogue lands: a title and an author in outline. */
+.pending {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+}
+.pending i {
+	display: block;
+	width: 170px;
+	height: 12px;
+	border-radius: 3px;
+	background: linear-gradient(90deg, rgb(232 176 96 / 0.07) 0%, rgb(232 176 96 / 0.15) 50%, rgb(232 176 96 / 0.07) 100%);
+	background-size: 200% 100%;
+	animation: sheen 1.7s ease-in-out infinite;
+}
+.pending i:last-child {
+	width: 96px;
+	height: 9px;
+}
+@keyframes sheen {
+	from {
+		background-position: 100% 0;
+	}
+	to {
+		background-position: -100% 0;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.pending i {
+		animation: none;
+	}
 }
 
 /* a small gilt-edged book */
