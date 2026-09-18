@@ -155,7 +155,33 @@ this removal is client-side only. Nothing was asked of alexandria.
 
 ---
 
-## 3. TODO — carried forward
+## 3. Unreferenced components — left in place, needing a decision
+
+A sweep for components nothing imports. These were **not** deleted: dead code
+is one thing, but each of these is a capability someone may have meant to wire
+up, and that is a product call.
+
+Orphaned by the threads removal, though their wiring was already dead:
+
+- `library/AuthorManager.vue` and `library/EditAuthorModal.vue` — both were
+  imported by `App.vue`, but nothing ever set `showAuthorModal` to `true` and
+  `AuthorManager` was imported without ever being rendered. So **there is
+  currently no way to edit an author in the UI**, and there was not one before
+  this branch either. Either wire it to `LibraryPage` or drop both.
+- `essays/EssayReferenceChips.vue` — its only caller was `ThreadViewEssay`.
+
+Already orphaned on `main` before this branch, untouched for 4–6 months:
+
+- `essays/EssayEndSlide.vue`
+- `library/BookManager.vue`
+- `shared/FilterBar.vue`
+
+Nothing here is reachable, so nothing here ships — they cost repository noise,
+not bundle size.
+
+---
+
+## 4. TODO — carried forward
 
 - [ ] **Break `App.vue` into child components until no logic remains in it.**
       It is still the app's junk drawer: it owns quotes state, loading, search
@@ -167,3 +193,5 @@ this removal is client-side only. Nothing was asked of alexandria.
 - [ ] Decide the font question above. It gates everything else.
 - [ ] Add a `LICENSE`.
 - [ ] Audit **alexandria** the same way; `notes.jsonl` is probably there.
+- [ ] Decide on the six unreferenced components in section 3 — in particular
+      that author editing has no route into it from the UI.
