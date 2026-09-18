@@ -6,12 +6,14 @@ with no memory of the session that produced it.
 
 Branch: `chore/drop-threads`, cut fresh from `main` at `45321b6`.
 
-State of play: the housekeeping work is merged to both `main` (PR #5) and
-`staging` (PR #6) and deployed to both. History has since been rewritten to
-purge the unreferenced licensed fonts — see section 1 — so **`main` and
-`staging` were force-pushed and every commit hash below the rewrite changed.**
-Anyone holding an older clone must re-clone or hard-reset; a plain `git pull`
-will try to merge the two histories together.
+State of play: the branch cleanup is done and every remote branch verifies
+clean; the one outstanding step is a GitHub Support gc — see section 4. The
+housekeeping work is merged to both `main` (PR #5) and `staging` (PR #6) and
+deployed to both. History has since been rewritten to purge the unreferenced
+licensed fonts — see section 1 — so **`main` and `staging` were force-pushed and
+every commit hash below the rewrite changed.** Anyone holding an older clone
+must re-clone or hard-reset; a plain `git pull` will try to merge the two
+histories together.
 
 A verified full backup of the pre-rewrite history is at
 `../stylus-prefilter-backup.bundle` (19 MB, `git bundle verify` clean). Keep it
@@ -210,7 +212,52 @@ not bundle size.
 
 ---
 
-## 4. TODO — carried forward
+## 4. What GitHub still serves
+
+After the rewrite, the force-push and the branch deletions, every branch on
+`origin` verifies clean:
+
+    origin/main                   clean
+    origin/staging                clean
+    origin/chore/font-purge-notes clean
+
+**The purged fonts are still downloadable anyway.** GitHub keeps a permanent
+`refs/pull/<n>/head` for every pull request ever opened, and those refs still
+point at pre-rewrite commits. Deleting the branches did not touch them. Checked
+by fetching `refs/pull/*/head` straight from the remote:
+
+| PR ref | State                            |
+| ------ | -------------------------------- |
+| #1–#6  | 16 purged blobs still reachable  |
+| #7–#8  | clean (opened after the rewrite) |
+
+This is not theoretical. Pulling one blob back out of PR #1's ref returns an
+intact 56 KB OpenType font, `OTTO` magic bytes and all — the real
+`TiemposHeadline-Black.otf`, live from GitHub, today. Anyone who knows or
+guesses a commit SHA can fetch it, and those SHAs are printed in the PR
+timelines.
+
+Only GitHub can remove these; there is no client-side command that reaches
+`refs/pull/*`. Open a Support request (https://support.github.com/) asking them
+to run `gc` on the repository. Something like:
+
+> Repository: syedi-code/stylus.socialeating.studio
+>
+> I rewrote this repository's history with `git filter-repo` to remove
+> commercially licensed font binaries that should never have been committed, and
+> force-pushed the rewritten `main` and `staging`. I have also deleted all
+> merged branches. No branch references the old commits any more.
+>
+> However, `refs/pull/<n>/head` for PRs #1–#6 still points at the pre-rewrite
+> commits, so the removed files remain fetchable by SHA. Please garbage-collect
+> the repository so these unreachable objects are dropped.
+
+Until that lands, treat the repository as still containing the fonts — because
+it does.
+
+---
+
+## 5. TODO — carried forward
 
 - [ ] **Break `App.vue` into child components until no logic remains in it.** It
       is still the app's junk drawer: it owns quotes state, loading, search and
@@ -224,23 +271,19 @@ not bundle size.
 - [ ] Audit **alexandria** the same way; `notes.jsonl` is probably there.
 - [ ] Decide on the six unreferenced components in section 3 — in particular
       that author editing has no route into it from the UI.
-- [ ] **Delete the three merged branches on GitHub** — `chore/drop-threads`,
-      `chore/tab-title-stylus`, `chore/wordmark-and-deploy-links`. They still
-      point at pre-rewrite commits, so the purged font blobs stay reachable
-      through them and the purge is not yet complete on the remote:
+- [x] ~~Delete the three merged branches on GitHub.~~ Done.
+      `chore/drop-threads`, `chore/tab-title-stylus` and
+      `chore/wordmark-and-deploy-links` are gone; `origin` now carries only
+      `main`, `staging` and the branch this note arrived on. Every remaining
+      remote branch verifies clean.
+- [ ] **Ask GitHub Support to garbage-collect the repository.** This is the last
+      step, and the purge is genuinely incomplete without it — see "What GitHub
+      still serves" below for the proof and a message to send.
 
-      git push origin --delete chore/drop-threads chore/tab-title-stylus chore/wordmark-and-deploy-links
-
-- [ ] **Then ask GitHub Support to garbage-collect the repository.** GitHub
-      keeps `refs/pull/<n>/head` for every PR ever opened, forever, and those
-      refs still point at the old commits. Deleting branches does not remove
-      them, so the purged blobs remain fetchable by SHA from PRs #1–#6 until
-      GitHub runs `gc` server-side. This is the step people forget, and it is
-      the difference between a purge and the appearance of one.
 - [ ] Resolve the Lyon Text `@font-face` that points at a file the repo does not
       contain.
 - [ ] Once the rewrite is trusted, reclaim local disk: the old objects are still
       held by `refs/oldmain`, `refs/oldstaging` and the reflog.
 
       git update-ref -d refs/oldmain && git update-ref -d refs/oldstaging
-          git reflog expire --expire=now --all && git gc --prune=now --aggressive
+                  git reflog expire --expire=now --all && git gc --prune=now --aggressive
