@@ -50,6 +50,30 @@ runs:
               echo "::error title=Pages deploy cannot run::CLOUDFLARE_API_TOKEN cannot read the Pages project 'stylus' (HTTP $code). Add 'Account -> Cloudflare Pages -> Edit' to the token and update the repo secret."
               exit 1
 
+        # The typefaces are licensed for this project's own site, not for
+        # redistribution, so they are not in the repository (FONTS.md). They
+        # live in R2 and are copied into public/ here, before vite copies
+        # public/ into dist/. A face the stylesheet names and the bucket does
+        # not hold fails the deploy: production silently set in Georgia is
+        # worse than production not updated.
+        - name: Fetch licensed fonts
+          shell: bash
+          env:
+              CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+              CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+          run: |
+              faces=$(grep -oE "url\('/fonts/[^']+'\)" src/style.css | sed "s|url('/fonts/||; s|')||" | sort -u)
+              if [ -z "$faces" ]; then
+                echo "::error title=No faces to fetch::src/style.css declares no @font-face src under /fonts/. Either the stylesheet changed shape or this step is now pointless."
+                exit 1
+              fi
+              # A face name may contain a space, so read the list a line at a time.
+              while IFS= read -r face; do
+                mkdir -p "public/fonts/$(dirname "$face")"
+                npx wrangler r2 object get "antisocial-media-files/stylus-fonts/$face" --remote --file "public/fonts/$face"
+              done <<< "$faces"
+              find public/fonts -type f | sort
+
         - name: Build
           shell: bash
           run: npm run build
