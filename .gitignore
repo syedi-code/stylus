@@ -25,3 +25,7 @@ dist-ssr
 
 # wrangler local state
 .wrangler/
+
+# Licensed for this project's own site, not for redistribution. CI fetches them
+# from R2 before the build; see FONTS.md.
+public/fonts/
