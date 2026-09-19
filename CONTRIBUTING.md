@@ -7,12 +7,11 @@ npm install
 npm run dev     # http://localhost:4571
 ```
 
-stylus reads
-[alexandria](https://github.com/syedi-code/alexandria.socialeating.studio) and
-holds no data of its own, so it needs one running: `npm run dev` in that
-repository puts it on `:8787`. There is no mock mode and no fixture set — **the
-app is inert without a backend**, deliberately, because a fixture that drifts
-from the API is worse than no fixture.
+stylus reads [alexandria](https://github.com/syedi-code/alexandria) and holds no
+data of its own, so it needs one running: `npm run dev` in that repository puts
+it on `:8787`. There is no mock mode and no fixture set — **the app is inert
+without a backend**, deliberately, because a fixture that drifts from the API is
+worse than no fixture.
 
 Point elsewhere with `VITE_API_URL` in `.env`, which bypasses the proxy:
 

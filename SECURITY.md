@@ -3,7 +3,7 @@
 ## Reporting
 
 Open a
-[private security advisory](https://github.com/syedi-code/stylus.socialeating.studio/security/advisories/new).
+[private security advisory](https://github.com/syedi-code/stylus/security/advisories/new).
 Please do not open a public issue for a vulnerability.
 
 There is no bounty and no SLA. This is one person's journal.
@@ -11,10 +11,9 @@ There is no bounty and no SLA. This is one person's journal.
 ## What this repository holds
 
 No data and no credentials. Every note, quote, thought and essay lives in
-[alexandria](https://github.com/syedi-code/alexandria.socialeating.studio), and
-every request for one goes through the Pages Function in
-`functions/api/[[catchall]].ts`. A clone of this repository shows nothing until
-it is pointed at an alexandria instance.
+[alexandria](https://github.com/syedi-code/alexandria), and every request for
+one goes through the Pages Function in `functions/api/[[catchall]].ts`. A clone
+of this repository shows nothing until it is pointed at an alexandria instance.
 
 Two things are worth auditing:
 

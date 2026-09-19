@@ -1,9 +1,9 @@
 # stylus
 
-| Deployment | Branch    | URL                                    |
-| ---------- | --------- | -------------------------------------- |
-| Production | `main`    | <https://stylus.socialeating.studio>   |
-| Staging    | `staging` | <https://staging.stylus-64v.pages.dev> |
+| Deployment | Branch    | URL                                                                                                                 |
+| ---------- | --------- | ------------------------------------------------------------------------------------------------------------------- |
+| Production | `main`    | <https://stylus.socialeating.studio> — also <https://anti.socialeating.studio> and <https://journal.ibrahimsyed.io> |
+| Staging    | `staging` | <https://staging.stylus-64v.pages.dev>                                                                              |
 
 Both sit behind Cloudflare Access, so an unauthenticated visit redirects to the
 login rather than showing anything.
@@ -78,11 +78,11 @@ which stayed behind — expect messages describing changes you cannot find here.
 
 ## Related repositories
 
-|                                                                                |                                                            |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| [**alexandria**](https://github.com/syedi-code/alexandria.socialeating.studio) | The backend. Every row this app shows belongs to it        |
-| [**scribe**](https://github.com/syedi-code/scribe.socialeating.studio)         | The other frontend: works, documents, and the reading half |
-| [**alexandria-mcp**](https://github.com/syedi-code/alexandria-mcp)             | The library as MCP tools a model can use                   |
+|                                                                    |                                                            |
+| ------------------------------------------------------------------ | ---------------------------------------------------------- |
+| [**alexandria**](https://github.com/syedi-code/alexandria)         | The backend. Every row this app shows belongs to it        |
+| [**scribe**](https://github.com/syedi-code/scribe)                 | The other frontend: works, documents, and the reading half |
+| [**alexandria-mcp**](https://github.com/syedi-code/alexandria-mcp) | The library as MCP tools a model can use                   |
 
 ## Reading further
 
