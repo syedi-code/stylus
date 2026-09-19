@@ -271,7 +271,7 @@ mark {
 		grid-template-areas: none;
 		column-gap: var(--lib-gap);
 		padding: 10px 14px;
-		align-items: baseline;
+		align-items: center;
 	}
 	.row.starts-run {
 		margin-top: 0;
@@ -292,7 +292,6 @@ mark {
 		font-size: 15.5px;
 	}
 	.author {
-		align-self: center;
 		padding-right: 0;
 		font-size: 14px;
 	}
@@ -321,7 +320,6 @@ mark {
 		white-space: nowrap;
 	}
 	.pdf-cell {
-		align-self: center;
 		width: auto;
 	}
 	.pdf {
