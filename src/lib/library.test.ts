@@ -127,13 +127,12 @@ describe('toRows', () => {
 		'asc'
 	);
 
-	it('dashes a repeated author under the author sort, as a bibliography does', () => {
-		expect(toRows(shelf, 'author').map((r) => r.repeatAuthor)).toEqual([false, true, false]);
+	it('starts a run at each new author under the author sort', () => {
 		expect(toRows(shelf, 'author').map((r) => r.startsRun)).toEqual([false, false, true]);
 	});
 
-	it('never dashes under any other sort', () => {
-		expect(toRows(shelf, 'title').some((r) => r.repeatAuthor)).toBe(false);
+	it('never starts a run under any other sort', () => {
+		expect(toRows(shelf, 'title').some((r) => r.startsRun)).toBe(false);
 	});
 });
 

@@ -163,11 +163,6 @@ export function highlight(text: string, query: string): Segment[] {
 
 export interface CatalogueRow {
 	book: LibraryBook;
-	/**
-	 * Same author as the row above, under the author sort. Rendered as a
-	 * bibliography's 3-em dash rather than the name repeated.
-	 */
-	repeatAuthor: boolean;
 	/** First book of a new author, under the author sort. Gets breathing room. */
 	startsRun: boolean;
 }
@@ -179,8 +174,7 @@ function authorIdentity(b: LibraryBook): string {
 export function toRows(books: LibraryBook[], key: SortKey): CatalogueRow[] {
 	return books.map((book, i) => {
 		const prev = books[i - 1];
-		const same = key === 'author' && !!prev && authorIdentity(prev) === authorIdentity(book);
-		return { book, repeatAuthor: same, startsRun: key === 'author' && !!prev && !same };
+		return { book, startsRun: key === 'author' && !!prev && authorIdentity(prev) !== authorIdentity(book) };
 	});
 }
 
