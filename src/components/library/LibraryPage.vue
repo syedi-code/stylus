@@ -318,7 +318,7 @@ const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} 
 
 <style scoped>
 .lib {
-	--lib-cols: minmax(0, 2.3fr) minmax(0, 1.5fr) 52px 150px 100px 32px;
+	--lib-cols: minmax(0, 2.3fr) minmax(0, 1.5fr) 72px 150px 100px 32px;
 	--lib-gap: 22px;
 	--parchment: #e8d0a8;
 	width: 100%;
@@ -391,6 +391,9 @@ const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} 
 	font-weight: 500;
 	color: var(--parchment);
 	font-variant-numeric: lining-nums;
+}
+.census b:not(:first-child) {
+	margin-left: 0.3em;
 }
 
 /* ── The bar ──────────────────────────────────────────────────────────── */
