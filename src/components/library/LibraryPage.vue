@@ -295,7 +295,6 @@ const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} 
 					:data-book="r.book.id"
 					:book="r.book"
 					:query="query"
-					:repeat-author="r.repeatAuthor"
 					:starts-run="r.startsRun"
 					:open="sheetMode !== null && sheetId === r.book.id"
 					:fresh="freshId === r.book.id"

@@ -8,8 +8,6 @@ import { usePdfOpener } from '../../composables/usePdfOpener';
 const props = defineProps<{
 	book: LibraryBook;
 	query: string;
-	/** Same author as the row above: set as a bibliography's 3-em dash. */
-	repeatAuthor: boolean;
 	/** First book of a new author under the author sort. */
 	startsRun: boolean;
 	/** Open in the book sheet right now. */
@@ -61,11 +59,8 @@ function onKey(e: KeyboardEvent) {
 		</span>
 
 		<span class="author" :class="{ matched: authorMatched }">
-			<span v-if="repeatAuthor" class="dash" aria-label="Same author">———</span>
-			<template v-else>
-				<template v-for="(a, i) in authors" :key="i"><span v-if="i > 0" class="fp"> &amp; </span><span class="fp">{{ a.firstParts }}</span><span class="ln" :style="{ color: a.color }">{{ a.lastName }}</span><span v-if="a.suffix" class="fp">{{ a.suffix }}</span></template>
-			</template>
-			<span v-if="book.originally_published" class="m-year">{{ repeatAuthor ? ' ' : ', ' }}{{ book.originally_published }}</span>
+			<template v-for="(a, i) in authors" :key="i"><span v-if="i > 0" class="fp"> &amp; </span><span class="fp">{{ a.firstParts }}</span><span class="ln" :style="{ color: a.color }">{{ a.lastName }}</span><span v-if="a.suffix" class="fp">{{ a.suffix }}</span></template>
+			<span v-if="book.originally_published" class="m-year">, {{ book.originally_published }}</span>
 		</span>
 
 		<span class="year">{{ book.originally_published }}</span>
@@ -203,10 +198,6 @@ mark {
 	text-decoration: underline;
 	text-decoration-color: rgb(232 208 168 / 0.45);
 	text-underline-offset: 3px;
-}
-.dash {
-	color: var(--color-mono-600);
-	letter-spacing: -0.04em;
 }
 .year {
 	display: none;
