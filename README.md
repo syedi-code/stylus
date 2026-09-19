@@ -12,7 +12,13 @@ Notes, thoughts, quotes and essays — the writing half of the system. Vue 3 +
 TypeScript + Vite, deployed to Cloudflare Pages.
 
 stylus holds no data of its own. Everything comes from **alexandria**, the
-backend, over `/api/*`.
+backend, over `/api/*`. There is no mock mode and no fixture set, so a clone of
+this repository shows nothing until it is pointed at an alexandria instance —
+deliberately, because a fixture that drifts from the API is worse than none.
+
+The typefaces in `public/fonts/` are commercially licensed and are **not**
+covered by this repository's licence. See [`FONTS.md`](FONTS.md) before you
+fork.
 
 ## How it talks to alexandria
 
@@ -70,3 +76,25 @@ Import both through `src/lib/essayTokens.ts`, never directly.
 This repo was extracted from `antisocial-media` with `git filter-repo`, so the
 commits are the real ones. Roughly nine in ten of them also touched the backend,
 which stayed behind — expect messages describing changes you cannot find here.
+
+## Related repositories
+
+|                                                                                |                                                            |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| [**alexandria**](https://github.com/syedi-code/alexandria.socialeating.studio) | The backend. Every row this app shows belongs to it        |
+| [**scribe**](https://github.com/syedi-code/scribe.socialeating.studio)         | The other frontend: works, documents, and the reading half |
+| [**alexandria-mcp**](https://github.com/syedi-code/alexandria-mcp)             | The library as MCP tools a model can use                   |
+
+## Reading further
+
+|                                      |                                                       |
+| ------------------------------------ | ----------------------------------------------------- |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Setup, the checks, and what matters in this codebase  |
+| [`SECURITY.md`](SECURITY.md)         | What the proxy trusts, and the known limits           |
+| [`FONTS.md`](FONTS.md)               | The licensed typefaces, and how to run without them   |
+| [`CONTEXT.md`](CONTEXT.md)           | The glossary. Authoritative on what words mean here   |
+| `docs/HOUSEKEEPING.md`               | The open-source readiness pass, and what it left open |
+
+## License
+
+ISC, for the code. Not for the fonts — see [`FONTS.md`](FONTS.md).

@@ -2,6 +2,7 @@
 	"name": "stylus",
 	"description": "Notes, thoughts, quotes and essays. The writing half of alexandria.",
 	"private": true,
+	"license": "ISC",
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
