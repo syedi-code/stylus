@@ -4,6 +4,7 @@ import type { LibraryBook } from '../../lib/api';
 import { parseAuthors } from '../../lib/bookAttribution';
 import { addedLabel, highlight } from '../../lib/library';
 import { usePdfOpener } from '../../composables/usePdfOpener';
+import { useAuth } from '../../lib/auth';
 
 const props = defineProps<{
 	book: LibraryBook;
@@ -19,6 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'open', book: LibraryBook): void }>();
 
 const { opening, openPdf, prefetchPdf } = usePdfOpener();
+const { isAdmin } = useAuth();
 
 const titleParts = computed(() => highlight(props.book.title, props.query));
 const authors = computed(() => parseAuthors(props.book.author));
@@ -76,7 +78,7 @@ function onKey(e: KeyboardEvent) {
 
 		<span class="pdf-cell">
 			<button
-				v-if="book.has_pdf"
+				v-if="book.has_pdf && isAdmin"
 				type="button"
 				class="pdf"
 				:class="{ pending }"

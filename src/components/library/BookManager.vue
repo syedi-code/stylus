@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { fetchBooks, deleteBook, getSignedFileUrl, type Book } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 
 const emit = defineEmits<{
   (e: 'edit', book: Book): void;
   (e: 'add'): void;
 }>();
 
+const { isAdmin } = useAuth();
 const books = ref<Book[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -51,7 +53,7 @@ const handleDelete = async (book: Book) => {
 };
 
 const openPdf = async (book: Book) => {
-  if (book.pdf_url) {
+  if (book.pdf_url && isAdmin.value) {
     try {
       const path = book.pdf_url.replace('/files/', '');
       const signedUrl = await getSignedFileUrl(path);
@@ -134,7 +136,7 @@ defineExpose({ loadBooks });
 
         <!-- Actions -->
         <div class="flex items-center gap-2 shrink-0">
-          <button v-if="book.pdf_url" @click="openPdf(book)" class="p-1.5 bg-mono-800 hover:bg-mono-700 text-mono-400 hover:text-white rounded transition-colors cursor-pointer" title="Open PDF">
+          <button v-if="book.pdf_url && isAdmin" @click="openPdf(book)" class="p-1.5 bg-mono-800 hover:bg-mono-700 text-mono-400 hover:text-white rounded transition-colors cursor-pointer" title="Open PDF">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
               <polyline points="15 3 21 3 21 9" />
