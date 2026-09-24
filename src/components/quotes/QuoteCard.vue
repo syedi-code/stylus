@@ -76,7 +76,7 @@ const loadBook = async () => {
   if (props.quote.book_id && !book.value) {
     try {
       book.value = await fetchBookById(props.quote.book_id);
-      if (book.value?.pdf_url) {
+      if (book.value?.pdf_url && props.isAdmin) {
         const path = book.value.pdf_url.replace('/files/', '');
         pdfUrl.value = await getSignedFileUrl(path);
       }

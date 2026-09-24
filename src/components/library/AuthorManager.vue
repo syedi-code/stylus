@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { fetchAuthors, fetchBooks, deleteAuthor, getSignedFileUrl, type Author, type Book } from '../../lib/api';
 
-defineProps<{
+const props = defineProps<{
   isAdmin?: boolean;
 }>();
 
@@ -21,7 +21,7 @@ const search = ref('');
 const confirmDelete = ref<string | null>(null);
 
 const openPdf = async (book: Book) => {
-  if (book.pdf_url) {
+  if (book.pdf_url && props.isAdmin) {
     try {
       const path = book.pdf_url.replace('/files/', '');
       const signedUrl = await getSignedFileUrl(path);
@@ -180,12 +180,12 @@ defineExpose({ loadAuthors });
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-mono-600 shrink-0">
               <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
             </svg>
-            <span v-if="book.pdf_url" class="flex-1 text-sm text-mono-300 truncate underline decoration-mono-600 underline-offset-2 hover:text-accent hover:decoration-accent transition-colors cursor-pointer" @click.stop="openPdf(book)">{{ book.title }}</span>
+            <span v-if="book.pdf_url && isAdmin" class="flex-1 text-sm text-mono-300 truncate underline decoration-mono-600 underline-offset-2 hover:text-accent hover:decoration-accent transition-colors cursor-pointer" @click.stop="openPdf(book)">{{ book.title }}</span>
             <span v-else class="flex-1 text-sm text-mono-300 truncate">{{ book.title }}</span>
             <span v-if="book.originally_published" class="text-xs text-mono-600 shrink-0 hidden sm:inline">{{ book.originally_published }}</span>
             <!-- Action icons -->
             <div class="flex items-center gap-1 shrink-0">
-              <button v-if="book.pdf_url" @click="openPdf(book)" class="p-1.5 hover:bg-mono-700 text-accent rounded transition-colors cursor-pointer" title="Open PDF">
+              <button v-if="book.pdf_url && isAdmin" @click="openPdf(book)" class="p-1.5 hover:bg-mono-700 text-accent rounded transition-colors cursor-pointer" title="Open PDF">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                   <polyline points="15 3 21 3 21 9" />
