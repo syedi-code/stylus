@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import type { Quote, Book } from '../../lib/api';
 import { fetchBookById, getSignedFileUrl } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../../composables/usePresentationFontSize';
 import { useTypography } from '../../composables/useTypography';
 import { usePresentationJustify } from '../../composables/usePresentationJustify';
@@ -18,6 +19,8 @@ const props = withDefaults(defineProps<{
     quote: Quote | null;
     isOpen: boolean;
 }>(), {});
+
+const { isAdmin } = useAuth();
 
 const emit = defineEmits(['close']);
 
@@ -106,7 +109,7 @@ const loadBook = async () => {
         pdfUrl.value = null;
         return;
     }
-    if (book.value?.pdf_url) {
+    if (book.value?.pdf_url && isAdmin.value) {
         try {
             const path = book.value.pdf_url.replace('/files/', '');
             pdfUrl.value = await getSignedFileUrl(path);

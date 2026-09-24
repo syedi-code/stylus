@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { getSignedFileUrlCached } from '../lib/api';
+import { useAuth } from '../lib/auth';
 
 /**
  * Opening a book's PDF in one gesture.
@@ -26,13 +27,14 @@ function remember(path: string, url: string) {
 }
 /** The book whose PDF is being fetched, for a pending state on its button. */
 const opening = ref<string | null>(null);
+const { isAdmin } = useAuth();
 
 function pathOf(pdfUrl: string): string {
 	return pdfUrl.replace(/^\/files\//, '');
 }
 
 export function prefetchPdf(pdfUrl?: string) {
-	if (!pdfUrl) return;
+	if (!pdfUrl || !isAdmin.value) return;
 	const path = pathOf(pdfUrl);
 	if (readyUrl(path)) return;
 	getSignedFileUrlCached(path)
@@ -41,7 +43,7 @@ export function prefetchPdf(pdfUrl?: string) {
 }
 
 export async function openPdf(bookId: string, pdfUrl?: string) {
-	if (!pdfUrl) return;
+	if (!pdfUrl || !isAdmin.value) return;
 	const path = pathOf(pdfUrl);
 	const known = readyUrl(path);
 	if (known) {

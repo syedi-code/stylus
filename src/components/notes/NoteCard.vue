@@ -82,7 +82,7 @@ const pdfUrlWithPage = computed(() => {
 watch(
   () => props.book,
   async (book) => {
-    if (book?.pdf_url) {
+    if (book?.pdf_url && props.isAdmin) {
       try {
         const path = book.pdf_url.replace('/files/', '');
         pdfUrl.value = await getSignedFileUrlCached(path);

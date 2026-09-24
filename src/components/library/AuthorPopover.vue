@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { fetchBooksByAuthorId, getSignedFileUrl, type Author, type Book } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 
 const props = defineProps<{
   author: Author;
 }>();
+
+const { isAdmin } = useAuth();
 
 const emit = defineEmits<{
   (e: 'viewInLibrary', authorId: string): void;
@@ -26,7 +29,7 @@ const loadAuthorBooks = async () => {
 };
 
 const openBookPdf = async (book: Book) => {
-  if (!book.pdf_url) return;
+  if (!book.pdf_url || !isAdmin.value) return;
   try {
     const url = await getSignedFileUrl(book.pdf_url);
     window.open(url, '_blank');
@@ -78,11 +81,11 @@ onUnmounted(() => {
     <div v-if="!loadingBooks && books.length > 0" class="border-t border-mono-700/50 px-3 py-2">
       <p class="text-[10px] text-mono-500 uppercase tracking-wider mb-1.5 px-1">Books</p>
       <div class="flex flex-col gap-0.5">
-        <component :is="book.pdf_url ? 'button' : 'div'" v-for="book in books.slice(0, 4)" :key="book.id" @click.stop="book.pdf_url && openBookPdf(book)" class="flex items-center gap-2 px-1.5 py-1 rounded text-xs text-mono-300 text-left" :class="book.pdf_url ? 'hover:bg-mono-700/50 transition-colors group/book cursor-pointer' : ''">
+        <component :is="book.pdf_url && isAdmin ? 'button' : 'div'" v-for="book in books.slice(0, 4)" :key="book.id" @click.stop="book.pdf_url && isAdmin && openBookPdf(book)" class="flex items-center gap-2 px-1.5 py-1 rounded text-xs text-mono-300 text-left" :class="book.pdf_url && isAdmin ? 'hover:bg-mono-700/50 transition-colors group/book cursor-pointer' : ''">
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-mono-600 shrink-0">
             <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
           </svg>
-          <span class="truncate" :class="book.pdf_url ? 'underline decoration-mono-600 underline-offset-2 group-hover/book:decoration-accent group-hover/book:text-accent transition-colors' : ''">{{ book.title }}</span>
+          <span class="truncate" :class="book.pdf_url && isAdmin ? 'underline decoration-mono-600 underline-offset-2 group-hover/book:decoration-accent group-hover/book:text-accent transition-colors' : ''">{{ book.title }}</span>
           <span v-if="book.originally_published" class="text-mono-600 shrink-0">{{ book.originally_published }}</span>
         </component>
         <p v-if="books.length > 4" class="text-[10px] text-mono-500 px-1.5 mt-0.5">+{{ books.length - 4 }} more</p>

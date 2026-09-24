@@ -222,7 +222,7 @@ const panelStyle = computed(() =>
 
 						<div class="actions">
 							<button
-								v-if="book.has_pdf"
+								v-if="book.has_pdf && isAdmin"
 								type="button"
 								class="primary"
 								:class="{ pending: opening === book.id }"
