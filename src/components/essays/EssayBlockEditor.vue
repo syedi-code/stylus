@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { EMBED_PARAM_SPECS } from '../../lib/contract';
 import type { EmbedParams } from '../../lib/essayTokens';
 import {
 	useEssayBlocks,
 	isEmbedBlock,
+	parseBlocks,
+	type EditorBlock,
 	type EmbedBlockKind,
+	type TextBlock,
 } from '../../composables/useEssayBlocks';
+import { useSourceLibrary } from '../../composables/useSourceLibrary';
+import { readSlash, slashItems, todayLine, type SlashCommandId, type SlashItem } from '../../lib/essaySlash';
+import { EssayHistory, type EditKind, type HistoryEntry } from '../../lib/essayHistory';
+import EssaySlashMenu from './EssaySlashMenu.vue';
 import { usePresentationQuoteMode } from '../../composables/usePresentationQuoteMode';
 import EssayBlock from './EssayBlock.vue';
 import { joinClassMap, type PastedQuote, type QuoteDraft } from '../../lib/essayWorkspace';
@@ -23,6 +30,13 @@ import BlockDeleteConfirm from './blocks/BlockDeleteConfirm.vue';
  */
 const content = defineModel<string>('content', { required: true });
 
+const props = defineProps<{
+	/** Quote and book ids the writer has cited lately, newest first. */
+	recentIds?: string[];
+	/** Dim every block but the one being written. */
+	focusMode?: boolean;
+}>();
+
 const emit = defineEmits<{
 	/**
 	 * `seed` carries a passage the writer already pasted, so the sheet opens
@@ -32,6 +46,8 @@ const emit = defineEmits<{
 	(e: 'requestInsert', kind: 'quote' | 'book' | 'image', seed?: QuoteDraft): void;
 	/** Keystrokes are landing — the modal retracts its chrome while writing. */
 	(e: 'typing'): void;
+	/** A slash verb that belongs to the room (present, save, focus, new). */
+	(e: 'command', id: SlashCommandId): void;
 }>();
 
 const {
@@ -63,17 +79,35 @@ const replacingBid = ref<string | null>(null);
 const confirmBid = ref<string | null>(null);
 
 // ── Load / external reload ──
-onMounted(() => load());
+onMounted(() => {
+	load();
+	history.reset(entryNow());
+});
 watch(content, (v) => {
 	if (v !== serialized.value) {
 		load();
 		activeBid.value = null;
 		editingBid.value = null;
+		closeSlash();
+		if (restoring) {
+			const e = restoring;
+			restoring = null;
+			nextTick(() => landAfterRestore(e));
+			return;
+		}
+		history.record(entryNow(), 'edit');
+		return;
 	}
+	history.record(entryNow(), nextKind);
+	nextKind = 'edit';
 });
 
 // ── Child + wrapper refs ──
-type BlockInstance = { focus: (caret?: number) => void; el: () => HTMLTextAreaElement | null };
+type BlockInstance = {
+	focus: (caret?: number) => void;
+	caretFromPoint: (x: number, y: number) => number | null;
+	el: () => HTMLTextAreaElement | null;
+};
 const blockRefs = new Map<string, BlockInstance>();
 const blkEls = new Map<string, HTMLElement>();
 function registerBlock(bid: string, el: unknown) {
@@ -123,8 +157,15 @@ function editBlock(bid: string) {
 	editingBid.value = bid;
 	confirmBid.value = null;
 }
+/**
+ * A block changing kind swaps its textarea for another, and the one removed
+ * blurs on its way out — which read as the writer leaving the block.
+ */
+let swapping: string | null = null;
 function exitEdit(bid: string) {
+	if (swapping === bid) return;
 	if (editingBid.value === bid) editingBid.value = null;
+	if (slash.value?.bid === bid) closeSlash();
 	// Drop a paragraph left empty.
 	const i = indexOf(bid);
 	const b = blocks.value[i];
@@ -141,7 +182,8 @@ function deselectAll() {
 }
 
 // ── Text editing intents ──
-function onUpdate(bid: string, text: string) {
+function onUpdate(bid: string, text: string, kind: EditKind) {
+	nextKind = kind;
 	updateText(bid, text);
 }
 function onEnter(bid: string, caret: number) {
@@ -179,7 +221,11 @@ function onCross(bid: string, dir: 'up' | 'down', caret: number) {
 function onBlkKeydown(bid: string, e: KeyboardEvent) {
 	const b = blocks.value[indexOf(bid)];
 	if (!b || !isEmbedBlock(b)) return;
-	if (e.key === 'Backspace' || e.key === 'Delete') {
+	if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+		e.preventDefault();
+		if (e.shiftKey) redo();
+		else undo();
+	} else if (e.key === 'Backspace' || e.key === 'Delete') {
 		e.preventDefault();
 		confirmBid.value = bid;
 	} else if (e.key === 'Escape') {
@@ -219,33 +265,346 @@ function openSeam(i: number) {
 function closeSeam() {
 	seamIndex.value = null;
 }
-/** Where a new block should land, honouring an open seam. */
-function insertAt(): string | null {
-	if (seamIndex.value === null) return activeBid.value;
-	const i = seamIndex.value;
-	// insertAfter(null) prepends; otherwise after the block above the seam.
-	return i === 0 ? null : (blocks.value[i - 1]?.bid ?? null);
+/**
+ * Put a new block where it was asked for: at an open seam, else after the
+ * selection, else at the end. The seam is an index, and is spliced as one —
+ * routing it through insertAfter sent a seam at the very top to the bottom,
+ * because insertAfter(null) appends.
+ */
+function placeBlock(block: EditorBlock): string {
+	if (seamIndex.value === null) return insertAfter(activeBid.value, block);
+	const i = Math.max(0, Math.min(seamIndex.value, blocks.value.length));
+	blocks.value.splice(i, 0, block);
+	sync();
+	return block.bid;
 }
 
-// ── Slash commands ──
-function onSlash(bid: string, kind: 'quote' | 'section' | 'book' | 'image') {
-	// The command was typed into this block, so the new thing belongs here.
-	activeBid.value = bid;
-	seamIndex.value = null;
-	if (kind === 'section') {
-		const b = blocks.value[indexOf(bid)];
-		// An empty paragraph that asked to be a header just becomes one.
-		if (b && !isEmbedBlock(b) && !b.text.trim()) {
-			b.kind = 'header';
-			sync();
-			editBlock(bid);
-			focusText(bid, 0);
-			return;
-		}
-		insertHeaderBlock();
+// ── Undo, for the whole piece ──
+const history = new EssayHistory();
+let nextKind: EditKind = 'edit';
+let restoring: HistoryEntry | null = null;
+
+function caretNow(): number {
+	const bid = editingBid.value;
+	const ta = bid ? blockRefs.get(bid)?.el() : null;
+	return ta ? ta.selectionEnd : 0;
+}
+function entryNow(): HistoryEntry {
+	const bid = editingBid.value ?? activeBid.value;
+	return { content: content.value, index: bid ? indexOf(bid) : -1, caret: caretNow() };
+}
+function applyEntry(e: HistoryEntry | null) {
+	if (!e) return;
+	closeSlash();
+	restoring = e;
+	content.value = e.content;
+}
+function undo() {
+	applyEntry(history.undo());
+}
+function redo() {
+	applyEntry(history.redo());
+}
+/** After a restore reloads the blocks, put the caret back where the change was. */
+function landAfterRestore(e: HistoryEntry) {
+	const target = blocks.value[Math.min(Math.max(e.index, 0), blocks.value.length - 1)];
+	if (!target) return;
+	if (isEmbedBlock(target)) selectBlock(target.bid);
+	else {
+		editBlock(target.bid);
+		focusText(target.bid, e.caret);
+	}
+}
+
+// ── The slash menu ──
+const { quotes, books, loading: libraryLoading, ensureLoaded } = useSourceLibrary();
+const slash = ref<{ bid: string; text: string } | null>(null);
+const slashIndex = ref(0);
+/** Escape keeps the text; the menu stays shut until the line changes shape. */
+const slashDismissed = ref<string | null>(null);
+const slashPos = ref<{ left: number; width: number; top?: number; bottom?: number; maxHeight: number }>({
+	left: 0,
+	width: 320,
+	maxHeight: 320,
+});
+
+const slashQuery = computed(() => (slash.value ? readSlash(slash.value.text) : null));
+const slashList = computed<SlashItem[]>(() =>
+	slashQuery.value
+		? slashItems(slashQuery.value, { quotes: quotes.value, books: books.value, recent: props.recentIds ?? [] })
+		: []
+);
+const slashOpen = computed(() => slash.value !== null && slashQuery.value !== null);
+
+function onSlashQuery(bid: string, text: string | null) {
+	if (text === null) {
+		if (slash.value?.bid === bid) closeSlash();
+		if (slashDismissed.value === bid) slashDismissed.value = null;
 		return;
 	}
-	emit('requestInsert', kind);
+	if (slashDismissed.value === bid) return;
+	const opening = !slash.value;
+	slash.value = { bid, text };
+	slashIndex.value = 0;
+	if (opening) {
+		void ensureLoaded();
+		trackSlash();
+	}
+}
+/**
+ * Follow the line every frame while the menu is open. Its position moves for
+ * reasons no event reports — the chrome above collapsing as typing starts,
+ * the keyboard sliding up — and a menu left where the line WAS is worse than
+ * no menu.
+ */
+let slashFrame = 0;
+function trackSlash() {
+	placeSlash();
+	slashFrame = requestAnimationFrame(trackSlash);
+}
+function closeSlash() {
+	if (!slash.value) return;
+	slash.value = null;
+	cancelAnimationFrame(slashFrame);
+}
+onBeforeUnmount(closeSlash);
+
+/**
+ * Under the line when there is room, above it when there is not — which on a
+ * phone, with the keyboard up and the rail above it, is most of the time.
+ */
+function placeSlash() {
+	const s = slash.value;
+	if (!s) return;
+	const el = blkEls.get(s.bid);
+	if (!el) return;
+	const r = el.getBoundingClientRect();
+	const vv = window.visualViewport;
+	const viewTop = vv ? vv.offsetTop : 0;
+	const viewBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+	const RAIL = 64;
+	const below = viewBottom - RAIL - r.bottom - 10;
+	const above = r.top - viewTop - 12;
+	const width = Math.min(440, Math.max(260, r.width));
+	const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+	const next =
+		below >= 230 || below >= above
+			? { left, width, top: r.bottom + 6, maxHeight: Math.max(140, Math.min(380, below)) }
+			: { left, width, bottom: window.innerHeight - r.top + 6, maxHeight: Math.max(140, Math.min(380, above)) };
+	const cur = slashPos.value;
+	if (
+		cur.left !== next.left ||
+		cur.width !== next.width ||
+		cur.top !== next.top ||
+		cur.bottom !== next.bottom ||
+		cur.maxHeight !== next.maxHeight
+	) {
+		slashPos.value = next;
+	}
+}
+
+function onMenuKey(key: string) {
+	const n = slashList.value.length;
+	if (key === 'Escape') {
+		slashDismissed.value = slash.value?.bid ?? null;
+		closeSlash();
+	} else if (key === 'ArrowDown') {
+		slashIndex.value = n ? (slashIndex.value + 1) % n : 0;
+	} else if (key === 'ArrowUp') {
+		slashIndex.value = n ? (slashIndex.value - 1 + n) % n : 0;
+	} else if (key === 'Enter' || key === 'Tab') {
+		const item = slashList.value[slashIndex.value];
+		if (item) chooseSlash(item);
+		else if (key === 'Enter') {
+			// Nothing to choose: the writer meant the slash as text.
+			const s = slash.value;
+			slashDismissed.value = s?.bid ?? null;
+			closeSlash();
+			const b = s ? blocks.value[indexOf(s.bid)] : undefined;
+			if (s && b && !isEmbedBlock(b)) onEnter(s.bid, b.text.length);
+		}
+	}
+}
+
+/** Writing picks up after a source that was set in from the keyboard. */
+let continueAfterInsert = false;
+
+function chooseSlash(item: SlashItem) {
+	const s = slash.value;
+	if (!s) return;
+	const q = slashQuery.value;
+	const bid = s.bid;
+	const i = indexOf(bid);
+	const block = blocks.value[i];
+	closeSlash();
+	if (!block || isEmbedBlock(block)) return;
+
+	if (item.type === 'quote' || item.type === 'book') {
+		// The line that asked becomes the answer, in place.
+		const embed = newEmbedBlock(item.type, item.type === 'quote' ? item.quote.id : item.book.id);
+		blocks.value.splice(i, 1, embed);
+		sync();
+		continueAfter(embed.bid);
+		return;
+	}
+
+	const cmd = item.command.id;
+	const term = q?.term ?? '';
+	if (cmd === 'quote' || cmd === 'book' || cmd === 'image') {
+		// The line gives way to a seam at the same spot, so whatever the sheet
+		// returns lands HERE — not at the end, which is where an emptied line
+		// losing focus to the sheet used to send it.
+		blocks.value.splice(i, 1);
+		sync();
+		editingBid.value = null;
+		activeBid.value = null;
+		seamIndex.value = i;
+		continueAfterInsert = true;
+		const seed = cmd === 'quote' && term ? { text: term, who: '', work: '', page: '' } : undefined;
+		emit('requestInsert', cmd, seed);
+		return;
+	}
+	if (cmd === 'section') {
+		onConvert(bid, 'header', '');
+		return;
+	}
+	if (cmd === 'today') {
+		const line = todayLine();
+		block.text = line;
+		sync();
+		editBlock(bid);
+		focusText(bid, line.length);
+		return;
+	}
+	// Room verbs: the line was only ever the question.
+	block.text = '';
+	sync();
+	editBlock(bid);
+	focusText(bid, 0);
+	emit('command', cmd);
+}
+
+/** After a source, the caret goes on to the next paragraph — made if need be. */
+function continueAfter(embedBid: string) {
+	const i = indexOf(embedBid);
+	const next = blocks.value[i + 1];
+	if (next && next.kind === 'para' && !next.text.trim()) {
+		editBlock(next.bid);
+		focusText(next.bid, 0);
+		return;
+	}
+	if (next && !isEmbedBlock(next)) {
+		selectBlock(embedBid);
+		return;
+	}
+	const nb = insertAfter(embedBid, newTextBlock('para', ''));
+	editBlock(nb);
+	focusText(nb, 0);
+}
+
+/** The rail's "/" key: a slash line where the writer is, or at the end. */
+function openSlash() {
+	const cur = editingBid.value ? blocks.value[indexOf(editingBid.value)] : null;
+	let bid: string;
+	if (cur && cur.kind === 'para' && !cur.text.trim()) {
+		bid = cur.bid;
+		cur.text = '/';
+		sync();
+	} else {
+		const after = editingBid.value ?? activeBid.value ?? (blocks.value.length ? blocks.value[blocks.value.length - 1].bid : null);
+		bid = insertAfter(after, newTextBlock('para', '/'));
+	}
+	slashDismissed.value = null;
+	editBlock(bid);
+	focusText(bid, 1);
+	onSlashQuery(bid, '/');
+}
+
+// ── Getting the caret onto the page ──
+
+/** A blank page, or a restored draft: the caret, ready. */
+function startWriting() {
+	const last = blocks.value[blocks.value.length - 1];
+	if (last && last.kind === 'para') {
+		editBlock(last.bid);
+		focusText(last.bid, last.text.length);
+		return;
+	}
+	const nb = insertAfter(last ? last.bid : null, newTextBlock('para', ''));
+	editBlock(nb);
+	focusText(nb, 0);
+}
+
+/**
+ * A key pressed with nothing focused. A slash or Enter starts a new line at
+ * the end; anything else carries on the last paragraph, with the space a
+ * finished sentence needs before the next one.
+ */
+function typeAtEnd(ch: string) {
+	const last = blocks.value[blocks.value.length - 1];
+	if (ch === '/' || ch === '' || !last || last.kind !== 'para') {
+		if (ch === '' && last && last.kind === 'para' && !last.text.trim()) {
+			editBlock(last.bid);
+			focusText(last.bid, 0);
+			return;
+		}
+		const nb = insertAfter(last ? last.bid : null, newTextBlock('para', ch));
+		editBlock(nb);
+		focusText(nb, ch.length);
+		if (ch === '/') {
+			slashDismissed.value = null;
+			onSlashQuery(nb, '/');
+		}
+		return;
+	}
+	const joiner = last.text && !/\s$/.test(last.text) && /[\p{L}\p{N}“"‘'(]/u.test(ch) ? ' ' : '';
+	const text = `${last.text}${joiner}${ch}`;
+	nextKind = 'typing';
+	updateText(last.bid, text);
+	editBlock(last.bid);
+	focusText(last.bid, text.length);
+	emit('typing');
+}
+
+/** A tap on the empty page under the last block continues the piece. */
+function continueAtEnd() {
+	if (editingBid.value) return;
+	const last = blocks.value[blocks.value.length - 1];
+	if (last && last.kind === 'para') {
+		editBlock(last.bid);
+		focusText(last.bid, last.text.length);
+	} else startWriting();
+}
+
+// ── Several paragraphs pasted at once ──
+function onPasteBlocks(bid: string, combined: string, tail: number) {
+	const i = indexOf(bid);
+	if (i < 0) return;
+	const incoming = parseBlocks(combined);
+	blocks.value.splice(i, 1, ...incoming);
+	sync();
+	const lastText = [...incoming].reverse().find((b): b is TextBlock => !isEmbedBlock(b));
+	if (lastText) {
+		editBlock(lastText.bid);
+		focusText(lastText.bid, Math.max(0, lastText.text.length - tail));
+	} else if (incoming.length) {
+		continueAfter(incoming[incoming.length - 1].bid);
+	}
+}
+
+// ── Prose ⇄ section ──
+function onConvert(bid: string, kind: 'para' | 'header', text: string) {
+	const b = blocks.value[indexOf(bid)];
+	if (!b || isEmbedBlock(b)) return;
+	swapping = bid;
+	b.kind = kind;
+	b.text = text;
+	sync();
+	editBlock(bid);
+	nextTick(() => {
+		blockRefs.get(bid)?.focus(0);
+		swapping = null;
+	});
 }
 
 // ── Paste-to-quote ──
@@ -329,6 +688,21 @@ function wrapActiveSelection(before: string, after: string) {
 	if (!ta) return;
 	const { selectionStart: s, selectionEnd: e, value } = ta;
 	const selected = value.slice(s, e);
+	// Already wrapped in exactly these markers: take them off instead.
+	if (
+		selected &&
+		value.slice(s - before.length, s) === before &&
+		value.slice(e, e + after.length) === after &&
+		!(before === '*' && (value[s - 2] === '*' || value[e + 1] === '*'))
+	) {
+		const next = `${value.slice(0, s - before.length)}${selected}${value.slice(e + after.length)}`;
+		updateText(bid, next);
+		nextTick(() => {
+			ta.focus();
+			ta.setSelectionRange(s - before.length, e - before.length);
+		});
+		return;
+	}
 	const next = `${value.slice(0, s)}${before}${selected}${after}${value.slice(e)}`;
 	updateText(bid, next);
 	nextTick(() => {
@@ -350,7 +724,7 @@ function dismissAdd() {
 function chooseBlock(kind: 'text' | 'header' | 'quote' | 'book' | 'image') {
 	showAdd.value = false;
 	if (kind === 'text') {
-		const nb = insertAfter(insertAt(), newTextBlock('para', ''));
+		const nb = placeBlock(newTextBlock('para', ''));
 		closeSeam();
 		editBlock(nb);
 		focusText(nb, 0);
@@ -363,7 +737,7 @@ function chooseBlock(kind: 'text' | 'header' | 'quote' | 'book' | 'image') {
 
 // ── Methods the modal drives ──
 function insertHeaderBlock() {
-	const nb = insertAfter(insertAt(), newTextBlock('header', ''));
+	const nb = placeBlock(newTextBlock('header', ''));
 	closeSeam();
 	editBlock(nb);
 	focusText(nb, 0);
@@ -381,9 +755,17 @@ function insertEmbed(kind: EmbedBlockKind, id: string, params: EmbedParams = {})
 		}
 		return;
 	}
-	const nb = insertAfter(insertAt(), newEmbedBlock(kind, id, params));
+	const nb = placeBlock(newEmbedBlock(kind, id, params));
 	closeSeam();
-	activeBid.value = nb;
+	if (continueAfterInsert) {
+		continueAfterInsert = false;
+		continueAfter(nb);
+	} else activeBid.value = nb;
+}
+/** The sheet closed without choosing — forget where it would have landed. */
+function cancelInsert() {
+	continueAfterInsert = false;
+	if (!showAdd.value) closeSeam();
 }
 
 /**
@@ -400,12 +782,18 @@ function goToBlock(bid: string) {
 defineExpose({
 	insertHeaderBlock,
 	insertEmbed,
+	cancelInsert,
 	wrapActiveSelection,
 	activeBid,
 	blocks,
 	goToBlock,
 	seamIndex,
 	closeSeam,
+	openSlash,
+	startWriting,
+	typeAtEnd,
+	undo,
+	redo,
 });
 
 // ── Pointer gestures (tap / long-press / drag) ──
@@ -451,9 +839,21 @@ function onPointerUp(e: PointerEvent) {
 function onTap(bid: string) {
 	const b = blocks.value[indexOf(bid)];
 	if (!b) return;
-	if (isEmbedBlock(b)) selectBlock(bid);
-	else editBlock(bid);
+	if (isEmbedBlock(b)) {
+		selectBlock(bid);
+		return;
+	}
+	// The caret goes where the tap was, not to the end of the paragraph.
+	const caret = blockRefs.get(bid)?.caretFromPoint(g.x, g.y) ?? null;
+	editBlock(bid);
+	if (caret !== null) focusText(bid, caret);
 }
+/**
+ * Does nothing, and must exist: Chrome on Android snaps a tap to the nearest
+ * element with a click listener, and without one a tap on the last line of a
+ * paragraph was handed to the insert seam below it.
+ */
+function onBlkClick() {}
 function preventTouch(e: TouchEvent) {
 	if (g.dragging) e.preventDefault();
 }
@@ -512,7 +912,7 @@ function endDrag() {
 </script>
 
 <template>
-	<div class="blocks" @click.self="deselectAll">
+	<div class="blocks" :class="{ focusing: focusMode && editingBid }" @click.self="deselectAll">
 		<TransitionGroup name="blk" tag="div" class="blk-list">
 			<template v-for="(block, i) in blocks" :key="block.bid">
 			<!-- The gap ABOVE each block is itself an insert target, so a
@@ -539,6 +939,7 @@ function endDrag() {
 				:style="dragBid === block.bid ? { transform: `translateY(${dragDy}px)`, zIndex: 20 } : undefined"
 				:tabindex="isEmbedBlock(block) ? 0 : undefined"
 				@pointerdown="onPointerDown(block.bid, $event)"
+				@click="onBlkClick"
 				@keydown="isEmbedBlock(block) ? onBlkKeydown(block.bid, $event) : undefined"
 			>
 				<!-- directional drag arrows -->
@@ -552,14 +953,21 @@ function endDrag() {
 						:editing="editingBid === block.bid"
 						:hn="headerLabels.get(block.bid)"
 						:last="i === blocks.length - 1"
-						@update="(t) => onUpdate(block.bid, t)"
+						:only="blocks.length === 1"
+						:menu-open="slashOpen && slash?.bid === block.bid"
+						@update="(t, k) => onUpdate(block.bid, t, k)"
 						@enter="(c) => onEnter(block.bid, c)"
 						@merge-back="onMergeBack(block.bid)"
 						@cross="(d, c) => onCross(block.bid, d, c)"
 						@exit-edit="exitEdit(block.bid)"
 						@typing="emit('typing')"
-						@slash="(k) => onSlash(block.bid, k)"
+						@slash-query="(t) => onSlashQuery(block.bid, t)"
+						@menu-key="onMenuKey"
 						@pasted-quote="(pq) => onPastedQuote(block.bid, pq)"
+						@paste-blocks="(c, t) => onPasteBlocks(block.bid, c, t)"
+						@wrap="(b, a) => wrapActiveSelection(b, a)"
+						@history="(d) => (d === 'undo' ? undo() : redo())"
+						@convert="(k, t) => onConvert(block.bid, k, t)"
 					/>
 				</div>
 
@@ -634,9 +1042,21 @@ function endDrag() {
 			</div>
 		</TransitionGroup>
 
-		<!-- keeps the last block + Add above the keyboard / bottom bar -->
-		<div class="tail" aria-hidden="true"></div>
+		<!-- Keeps the last block above the keyboard and the rail — and is the
+		     page under the piece, so a tap there carries on writing. -->
+		<div class="tail" aria-hidden="true" @click="continueAtEnd"></div>
 	</div>
+
+	<EssaySlashMenu
+		v-if="slashOpen"
+		:items="slashList"
+		:index="slashIndex"
+		:pos="slashPos"
+		:loading="libraryLoading && !quotes.length"
+		:term="slashQuery?.term ?? ''"
+		@hover="(i) => (slashIndex = i)"
+		@choose="chooseSlash"
+	/>
 
 	<!-- add-block type picker -->
 	<Teleport to="body">
@@ -699,27 +1119,47 @@ function endDrag() {
    present at phone width (see below). */
 .seam {
 	position: relative;
-	height: 16px;
-	margin: -8px 0;
+	height: 0;
 	z-index: 5;
 	cursor: pointer;
 }
-/* The mark stays a hairline; the target around it is a thumb. Without this
-   the gap between two paragraphs was a 16px strip to hit. */
+/* The seam element is centred on the bottom edge of the block ABOVE it, so a
+   hit area centred there covered that block's last line and the next one's
+   first — a tap on the opening words of a paragraph opened an insert rail
+   instead of the paragraph. The target is the gap itself, and only the gap. */
 .seam::after {
 	content: '';
 	position: absolute;
 	left: 0;
 	right: 0;
 	top: 50%;
-	height: 44px;
-	transform: translateY(-50%);
+	height: 20px;
+}
+.seam:has(+ .blk.j-stacked)::after {
+	height: 8px;
+}
+.seam:first-child::after {
+	top: auto;
+	bottom: 50%;
+	height: 16px;
+}
+.seam .ln,
+.seam .plus {
+	--seam-mid: 10px;
+}
+.seam:has(+ .blk.j-stacked) .ln,
+.seam:has(+ .blk.j-stacked) .plus {
+	--seam-mid: 4px;
+}
+.seam:first-child .ln,
+.seam:first-child .plus {
+	--seam-mid: -8px;
 }
 .seam .ln {
 	position: absolute;
 	left: 6px;
 	right: 6px;
-	top: 50%;
+	top: calc(50% + var(--seam-mid));
 	height: 1px;
 	background: linear-gradient(90deg, var(--color-essay), rgb(232 160 64 / 0.12) 55%, transparent);
 	opacity: 0;
@@ -728,7 +1168,7 @@ function endDrag() {
 .seam .plus {
 	position: absolute;
 	left: -2px;
-	top: 50%;
+	top: calc(50% + var(--seam-mid));
 	transform: translateY(-50%) scale(0.72);
 	width: 23px;
 	height: 23px;
@@ -967,6 +1407,26 @@ function endDrag() {
 
 .tail {
 	height: 40vh;
+	cursor: text;
+}
+
+/* Focus mode: the paragraph being written, and the page falls away around it.
+   On .blk-inner, never .blk — a transition on the TransitionGroup's own child
+   makes every leaving block wait out its duration in the DOM, so a reload
+   (undo, paste) showed the old and new piece stacked for a third of a second. */
+.blk-inner {
+	transition: opacity 0.35s ease;
+}
+.blocks.focusing .blk:not(.editing) .blk-inner {
+	opacity: 0.2;
+}
+.blocks.focusing .blk:not(.editing):hover .blk-inner {
+	opacity: 0.55;
+}
+@media (prefers-reduced-motion: reduce) {
+	.blk-inner {
+		transition: none;
+	}
 }
 
 /* FLIP glide on reorder */
