@@ -29,6 +29,8 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { fetchEssays, deleteEssay as deleteEssayApi, type Essay } from '../../../lib/api';
 import { usePagination } from '../../../composables/usePagination';
 import { parseBlocks } from '../../../composables/useEssayBlocks';
+import { recentSourceIds } from '../../../lib/essaySlash';
+import { holdKeyboard } from '../../../lib/keyboardKeeper';
 import EssaySpine from './EssaySpine.vue';
 import EssayWritingRoom from './EssayWritingRoom.vue';
 import PresentationViewEssay from '../PresentationViewEssay.vue';
@@ -96,6 +98,10 @@ const current = computed<Essay | null>(
 const liveContent = ref('');
 const currentBlocks = computed(() => parseBlocks(liveContent.value));
 
+/** What the writer has been citing, newest piece first — the slash menu's
+ *  answer to a bare `/`. */
+const recentIds = computed(() => recentSourceIds(pagination.items.value.map((e) => e.content ?? '')));
+
 onMounted(async () => {
 	if (!booting.value) {
 		await pagination.refresh();
@@ -133,6 +139,9 @@ function openById(id: string) {
 	roomKey.value += 1;
 }
 function newEssay() {
+	// Synchronously, inside the tap: the blank page mounts a tick later, and
+	// by then iOS no longer counts its focus() as the user's.
+	holdKeyboard();
 	currentId.value = null;
 	startedNew.value = true;
 	roomKey.value += 1;
@@ -144,6 +153,7 @@ async function copyEssay(essay: Essay) {
 
 async function removeEssay(essay: Essay) {
 	if (!confirm('Are you sure you want to delete this essay? This action cannot be undone.')) return;
+	if (currentId.value === essay.id) roomRef.value?.cancelSaves?.();
 	try {
 		await deleteEssayApi(essay.id);
 		pagination.removeItem((e) => e.id === essay.id);
@@ -156,13 +166,27 @@ async function removeEssay(essay: Essay) {
 	}
 }
 
-async function onSaved() {
-	// Revalidate in place. A reload that empties the list first would, for
-	// the length of the request, leave the open piece pointing at nothing.
-	await pagination.refresh();
-	// A brand-new piece becomes the newest one; stay in it rather than
-	// bouncing back to whatever was open before.
-	if (currentId.value === null) currentId.value = pagination.items.value[0]?.id ?? null;
+/**
+ * A save hands back the row it wrote. When that is a new version it has a new
+ * id, and the tab used to go on looking for the old one — which the server
+ * no longer lists — so saving an edit dropped you out of the piece. The list
+ * is patched with the row instead of refetched: autosave runs every few
+ * seconds of writing, and a refetch per save would be the spine flickering.
+ */
+function onSaved(essay: Essay, replaced: string | null) {
+	if (!essay?.id) return;
+	const list = pagination.items.value;
+	if (list.some((e) => e.id === essay.id)) {
+		pagination.items.value = list.map((e) => (e.id === essay.id ? essay : e));
+	} else {
+		pagination.items.value = [essay, ...list.filter((e) => e.id !== replaced)];
+	}
+	// Follow the piece being written — unless the writer has already moved
+	// on and this is the save of the one they left.
+	if (currentId.value === null || currentId.value === replaced) {
+		currentId.value = essay.id;
+		startedNew.value = false;
+	}
 }
 
 /**
@@ -202,6 +226,7 @@ defineExpose({ openById, newEssay, isNewPiece });
 					:is-open="true"
 					:essay="current"
 					:announce-new="startedNew"
+					:recent-ids="recentIds"
 					@saved="onSaved"
 					@new="newEssay"
 					@present="presenting = $event"

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import {
   createEssay,
+  updateEssay,
   uploadEssayImage,
   getFileUrl,
   type Essay,
@@ -17,9 +18,13 @@ import EssayBlockEditor from '../EssayBlockEditor.vue';
 import EssayDeckRail from '../EssayDeckRail.vue';
 import { essayName, essayWordCount } from '../../../lib/essayDisplay';
 import type { QuoteDraft } from '../../../lib/essayWorkspace';
+import type { SlashCommandId } from '../../../lib/essaySlash';
+import { onHeldInput } from '../../../lib/keyboardKeeper';
 
 const props = defineProps<{
   isOpen: boolean;
+  /** Quote and book ids cited across the writer's pieces, newest first. */
+  recentIds?: string[];
   essay?: Essay | null;
   /** Rendered as the Essays tab itself rather than inside a modal: it fills
    *  the tab area instead of the viewport, and there is nothing to close to. */
@@ -38,7 +43,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'saved'): void;
+  /** `replaced` is the version this save superseded, when it minted a new one. */
+  (e: 'saved', essay: Essay, replaced: string | null): void;
   (e: 'present', essay: Essay): void;
   (e: 'new'): void;
   /** Live content, so the spine can outline what is being written rather
@@ -50,6 +56,15 @@ const content = ref('');
 const tagInput = ref('');
 const tags = ref<string[]>([]);
 const submitting = ref(false);
+// Save state — read by the seeding watcher below, so declared ahead of it.
+const savedContent = ref('');
+const savedTags = ref<string[]>([]);
+/** The version this sitting minted; later saves update it in place. */
+const sittingId = ref<string | null>(null);
+/** Ids this room created, so the parent following them is not a new piece. */
+const ownIds = new Set<string>();
+/** Words written since the piece was opened — the only goal worth showing. */
+const sittingStart = ref<number | null>(null);
 const editorRef = ref<InstanceType<typeof EssayBlockEditor> | null>(null);
 const { ensureLoaded, registerImage } = useSourceLibrary();
 
@@ -110,7 +125,7 @@ const { keyboardOffset } = useKeyboardAnchor();
 function handlePresent() {
   const base = props.essay;
   emit('present', {
-    id: base?.id ?? '',
+    id: headId.value ?? '',
     content: content.value,
     posted: base?.posted ?? false,
     tags: [...tags.value],
@@ -131,8 +146,6 @@ const draft = useEssayDraft(() =>
   props.essay ? { kind: 'edit', id: props.essay.id } : undefined
 );
 const { draftContent, draftTags, restore: restoreDraft, clearDraft } = draft;
-
-const isEditMode = computed(() => !!props.essay);
 
 /**
  * "A new piece has started."
@@ -161,8 +174,14 @@ function clearFlash() {
 
 // Re-seeds on open AND whenever the piece changes — switching pieces in the
 // spine is now as common as opening the room at all.
-watch(() => [props.isOpen, props.essay?.id ?? '__new__'], ([open]) => {
+watch(() => [props.isOpen, props.essay?.id ?? '__new__'], ([open, id]) => {
+  // The parent following this room's own save to the version it minted is
+  // the same piece, mid-sentence. Re-seeding here reverted whatever was typed
+  // during the round trip.
+  if (ownIds.has(id as string)) return;
   if (open) {
+    sittingId.value = null;
+    ownIds.clear();
     showTags.value = false;
     restoreDraft();
     if (props.essay) {
@@ -174,6 +193,8 @@ watch(() => [props.isOpen, props.essay?.id ?? '__new__'], ([open]) => {
         draftTags.value.length > 0
           ? [...draftTags.value]
           : [...(props.essay.tags || [])];
+      savedContent.value = props.essay.content;
+      savedTags.value = [...(props.essay.tags || [])];
       // Seed image URLs from the essay's already-resolved references so
       // [[image:UUID]] blocks render immediately (the server won't re-derive
       // them until save).
@@ -186,10 +207,13 @@ watch(() => [props.isOpen, props.essay?.id ?? '__new__'], ([open]) => {
       content.value = draftContent.value;
       tags.value = [...draftTags.value];
       tagInput.value = '';
+      savedContent.value = '';
+      savedTags.value = [];
       // A restored draft is resumed work, not a new piece, and saying "new"
       // over it would be a lie.
       if (props.announceNew && !draftContent.value.trim()) flashNewPiece();
     }
+    sittingStart.value = essayWordCount(content.value);
     // Quotes / books resolve their display text via the shared library.
     // Force-refresh so foils reflect quote edits made since the last load.
     ensureLoaded(true);
@@ -218,20 +242,48 @@ const MAX_CHARS = 20000;
 const nearLimit = computed(() => charCount.value > MAX_CHARS * 0.8);
 
 /**
- * Whether anything would be lost by walking away. Across the corpus a piece is
- * a revision far more often than a first draft, so "is this saved?" is the
- * question the room is asked most, and the check mark is the only place to
- * answer it.
+ * THE SAVE MODEL: one version per sitting, and it saves itself.
+ *
+ * Saving was a button, and every press minted a new version row (`replaces`
+ * the last) — so "is this saved?" was answered by remembering to press it.
+ * Worse, the new version has a new id and the tab kept looking for the old
+ * one: saving an edit dropped you out of the piece you had just saved.
+ *
+ * Now the first save of a sitting mints the version, exactly as before, and
+ * every save after it PATCHes that row in place. alexandria re-derives
+ * references from the tokens on PATCH as it does on POST, so the two differ
+ * only in the version count.
  */
-const dirty = computed(() => content.value.trim() !== (props.essay?.content ?? '').trim());
-const justSaved = ref(false);
+const saving = ref(false);
 const saveError = ref<string | null>(null);
+const lastSavedAt = ref<number | null>(null);
+const justSaved = ref(false);
 let savedTimer = 0;
+let autosaveTimer = 0;
+let queued = false;
+let cancelled = false;
+
+const headId = computed(() => sittingId.value ?? props.essay?.id ?? null);
+const isEditMode = computed(() => headId.value !== null);
+
+const sameTags = (a: string[], b: string[]) => a.length === b.length && a.every((t, i) => t === b[i]);
+const dirty = computed(
+  () => content.value.trim() !== savedContent.value.trim() || !sameTags(tags.value, savedTags.value)
+);
 
 const canSubmit = computed(() =>
   content.value.trim().length > 0 &&
   charCount.value <= MAX_CHARS &&
   !submitting.value
+);
+
+/**
+ * A blank new piece is not saved for its first stray keystroke — a piece
+ * abandoned after "The" should not appear in the spine. Three words or one
+ * source is a piece.
+ */
+const worthSaving = computed(
+  () => isEditMode.value || wordCount.value >= 3 || sourceCount.value > 0
 );
 
 // ─── Insertion — the block editor owns the array; the modal just drives it ───
@@ -245,6 +297,15 @@ function openSheet(kind: 'quote' | 'book', seed?: QuoteDraft) {
   }
   sheetInitialKind.value = kind;
   sheetOpen.value = true;
+}
+
+function closeQuoteModal() {
+  quoteModalOpen.value = false;
+  editorRef.value?.cancelInsert();
+}
+function closeSheet() {
+  sheetOpen.value = false;
+  editorRef.value?.cancelInsert();
 }
 
 function handleEmbedSelect(ref: EssayReferenceInput) {
@@ -299,58 +360,204 @@ const handleTagKeydown = (e: KeyboardEvent) => {
   }
 };
 
-const handleSubmit = async () => {
-  if (!canSubmit.value) return;
+async function save(): Promise<void> {
+  clearTimeout(autosaveTimer);
+  if (cancelled || !dirty.value || content.value.trim().length === 0 || charCount.value > MAX_CHARS) return;
+  if (saving.value) {
+    queued = true;
+    return;
+  }
+  const snapshot = content.value;
+  const snapshotTags = [...tags.value];
+  saving.value = true;
   submitting.value = true;
-
   try {
     // References are derived server-side from content tokens; the worker
     // ignores anything we send. Pass empty so the API contract is satisfied.
-    const baseInput: EssayInput = {
-      content: content.value,
-      tags: tags.value.length ? tags.value : undefined,
+    const input: EssayInput = {
+      content: snapshot,
+      tags: snapshotTags.length ? snapshotTags : undefined,
       references: [],
     };
-
-    if (isEditMode.value && props.essay) {
-      await createEssay({ ...baseInput, replaces: props.essay.id });
+    let saved: Essay;
+    let replaced: string | null = null;
+    if (sittingId.value) {
+      saved = (await updateEssay(sittingId.value, { content: snapshot, tags: snapshotTags })).essay;
+    } else if (props.essay) {
+      replaced = props.essay.id;
+      saved = (await createEssay({ ...input, replaces: props.essay.id })).essay;
     } else {
-      await createEssay(baseInput);
+      saved = (await createEssay(input)).essay;
     }
-    clearDraft();
+    savedContent.value = snapshot;
+    savedTags.value = snapshotTags;
+    // Nothing typed during the round trip, so the local copy has done its job.
+    if (content.value === snapshot) clearDraft();
+    if (saved?.id) {
+      sittingId.value = saved.id;
+      ownIds.add(saved.id);
+    }
     saveError.value = null;
+    lastSavedAt.value = Date.now();
     justSaved.value = true;
     clearTimeout(savedTimer);
-    savedTimer = window.setTimeout(() => (justSaved.value = false), 1800);
-    emit('saved');
-    emit('close');
+    savedTimer = window.setTimeout(() => (justSaved.value = false), 1400);
+    emit('saved', saved, replaced);
   } catch (err: any) {
     console.error('Failed to save essay:', err?.response?.data ?? err);
-    // Silence here meant a failed save looked exactly like a good one, and
-    // the piece is a revision far more often than it is a first draft.
-    saveError.value = 'That didn’t save. Your writing is still here — try again.';
+    // Silence here meant a failed save looked exactly like a good one.
+    saveError.value = 'That didn’t save. Your writing is kept on this device — try again.';
   } finally {
+    saving.value = false;
     submitting.value = false;
+    if (queued) {
+      queued = false;
+      scheduleSave(400);
+    }
+  }
+}
+
+function scheduleSave(ms = 1600) {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = window.setTimeout(() => {
+    if (worthSaving.value) void save();
+  }, ms);
+}
+
+watch([content, tags], () => {
+  if (dirty.value && !saveError.value) scheduleSave();
+}, { deep: true });
+
+/** Leaving the tab or the app is the moment a pending save matters most. */
+function flushOnHide() {
+  if (document.visibilityState === 'hidden' && dirty.value && worthSaving.value) void save();
+}
+
+/** The piece is about to be deleted — saving it now would resurrect it. */
+function cancelSaves() {
+  cancelled = true;
+  clearTimeout(autosaveTimer);
+}
+
+const handleSubmit = () => {
+  saveError.value = null;
+  return save();
+};
+
+/** "saved 3m ago", for the status row and the save control's title. */
+const now = ref(Date.now());
+let clock = 0;
+const saveLabel = computed(() => {
+  if (saveError.value) return 'not saved';
+  if (saving.value) return 'saving…';
+  if (dirty.value) return worthSaving.value ? 'unsaved' : 'not saved yet';
+  if (!lastSavedAt.value) return isEditMode.value ? 'saved' : '';
+  const s = Math.round((now.value - lastSavedAt.value) / 1000);
+  if (s < 45) return 'saved just now';
+  return `saved ${Math.max(1, Math.round(s / 60))}m ago`;
+});
+
+const sittingDelta = computed(() =>
+  sittingStart.value === null ? 0 : wordCount.value - sittingStart.value
+);
+
+const handleKeydown = (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'Enter' || e.key.toLowerCase() === 's')) {
+    e.preventDefault();
+    void handleSubmit();
   }
 };
 
-const handleKeydown = (e: KeyboardEvent) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-    e.preventDefault();
-    handleSubmit();
+// ─── Focus mode ───
+const FOCUS_KEY = 'stylus-essay-focus';
+function readFocus() {
+  try {
+    return localStorage.getItem(FOCUS_KEY) === '1';
+  } catch {
+    return false;
   }
-};
+}
+const focusMode = ref(readFocus());
+function toggleFocus() {
+  focusMode.value = !focusMode.value;
+  try {
+    localStorage.setItem(FOCUS_KEY, focusMode.value ? '1' : '0');
+  } catch {
+    // Private browsing: the mode still works, it just isn't remembered.
+  }
+}
+
+/** The slash menu's verbs that belong to the room rather than the editor. */
+function handleCommand(id: SlashCommandId) {
+  if (id === 'present') handlePresent();
+  else if (id === 'save') void handleSubmit();
+  else if (id === 'focus') toggleFocus();
+  else if (id === 'new') emit('new');
+}
+
+const anyOverlayOpen = computed(() => quoteModalOpen.value || sheetOpen.value || showTags.value);
+
+/**
+ * Type to write. With nothing focused, a printable key — or Enter, or the
+ * slash — goes into the piece instead of nowhere: the end of the last
+ * paragraph, or a new one after the last source. Opening a piece and
+ * starting to type is the whole interaction; clicking into it first was a
+ * toll.
+ */
+function onWindowKeydown(e: KeyboardEvent) {
+  if (e.defaultPrevented || e.isComposing) return;
+  if (anyOverlayOpen.value || spineOpen.value) return;
+  const el = document.activeElement as HTMLElement | null;
+  // A button or link keeps focus after it is clicked — the Essays tab itself,
+  // most often. Letters mean nothing to it; Enter still presses it.
+  const onControl = !!el && /^(BUTTON|A)$/.test(el.tagName);
+  if (el && el !== document.body && !onControl) {
+    if (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+    // A selected source listens for its own keys (delete, escape).
+    if (el.closest('.blk')) return;
+  }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) editorRef.value?.redo();
+    else editorRef.value?.undo();
+    return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const printable = e.key.length === 1 && e.key !== ' ';
+  if (!printable && (e.key !== 'Enter' || onControl)) return;
+  e.preventDefault();
+  editorRef.value?.typeAtEnd(printable ? e.key : '');
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', flushOnHide);
+  window.addEventListener('keydown', onWindowKeydown);
+  onHeldInput((text) => editorRef.value?.typeAtEnd(text));
+  clock = window.setInterval(() => (now.value = Date.now()), 20_000);
+  // A blank page takes the caret. There is one thing to do on it, and a tap
+  // to be allowed to do it was the first friction of every new piece.
+  if (!props.essay) nextTick(() => editorRef.value?.startWriting());
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', flushOnHide);
+  window.removeEventListener('keydown', onWindowKeydown);
+  onHeldInput(null);
+  clearInterval(clock);
+  // Switching pieces remounts the room; the one being left saves on the way out.
+  if (dirty.value && worthSaving.value) void save();
+  clearTimeout(autosaveTimer);
+});
 
 /** The spine's outline jumps through here into the block editor. */
 function goToBlock(bid: string) {
   editorRef.value?.goToBlock?.(bid);
 }
 
-defineExpose({ goToBlock });
+defineExpose({ goToBlock, cancelSaves, save });
 </script>
 
 <template>
-  <div class="room-layout flex" :class="inline ? 'is-inline' : 'is-modal'" @keydown="handleKeydown">
+  <div class="room-layout flex" :class="[inline ? 'is-inline' : 'is-modal', { 'focus-mode': focusMode }]" @keydown="handleKeydown">
     <!-- The spine. Docked wide, a drawer under the hamburger below that. -->
     <aside class="spine-dock" :class="{ open: spineOpen }">
       <slot name="spine" />
@@ -406,9 +613,9 @@ defineExpose({ goToBlock });
               @click="handleSubmit"
               :disabled="!canSubmit"
               class="wr-btn gold icon"
-              :class="{ dirty, saved: justSaved }"
-              :title="dirty ? (isEditMode ? 'Save changes' : 'Publish') : 'Saved'"
-              :aria-label="dirty ? (isEditMode ? 'Save changes' : 'Publish') : 'Saved'"
+              :class="{ dirty, saved: justSaved, saving }"
+              :title="`${saveLabel || 'Save'} — ⌘S saves now`"
+              :aria-label="dirty ? 'Save now' : 'Saved'"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
             </button>
@@ -442,7 +649,12 @@ defineExpose({ goToBlock });
           <span class="n">{{ wordCount }} {{ wordCount === 1 ? 'word' : 'words' }}</span>
           <span class="b"></span>
           <span class="n">{{ sourceCount === 0 ? 'no sources' : `${sourceCount} ${sourceCount === 1 ? 'source' : 'sources'}` }}</span>
-          <span v-if="nearLimit" class="ml-auto shrink-0 tabular-nums" :class="charCount > MAX_CHARS ? 'text-red-400' : 'text-mono-700'">
+          <template v-if="sittingDelta > 0">
+            <span class="b"></span>
+            <span class="n delta" title="Words written since you opened this piece">+{{ sittingDelta }} this sitting</span>
+          </template>
+          <span v-if="saveLabel" class="savest" :class="{ warn: !!saveError, busy: saving }">{{ saveLabel }}</span>
+          <span v-if="nearLimit" class="shrink-0 tabular-nums" :class="charCount > MAX_CHARS ? 'text-red-400' : 'text-mono-700'">
             {{ charCount.toLocaleString() }} / {{ MAX_CHARS.toLocaleString() }}
           </span>
         </div>
@@ -457,7 +669,10 @@ defineExpose({ goToBlock });
           <EssayBlockEditor
             ref="editorRef"
             v-model:content="content"
+            :recent-ids="recentIds ?? []"
+            :focus-mode="focusMode"
             @request-insert="handleRequestInsert"
+            @command="handleCommand"
             @typing="onTyping"
           />
         </div>
@@ -477,7 +692,7 @@ defineExpose({ goToBlock });
         <Transition name="flash">
           <div v-if="startedNew && !saveError" class="newflash shrink-0" role="status">
             <span class="nf-dot"></span>
-            <span class="nf-t"><b>New piece.</b> Nothing is saved until you do.</span>
+            <span class="nf-t"><b>New piece.</b> Just start — it saves itself. Type <kbd>/</kbd> for quotes, books, anything.</span>
           </div>
         </Transition>
 
@@ -500,6 +715,11 @@ defineExpose({ goToBlock });
                Quote... / Quote...", and the duplicates were the feature.
                Re-citing is one search in the sheet's Library pane instead. -->
           <div class="pills flex items-center gap-1.5">
+            <!-- The slash, one tap away. On a phone "/" lives on the
+                 keyboard's second page, which made the menu the hardest
+                 thing in the editor to reach from the device most of it is
+                 written on. -->
+            <button type="button" class="slashkey" title="Search your library, or run a command ( / )" aria-label="Open the slash menu" @mousedown.prevent @click="editorRef?.openSlash()">/</button>
             <button type="button" @click="openSheet('quote')" class="pill primary" title="Insert quote"><span class="g">❝</span>Quote</button>
             <button type="button" @click="openSheet('book')" class="pill" title="Insert book"><span class="g">▤</span>Book</button>
             <!-- Four images against 87 quotes and 44 books: it keeps its place
@@ -524,14 +744,14 @@ defineExpose({ goToBlock });
         <EssayQuoteModal
           :is-open="quoteModalOpen"
           :seed="sheetSeed"
-          @close="quoteModalOpen = false"
+          @close="closeQuoteModal"
           @select="handleEmbedSelect"
         />
 
         <EssayEmbedSheet
           :is-open="sheetOpen"
           initial-kind="book"
-          @close="sheetOpen = false"
+          @close="closeSheet"
           @select="handleEmbedSelect"
         />
       </div>
@@ -1098,6 +1318,63 @@ defineExpose({ goToBlock });
   font-size: 12px;
   color: #fda4af;
   cursor: pointer;
+}
+
+/* The slash key — first on the rail, because it reaches everything else. */
+.slashkey {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(232 160 64 / 0.35);
+  background: rgb(232 160 64 / 0.08);
+  color: var(--color-essay);
+  font: 600 16px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.slashkey:hover {
+  background: rgb(232 160 64 / 0.16);
+  border-color: var(--color-essay);
+}
+
+/* Save state, where the numbers are. */
+.savest {
+  margin-left: auto;
+  color: var(--color-mono-600);
+  font-style: italic;
+  white-space: nowrap;
+}
+.savest.busy {
+  color: var(--color-essay);
+}
+.savest.warn {
+  color: #fda4af;
+}
+.wr-status .delta {
+  color: rgb(126 212 168 / 0.85);
+}
+.nf-t kbd {
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid rgb(232 160 64 / 0.4);
+  color: var(--color-essay);
+}
+.wr-btn.gold.icon.saving {
+  animation: savepulse 1s ease-in-out infinite;
+}
+@keyframes savepulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wr-btn.gold.icon.saving {
+    animation: none;
+  }
 }
 
 /* An icon-only insert, for the one that is rarely used. */

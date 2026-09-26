@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-	matchSlashCommand,
+	shouldSplitPaste,
 	parsePastedQuote,
 	splitQuoteInput,
 	joinKind,
@@ -36,24 +36,14 @@ function essay(content: string, over: Partial<Essay> = {}): Essay {
 const QUOTE_TOKEN = '[[quote:11111111-1111-4111-8111-111111111111]]';
 const BOOK_TOKEN = '[[book:22222222-2222-4222-8222-222222222222]]';
 
-describe('matchSlashCommand', () => {
-	it('fires for each command, only with the terminating space', () => {
-		expect(matchSlashCommand('/quote ')).toBe('quote');
-		expect(matchSlashCommand('/section ')).toBe('section');
-		expect(matchSlashCommand('/book ')).toBe('book');
-		expect(matchSlashCommand('/image ')).toBe('image');
-		// Still being typed — firing here would eat the keystroke.
-		expect(matchSlashCommand('/quote')).toBeNull();
-	});
-
-	it('never fires inside prose', () => {
-		// The whole point of anchoring to the start of an empty line: ordinary
-		// writing is full of slashes.
-		expect(matchSlashCommand('and/or ')).toBeNull();
-		expect(matchSlashCommand('He wrote /quote ')).toBeNull();
-		expect(matchSlashCommand('see https://x.com/quote ')).toBeNull();
-		expect(matchSlashCommand('12/4 ')).toBeNull();
-		expect(matchSlashCommand('/unknown ')).toBeNull();
+describe('shouldSplitPaste', () => {
+	it('splits paragraphs and tokens, and nothing else', () => {
+		expect(shouldSplitPaste('One.\n\nTwo.')).toBe(true);
+		expect(shouldSplitPaste('One.\n  \nTwo.')).toBe(true);
+		expect(shouldSplitPaste(QUOTE_TOKEN)).toBe(true);
+		// A line break inside a paragraph is still one paragraph.
+		expect(shouldSplitPaste('One line\nand the next')).toBe(false);
+		expect(shouldSplitPaste('A sentence with [brackets].')).toBe(false);
 	});
 });
 
