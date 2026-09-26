@@ -13,21 +13,15 @@ import { essayName, essayWordCount, relativeDate } from './essayDisplay';
  * component body. See essayWorkspace.test.ts.
  */
 
-// ── Slash commands ───────────────────────────────────────────────────────
-
-export type SlashCommand = 'quote' | 'section' | 'book' | 'image';
+// ── Pasting several paragraphs ───────────────────────────────────────────
 
 /**
- * A slash command is only a command at the very start of an otherwise empty
- * line, terminated by a space. Anything looser fires inside prose — dates,
- * fractions, URLs and "and/or" all carry a slash — so the whole value must be
- * the command and nothing else.
+ * A paste becomes blocks, rather than landing in the one under the caret,
+ * when it holds a paragraph break or an essay token — i.e. whenever keeping
+ * it in one block would be a lie the next reload corrects.
  */
-const SLASH_RE = /^\/(quote|section|book|image)\s$/;
-
-export function matchSlashCommand(value: string): SlashCommand | null {
-	const m = value.match(SLASH_RE);
-	return m ? (m[1] as SlashCommand) : null;
+export function shouldSplitPaste(raw: string): boolean {
+	return /\n\s*\n/.test(raw) || /\[\[(?:quote|book|image):/.test(raw);
 }
 
 // ── Paste-to-quote ───────────────────────────────────────────────────────

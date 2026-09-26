@@ -3,7 +3,10 @@ import { ref, computed, watch, nextTick } from 'vue';
 import { useAutoGrow } from '../../composables/useAutoGrow';
 import { isEmbedBlock, type EditorBlock, type EmbedBlock } from '../../composables/useEssayBlocks';
 import { formatMarkdown } from '../../lib/formatText';
-import { matchSlashCommand, parsePastedQuote, type PastedQuote } from '../../lib/essayWorkspace';
+import { parsePastedQuote, shouldSplitPaste, type PastedQuote } from '../../lib/essayWorkspace';
+import { readSlash } from '../../lib/essaySlash';
+import { rawOffsetFor, renderedOffsetAt } from '../../lib/essayCaret';
+import type { EditKind } from '../../lib/essayHistory';
 import FoilQuote from './blocks/FoilQuote.vue';
 import FoilBook from './blocks/FoilBook.vue';
 import FoilImage from './blocks/FoilImage.vue';
@@ -27,24 +30,36 @@ const props = defineProps<{
 	hn?: string;
 	/** The last block in the piece — it carries the hint that teaches `/`. */
 	last?: boolean;
+	/** The only block — the blank page's first line. */
+	only?: boolean;
+	/** The slash menu is open on this block and wants the arrow keys. */
+	menuOpen?: boolean;
 }>();
 
 const emit = defineEmits<{
-	(e: 'update', text: string): void;
+	(e: 'update', text: string, kind: EditKind): void;
 	(e: 'enter', caret: number): void;
 	(e: 'mergeBack'): void;
 	(e: 'cross', dir: 'up' | 'down', caret: number): void;
 	(e: 'exitEdit'): void;
 	/** A keystroke landed — the modal retracts its chrome while writing. */
 	(e: 'typing'): void;
-	/** `/quote`, `/section`, `/book`, `/image` typed at the start of a line. */
-	(e: 'slash', kind: 'quote' | 'section' | 'book' | 'image'): void;
+	/** The block's text as a slash query, or null when it stops being one. */
+	(e: 'slashQuery', text: string | null): void;
+	/** Navigation keys, while the slash menu is open. */
+	(e: 'menuKey', key: string): void;
 	/** Pasted text that parses as a citable quote. */
 	(e: 'pastedQuote', payload: PastedQuote): void;
+	/** A paste of several paragraphs (or tokens): the block's whole new text. */
+	(e: 'pasteBlocks', combined: string, tailLength: number): void;
+	(e: 'wrap', before: string, after: string): void;
+	(e: 'history', dir: 'undo' | 'redo'): void;
+	/** `# ` typed at the start turns prose into a section, Backspace turns it back. */
+	(e: 'convert', kind: 'para' | 'header', text: string): void;
 }>();
 
-
 const taRef = ref<HTMLTextAreaElement | null>(null);
+const viewRef = ref<HTMLElement | null>(null);
 const textValue = ref('');
 const { grow } = useAutoGrow(taRef, textValue);
 
@@ -54,31 +69,54 @@ const rendered = computed(() => {
 	return t ? formatMarkdown(t) : '';
 });
 
+const placeholder = computed(() => {
+	if (props.only) return 'Begin anywhere. Type / to set in a quote, a book, anything.';
+	return props.last ? 'Keep writing — or type / to set something in' : 'Write…';
+});
+
 function onInput(e: Event) {
 	const ta = e.target as HTMLTextAreaElement;
 	const v = ta.value;
 
-	const cmd = matchSlashCommand(v);
-	if (cmd) {
-		// Swallow the command text; the block goes back to empty.
-		textValue.value = '';
-		emit('update', '');
-		grow();
-		emit('slash', cmd);
+	// `# ` at the very start of a paragraph: it asked to be a section.
+	if (props.block.kind === 'para' && v.startsWith('# ') && ta.selectionStart === 2) {
+		emit('convert', 'header', v.slice(2));
 		return;
 	}
 
 	textValue.value = v;
-	emit('update', v);
+	const data = (e as InputEvent).data;
+	emit('update', v, data && /\s/.test(data) ? 'word' : 'typing');
 	grow();
 	emit('typing');
+	if (props.block.kind === 'para') emit('slashQuery', readSlash(v) ? v : null);
 }
+
+/** Markers that wrap a selection when typed over it, instead of replacing it. */
+const WRAPPERS: Record<string, [string, string]> = {
+	'*': ['*', '*'],
+	'{': ['{', '}'],
+	'<': ['<', '>'],
+};
 
 function onPaste(e: ClipboardEvent) {
 	const ta = taRef.value;
 	if (!ta) return;
 	const raw = e.clipboardData?.getData('text/plain') ?? '';
 	if (!raw) return;
+
+	// Several paragraphs arrive as several blocks, not one block holding
+	// blank lines that only come apart on the next reload.
+	if (shouldSplitPaste(raw)) {
+		e.preventDefault();
+		const before = ta.value.slice(0, ta.selectionStart);
+		const after = ta.value.slice(ta.selectionEnd);
+		const prefix = props.block.kind === 'header' ? '# ' : '';
+		const pasted = raw.replace(/\r\n?/g, '\n');
+		emit('pasteBlocks', `${prefix}${before}${pasted}${after}`, after.trim().length);
+		return;
+	}
+
 	const whole = ta.selectionStart === 0 && ta.selectionEnd === ta.value.length;
 	const parsed = parsePastedQuote(raw, whole && ta.value.trim() === raw.trim() ? true : whole);
 	if (parsed) emit('pastedQuote', parsed);
@@ -89,16 +127,52 @@ function onPaste(e: ClipboardEvent) {
 function onKeydown(e: KeyboardEvent) {
 	const ta = taRef.value;
 	if (!ta) return;
-	if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') return; // bubble → publish
+	const mod = e.ctrlKey || e.metaKey;
+
+	if (props.menuOpen && ['ArrowUp', 'ArrowDown', 'Enter', 'Tab', 'Escape'].includes(e.key) && !mod) {
+		e.preventDefault();
+		emit('menuKey', e.key);
+		return;
+	}
+
+	if (mod && e.key === 'Enter') return; // bubble → save
+	if (mod && !e.altKey) {
+		const k = e.key.toLowerCase();
+		if (k === 'z' || k === 'y') {
+			e.preventDefault();
+			emit('history', k === 'y' || e.shiftKey ? 'redo' : 'undo');
+			return;
+		}
+		const fmt: Record<string, [string, string]> = {
+			b: ['**', '**'],
+			i: ['*', '*'],
+			u: ['<', '>'],
+			e: ['{', '}'],
+		};
+		if (fmt[k] && !e.shiftKey) {
+			e.preventDefault();
+			emit('wrap', fmt[k][0], fmt[k][1]);
+			return;
+		}
+	}
+
 	const caret = ta.selectionStart;
 	const end = ta.selectionEnd;
 	const value = ta.value;
+
+	if (caret !== end && WRAPPERS[e.key] && !mod) {
+		e.preventDefault();
+		emit('wrap', WRAPPERS[e.key][0], WRAPPERS[e.key][1]);
+		return;
+	}
+
 	if (e.key === 'Enter' && !e.shiftKey) {
 		e.preventDefault();
 		emit('enter', caret);
 	} else if (e.key === 'Backspace' && caret === 0 && end === 0) {
 		e.preventDefault();
-		emit('mergeBack');
+		if (props.block.kind === 'header') emit('convert', 'para', value);
+		else emit('mergeBack');
 	} else if (e.key === 'ArrowUp' && !value.slice(0, caret).includes('\n')) {
 		e.preventDefault();
 		emit('cross', 'up', caret);
@@ -114,17 +188,29 @@ function onKeydown(e: KeyboardEvent) {
 function focus(caret?: number) {
 	const ta = taRef.value;
 	if (!ta) return;
-	ta.focus();
+	ta.focus({ preventScroll: true });
 	const pos = caret ?? ta.value.length;
 	const clamped = Math.max(0, Math.min(pos, ta.value.length));
 	ta.setSelectionRange(clamped, clamped);
+}
+
+/** The markdown offset under a point on the rendered text — see essayCaret. */
+function caretFromPoint(x: number, y: number): number | null {
+	if (isEmbedBlock(props.block)) return null;
+	const view = viewRef.value;
+	if (!view) return null;
+	const off = renderedOffsetAt(view, x, y);
+	if (off === null) return null;
+	return rawOffsetFor(props.block.text.trim(), view.textContent ?? '', off);
 }
 
 function embed(): EmbedBlock {
 	return props.block as EmbedBlock;
 }
 
-// When entering edit, seed + focus the textarea.
+// When entering edit, seed + focus the textarea — unless the editor already
+// placed the caret (a tap, a merge), in which case landing at the end would
+// throw that placement away.
 watch(
 	() => props.editing,
 	(ed) => {
@@ -132,7 +218,7 @@ watch(
 			textValue.value = props.block.text;
 			nextTick(() => {
 				grow();
-				focus();
+				if (document.activeElement !== taRef.value) focus();
 			});
 		}
 	}
@@ -148,7 +234,7 @@ watch(
 	{ immediate: true }
 );
 
-defineExpose({ focus, el: () => taRef.value });
+defineExpose({ focus, caretFromPoint, el: () => taRef.value });
 </script>
 
 <template>
@@ -167,7 +253,7 @@ defineExpose({ focus, el: () => taRef.value });
 			@blur="emit('exitEdit')"
 		></textarea>
 		<div v-else class="hbadge" :data-empty="!block.text.trim()">
-			<span class="htext">{{ block.text.trim() || 'Section title' }}</span>
+			<span ref="viewRef" class="htext">{{ block.text.trim() || 'Section title' }}</span>
 		</div>
 	</div>
 
@@ -179,14 +265,14 @@ defineExpose({ focus, el: () => taRef.value });
 			class="para"
 			rows="1"
 			:value="block.text"
-			:placeholder="last ? 'Keep writing — or press / to set something in' : 'Write…'"
+			:placeholder="placeholder"
 			@input="onInput"
 			@keydown="onKeydown"
 			@paste="onPaste"
 			@blur="emit('exitEdit')"
 		></textarea>
 		<div v-else class="para-view" :class="{ empty: !rendered }">
-			<span v-if="rendered" v-html="rendered"></span>
+			<span v-if="rendered" ref="viewRef" v-html="rendered"></span>
 			<span v-else class="ph">Empty paragraph</span>
 		</div>
 	</template>

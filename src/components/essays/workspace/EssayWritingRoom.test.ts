@@ -8,7 +8,14 @@ vi.mock('../../../lib/api', async () => {
 	const actual = await vi.importActual<Record<string, unknown>>('../../../lib/api');
 	return {
 		...actual,
-		createEssay: vi.fn(async () => ({ ok: true, essay: {} })),
+		createEssay: vi.fn(async (input: { content: string }) => ({
+			ok: true,
+			essay: { id: 'v-2', content: input.content, tags: [], references: [] },
+		})),
+		updateEssay: vi.fn(async (id: string, patch: { content: string }) => ({
+			ok: true,
+			essay: { id, content: patch.content, tags: [], references: [] },
+		})),
 		uploadEssayImage: vi.fn(),
 		getFileUrl: (u: string) => u,
 	};
@@ -28,6 +35,7 @@ vi.mock('../../../composables/useSourceLibrary', () => ({
 }));
 
 import EssayWritingRoom from './EssayWritingRoom.vue';
+import { createEssay, updateEssay } from '../../../lib/api';
 // Raw source, for the stylesheet guard at the bottom of this file.
 import roomSource from './EssayWritingRoom.vue?raw';
 
@@ -50,6 +58,7 @@ function mountRoom(props: Record<string, unknown> = {}) {
 				EssayBlockEditor: {
 					name: 'EssayBlockEditor',
 					template: '<div class="stub-editor" />',
+					methods: { startWriting: vi.fn(), typeAtEnd: vi.fn(), cancelInsert: vi.fn(), undo: vi.fn(), redo: vi.fn() },
 				},
 				EssayEmbedSheet: true,
 				EssayDeckRail: true,
@@ -293,5 +302,86 @@ describe('EssayWritingRoom — the stylesheet', () => {
 		const rule = css.slice(css.indexOf('.spine-dock {'), css.indexOf('}', css.indexOf('.spine-dock {')));
 		expect(rule).toMatch(/min-width:\s*0/);
 		expect(rule).toMatch(/max-width:\s*258px/);
+	});
+});
+
+describe('EssayWritingRoom — it saves itself', () => {
+	beforeEach(() => {
+		vi.mocked(createEssay).mockClear();
+		vi.mocked(updateEssay).mockClear();
+	});
+
+	async function write(room: ReturnType<typeof mountRoom>, text: string) {
+		await room.findComponent({ name: 'EssayBlockEditor' }).vm.$emit('update:content', text);
+		await flushPromises();
+		vi.advanceTimersByTime(2000);
+		await flushPromises();
+	}
+
+	/**
+	 * One version per sitting. Every press of Save used to mint a version row;
+	 * saving every few seconds on that model would bury the history. The
+	 * first save supersedes the piece; every one after it updates that row.
+	 */
+	it('mints one version, then updates it in place', async () => {
+		vi.useFakeTimers();
+		const room = mountRoom();
+		await flushPromises();
+
+		await write(room, `${ESSAY.content} And one more sentence.`);
+		expect(createEssay).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(createEssay).mock.calls[0][0]).toMatchObject({ replaces: 'e-1' });
+		expect(room.emitted('saved')!.at(-1)).toEqual([expect.objectContaining({ id: 'v-2' }), 'e-1']);
+
+		await write(room, `${ESSAY.content} And one more sentence. And another.`);
+		expect(createEssay).toHaveBeenCalledTimes(1);
+		expect(updateEssay).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(updateEssay).mock.calls[0][0]).toBe('v-2');
+		vi.useRealTimers();
+	});
+
+	/**
+	 * THE REGRESSION. The parent follows the save to the version it minted —
+	 * a new id. Treating that as "a different piece opened" re-seeded the
+	 * room from the server copy and threw away whatever was typed during the
+	 * round trip.
+	 */
+	it('does not re-seed when the parent follows its own save', async () => {
+		vi.useFakeTimers();
+		const room = mountRoom();
+		await flushPromises();
+		await write(room, `${ESSAY.content} Saved part.`);
+
+		const typedSince = `${ESSAY.content} Saved part. Typed during the save.`;
+		await room.findComponent({ name: 'EssayBlockEditor' }).vm.$emit('update:content', typedSince);
+		await room.setProps({ essay: { ...ESSAY, id: 'v-2', content: `${ESSAY.content} Saved part.` } });
+		await flushPromises();
+
+		expect(room.emitted('content')!.at(-1)![0]).toBe(typedSince);
+		vi.useRealTimers();
+	});
+
+	it('does not save a new piece for a stray keystroke', async () => {
+		vi.useFakeTimers();
+		const room = mountRoom({ essay: null });
+		await flushPromises();
+		await write(room, 'The');
+		expect(createEssay).not.toHaveBeenCalled();
+		await write(room, 'The storm returns.');
+		expect(createEssay).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(createEssay).mock.calls[0][0]).not.toHaveProperty('replaces');
+		vi.useRealTimers();
+	});
+
+	it('never saves a piece that is being deleted', async () => {
+		vi.useFakeTimers();
+		const room = mountRoom();
+		await flushPromises();
+		(room.vm as unknown as { cancelSaves: () => void }).cancelSaves();
+		await write(room, `${ESSAY.content} Last words.`);
+		room.unmount();
+		await flushPromises();
+		expect(createEssay).not.toHaveBeenCalled();
+		vi.useRealTimers();
 	});
 });
