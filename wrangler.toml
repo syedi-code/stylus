@@ -24,3 +24,14 @@ WORKER_URL = "https://alexandria.socialeating.studio"
 
 [env.preview.vars]
 WORKER_URL = "https://antisocial-worker-staging.iysyed01.workers.dev"
+
+# alexandria as a service binding: the proxy calls the worker directly instead
+# of going back out through its public hostname. WORKER_URL stays as the
+# fallback and as the URL the request names.
+[[services]]
+binding = "ALEXANDRIA"
+service = "antisocial-worker"
+
+[[env.preview.services]]
+binding = "ALEXANDRIA"
+service = "antisocial-worker-staging"
