@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import type { Note, Book, Author } from '../../lib/api';
-import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById } from '../../lib/api';
+import { fetchBookById, getSignedFileUrlCached, fetchConnections, fetchAuthorById } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { formatMarkdown } from '../../lib/formatText';
 import { usePresentationFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from '../../composables/usePresentationFontSize';
@@ -118,7 +118,7 @@ const loadBook = async () => {
         return;
     }
     try {
-        book.value = await fetchBookById(bookId);
+        book.value = props.note?.book ?? (await fetchBookById(bookId));
     } catch {
         book.value = null;
         pdfUrl.value = null;
@@ -127,7 +127,7 @@ const loadBook = async () => {
     if (book.value?.pdf_url && isAdmin.value) {
         try {
             const path = book.value.pdf_url.replace('/files/', '');
-            pdfUrl.value = await getSignedFileUrl(path);
+            pdfUrl.value = await getSignedFileUrlCached(path);
         } catch {
             pdfUrl.value = null;
         }
@@ -137,6 +137,10 @@ const loadBook = async () => {
 const loadAuthorConnection = async () => {
     if (!props.note || props.note.book_id) {
         connectedAuthor.value = null;
+        return;
+    }
+    if (props.note.author !== undefined) {
+        connectedAuthor.value = props.note.author;
         return;
     }
     try {

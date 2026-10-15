@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue';
-import { fetchBookById, getSignedFileUrl, fetchConnections, fetchAuthorById, type Quote, type Book, type Author } from '../../lib/api';
+import { fetchBookById, getSignedFileUrlCached, fetchConnections, fetchAuthorById, type Quote, type Book, type Author } from '../../lib/api';
 import { formatMarkdown } from '../../lib/formatText';
 import { useTypography } from '../../composables/useTypography';
 import { useDynamicContentFontSize } from '../../composables/useDynamicContentFontSize';
@@ -75,10 +75,10 @@ const pdfUrlWithPage = computed(() => {
 const loadBook = async () => {
   if (props.quote.book_id && !book.value) {
     try {
-      book.value = await fetchBookById(props.quote.book_id);
+      book.value = props.quote.book ?? (await fetchBookById(props.quote.book_id));
       if (book.value?.pdf_url && props.isAdmin) {
         const path = book.value.pdf_url.replace('/files/', '');
-        pdfUrl.value = await getSignedFileUrl(path);
+        pdfUrl.value = await getSignedFileUrlCached(path);
       }
     } catch (err) {
       console.error('Failed to load book:', err);
@@ -89,6 +89,11 @@ const loadBook = async () => {
 const loadAuthorConnection = async () => {
   // Only check when there's no book and no creator/work on the row
   if (props.quote.book_id || props.quote.creator || connectedAuthor.value) return;
+  // Resolved by the server already, when the list asked for sources.
+  if (props.quote.author !== undefined) {
+    connectedAuthor.value = props.quote.author;
+    return;
+  }
   try {
     const conns = await fetchConnections('quote', props.quote.id, 'author');
     if (conns.length > 0) {
