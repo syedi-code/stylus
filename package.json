@@ -18,10 +18,13 @@
 	},
 	"dependencies": {
 		"@tailwindcss/vite": "^4.1.17",
+		"@tanstack/query-persist-client-core": "5.104.0",
+		"@tanstack/query-sync-storage-persister": "5.104.0",
+		"@tanstack/vue-query": "5.104.0",
 		"axios": "^1.13.2",
 		"html-to-image": "^1.11.13",
 		"tailwindcss": "^4.1.17",
-		"vue": "^3.5.24"
+		"vue": "^3.5.25"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.1",

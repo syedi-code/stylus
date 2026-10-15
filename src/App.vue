@@ -4,13 +4,11 @@ import { useAppBoot } from './composables/useAppBoot';
 import { showAuthorInLibrary } from './composables/useLibrary';
 import AppHeader from './components/shared/AppHeader.vue';
 import NotesPage from './components/notes/NotesPage.vue';
-import ThoughtsPage from './components/thoughts/ThoughtsPage.vue';
-import QuotesPage from './components/quotes/QuotesPage.vue';
-import EssaysWorkspace from './components/essays/workspace/EssaysWorkspace.vue';
-import LibraryPage from './components/library/LibraryPage.vue';
+import { ThoughtsPage, QuotesPage, EssaysWorkspace, LibraryPage } from './composables/useTabPages';
 import TextureDebugOverlay from './components/shared/TextureDebugOverlay.vue';
+import SessionBanner from './components/shared/SessionBanner.vue';
 
-const { isAdmin, user, logout, ready } = useAppBoot();
+const { isAdmin, user, logout } = useAppBoot();
 
 const currentTab = ref('notes');
 </script>
@@ -21,7 +19,7 @@ const currentTab = ref('notes');
 
     <main class="w-full">
       <transition name="fade" mode="out-in">
-        <NotesPage v-if="currentTab === 'notes' && ready" :isAdmin="isAdmin" @viewInLibrary="(id) => { showAuthorInLibrary(id); currentTab = 'library'; }" />
+        <NotesPage v-if="currentTab === 'notes'" :isAdmin="isAdmin" @viewInLibrary="(id) => { showAuthorInLibrary(id); currentTab = 'library'; }" />
       </transition>
 
       <transition name="fade" mode="out-in">
@@ -43,6 +41,8 @@ const currentTab = ref('notes');
 
     <!-- Opt-in texture-load debug readout (?texdebug=1) — see the component. -->
     <TextureDebugOverlay />
+
+    <SessionBanner />
   </div>
 </template>
 

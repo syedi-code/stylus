@@ -14,6 +14,8 @@ defineProps<{
 const pagination = usePagination<Thought, { q?: string }>({
 	fetchFn: (params) => fetchThoughts(params),
 	pageSize: 50,
+	key: (thought) => thought.id,
+	cacheAs: 'thoughts',
 });
 
 const search = ref('');

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="color-scheme" content="dark" />
+		<title>stylus</title>
+		<style>
+			html,
+			body {
+				height: 100%;
+				margin: 0;
+			}
+			body {
+				display: grid;
+				place-items: center;
+				padding: 0 16px;
+				background: #050505;
+				color: #a1a1aa;
+				font:
+					14px/1.5 system-ui,
+					-apple-system,
+					sans-serif;
+				text-align: center;
+			}
+			strong {
+				display: block;
+				margin-bottom: 4px;
+				color: #e4e4e7;
+				font-weight: 600;
+			}
+		</style>
+	</head>
+	<body>
+		<p><strong>You are signed in.</strong>You can close this window and carry on where you were.</p>
+		<script>
+			// Cloudflare Access sends the reader here once they have signed in
+			// again. Tell the stylus tab that asked, then get out of the way.
+			try {
+				new BroadcastChannel('stylus-session').postMessage('signed-in');
+			} catch (e) {}
+			try {
+				if (window.opener) window.opener.postMessage('stylus:signed-in', location.origin);
+			} catch (e) {}
+			setTimeout(function () {
+				window.close();
+			}, 600);
+		</script>
+	</body>
+</html>

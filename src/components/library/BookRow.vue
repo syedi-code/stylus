@@ -294,7 +294,6 @@ mark {
 		font-size: 15.5px;
 	}
 	.author {
-		align-self: center;
 		padding-right: 0;
 		font-size: 14px;
 	}

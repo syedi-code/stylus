@@ -30,6 +30,20 @@ functions/api/    the Pages Function that proxies /api/* to alexandria
 
 ## Things that will bite you
 
+**Every request waits on `src/lib/session.ts`, and nothing navigates on a 401.**
+`src/lib/http.ts` renews a lapsed session and resends the request; when Access
+itself has lapsed, requests wait while the reader signs in again in another
+window (`public/signed-in.html`). A redirect would throw away unsaved work.
+
+**Reads go through the query cache, and the cache is saved between visits.**
+`src/lib/queryClient.ts`. A write in `api.ts` must `invalidate()` what it
+changes, or the next read serves the old copy for up to five minutes. Changing
+the shape of anything cached means bumping `CACHE_VERSION`.
+
+**Note and quote cards never look up their own book or author.** The lists ask
+alexandria for `include=sources`, and each row arrives with `book` and `author`
+resolved.
+
 **`src/lib/essayTokenGrammar.ts` is a copy.** It is owned by alexandria
 (`packages/core/writing/essay-tokens.ts`). If the grammar itself changes — the
 regex, the quoting rules, the clamping — both copies have to change. It has not
@@ -57,7 +71,7 @@ change, it is a planned two-repo event, not a commit.
 |            | Branch    | Hostnames                                                                          | Talks to              |
 | ---------- | --------- | ---------------------------------------------------------------------------------- | --------------------- |
 | Production | `main`    | `stylus.socialeating.studio`, `anti.socialeating.studio`, `journal.ibrahimsyed.io` | alexandria production |
-| Staging    | `staging` | `staging.stylus-64v.pages.dev`                                                         | alexandria staging    |
+| Staging    | `staging` | `staging.stylus-64v.pages.dev`                                                     | alexandria staging    |
 
 Merging into a branch deploys it (`.github/workflows`). The deploy action ends
 by POSTing `/api/session` and failing the run unless alexandria's own 401 comes

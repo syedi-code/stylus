@@ -6,6 +6,8 @@ import {
 	type LibraryBook,
 	type LibraryListResponse,
 } from '../lib/api';
+import { keys, queryClient } from '../lib/queryClient';
+import { apiErrorMessage } from '../lib/http';
 
 /**
  * The library catalogue, held at module scope.
@@ -14,10 +16,16 @@ import {
  * the books you left immediately and revalidates behind them, so the tab never
  * opens onto a spinner twice. Book details are cached the same way, which is
  * what lets a book you have opened before reopen with its writing in place.
+ * The catalogue is also saved with the shared cache, so a fresh visit opens
+ * onto the last one's shelves rather than a skeleton.
  */
 
 const books = ref<LibraryBook[]>([]);
-const totals = ref<LibraryListResponse['totals']>({ books: 0, quotes: 0, notes: 0 });
+const totals = ref<LibraryListResponse['totals']>({
+	books: 0,
+	quotes: 0,
+	notes: 0,
+});
 /** True until the first successful load — the only time a skeleton shows. */
 const cold = ref(true);
 const loading = ref(false);
@@ -29,7 +37,18 @@ const details = ref(new Map<string, BookDetail>());
 /** An author another tab asked to land on; consumed by the Library page. */
 const pendingAuthorId = ref<string | null>(null);
 
+/** The last visit's catalogue, read once the saved cache has been restored. */
+function hydrate() {
+	if (!cold.value) return;
+	const saved = queryClient.getQueryData<LibraryListResponse>(keys.library);
+	if (!saved) return;
+	books.value = saved.books;
+	totals.value = saved.totals;
+	cold.value = false;
+}
+
 async function load(): Promise<void> {
+	hydrate();
 	if (inflight) return inflight;
 	loading.value = true;
 	inflight = (async () => {
@@ -38,10 +57,11 @@ async function load(): Promise<void> {
 			books.value = result.books;
 			totals.value = result.totals;
 			cold.value = false;
+			queryClient.setQueryData(keys.library, result);
 			error.value = null;
 		} catch (err) {
 			console.error('Failed to load library:', err);
-			error.value = 'Couldn’t reach the library.';
+			error.value = apiErrorMessage(err, 'Couldn’t reach the library.');
 		} finally {
 			loading.value = false;
 			inflight = null;
@@ -63,7 +83,9 @@ async function loadDetail(bookId: string): Promise<BookDetail | null> {
 
 /** Apply a known change to a row now; the next load confirms it. */
 function patchBook(bookId: string, patch: Partial<LibraryBook>) {
-	books.value = books.value.map((b) => (b.id === bookId ? { ...b, ...patch } : b));
+	books.value = books.value.map((b) =>
+		b.id === bookId ? { ...b, ...patch } : b
+	);
 }
 
 /**
@@ -77,6 +99,7 @@ export function showAuthorInLibrary(authorId: string) {
 }
 
 export function useLibrary() {
+	hydrate();
 	return {
 		books,
 		totals,
