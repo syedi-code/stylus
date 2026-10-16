@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { useQuery, keepPreviousData } from '@tanstack/vue-query';
 import { fetchQuotes, deleteQuote, type Quote } from '../../lib/api';
+import { apiErrorMessage } from '../../lib/http';
+import { keys, queryClient } from '../../lib/queryClient';
 import QuoteCard from './QuoteCard.vue';
 import QuoteCaptureForm from './QuoteCaptureForm.vue';
 import EditQuoteModal from './EditQuoteModal.vue';
@@ -22,10 +25,29 @@ const editingQuote = ref<Quote | null>(null);
 const presentingQuote = ref<Quote | null>(null);
 const captureOpen = ref(false);
 
-const quotes = ref<Quote[]>([]);
-const loading = ref(false);
-const error = ref<string | null>(null);
 const search = ref('');
+/** The search the list shows: `search`, once typing has paused. */
+const settledSearch = ref('');
+
+const quotesKey = computed(() => keys.quotes({ search: settledSearch.value }));
+const quotesQuery = useQuery({
+  queryKey: quotesKey,
+  queryFn: () =>
+    fetchQuotes({
+      limit: 5000,
+      include: 'sources',
+      ...(settledSearch.value ? { search: settledSearch.value } : {}),
+    }),
+  placeholderData: keepPreviousData,
+});
+
+const quotes = computed(() => quotesQuery.data.value ?? []);
+const loading = computed(() => quotesQuery.isPending.value);
+const error = computed(() =>
+  quotesQuery.isError.value && !quotesQuery.data.value
+    ? apiErrorMessage(quotesQuery.error.value, 'Could not load quotes.')
+    : null
+);
 
 // A quote edit writes a new row pointing at the old one through `replaces`.
 // Only the head of each chain is shown, carrying the chain's length as its
@@ -48,26 +70,12 @@ const filteredQuotes = computed(() => {
     .sort((a, b) => b.originalCreatedAt.localeCompare(a.originalCreatedAt));
 });
 
-const load = async () => {
-  loading.value = true;
-  error.value = null;
-  try {
-    quotes.value = await fetchQuotes({
-      limit: 5000,
-      ...(search.value ? { search: search.value } : {}),
-    });
-  } catch (err) {
-    console.error(err);
-    error.value = 'Failed to load quotes. Check API Key and connection.';
-  } finally {
-    loading.value = false;
-  }
-};
+const load = () => quotesQuery.refetch();
 
 let searchDebounce: ReturnType<typeof setTimeout>;
 watch(search, () => {
   clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(load, 300);
+  searchDebounce = setTimeout(() => (settledSearch.value = search.value), 300);
 });
 
 const deleting = ref<Quote | null>(null);
@@ -77,7 +85,7 @@ const confirmDelete = async () => {
   if (!quote) return;
   try {
     await deleteQuote(quote.id);
-    quotes.value = quotes.value.filter(q => q.id !== quote.id);
+    queryClient.setQueryData<Quote[]>(quotesKey.value, (old) => old?.filter(q => q.id !== quote.id));
   } catch (err) {
     console.error('Failed to delete quote:', err);
   }
@@ -92,7 +100,6 @@ const handleSaved = () => {
   return keepingScroll(load);
 };
 
-onMounted(load);
 </script>
 
 <template>

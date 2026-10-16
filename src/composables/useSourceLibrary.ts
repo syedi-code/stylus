@@ -7,6 +7,7 @@ import {
 	type Book,
 	type Author,
 } from '../lib/api';
+import { keys, queryClient } from '../lib/queryClient';
 
 /**
  * Shared, lazily-loaded source library (quotes / books / authors).
@@ -50,29 +51,96 @@ const authorById = computed(() => {
 	return m;
 });
 
-/** Fetch the catalogue once (idempotent; concurrent callers share the flight). */
+// latest_only: superseded quote versions (rows another quote `replaces`) must
+// never surface in the insert picker.
+const QUOTES = { limit: 500, latest_only: 1 };
+const BOOKS = { limit: 500 };
+const AUTHORS = { limit: 500 };
+const quotesKey = keys.quotes(QUOTES);
+
+const fetchCatalogueQuotes = () =>
+	queryClient.fetchQuery({
+		queryKey: quotesKey,
+		queryFn: () => fetchQuotes(QUOTES),
+		staleTime: 5 * 60_000,
+	});
+
+/**
+ * How old a catalogue a forced load accepts. Writes from this client mark it
+ * stale at once; this bounds how long one made elsewhere can go unseen.
+ */
+const FORCED_MAX_AGE_MS = 30_000;
+
+async function fetchCatalogue(maxAgeMs?: number): Promise<void> {
+	if (maxAgeMs !== undefined) {
+		const catalogue = [quotesKey, keys.books(BOOKS), keys.authors(AUTHORS)];
+		await Promise.all(
+			catalogue
+				.filter(
+					(queryKey) =>
+						Date.now() -
+							(queryClient.getQueryState(queryKey)
+								?.dataUpdatedAt ?? 0) >
+						maxAgeMs
+				)
+				.map((queryKey) =>
+					queryClient.invalidateQueries({
+						queryKey,
+						exact: true,
+						refetchType: 'none',
+					})
+				)
+		);
+	}
+	const [q, b, a] = await Promise.all([
+		fetchCatalogueQuotes(),
+		fetchBooks(BOOKS),
+		fetchAuthors(AUTHORS),
+	]);
+	quotes.value = q;
+	books.value = b;
+	authors.value = a;
+	loaded.value = true;
+}
+
+/** The last visit's catalogue, if the saved cache holds all three halves of it. */
+function fromSavedCache(): boolean {
+	const q = queryClient.getQueryData<Quote[]>(quotesKey);
+	const b = queryClient.getQueryData<Book[]>(keys.books(BOOKS));
+	const a = queryClient.getQueryData<Author[]>(keys.authors(AUTHORS));
+	if (!q || !b || !a) return false;
+	quotes.value = q;
+	books.value = b;
+	authors.value = a;
+	loaded.value = true;
+	return true;
+}
+
+/**
+ * Fetch the catalogue once (idempotent; concurrent callers share the flight).
+ * A catalogue saved by the last visit answers at once and is refreshed
+ * behind it, so foils resolve before the network does.
+ */
 async function ensureLoaded(force = false): Promise<void> {
 	if (loaded.value && !force) return;
 	if (inflight) return inflight;
+	if (!force && fromSavedCache()) {
+		inflight = fetchCatalogue(FORCED_MAX_AGE_MS)
+			.catch((err) =>
+				console.error('Failed to refresh source library:', err)
+			)
+			.finally(() => {
+				inflight = null;
+			});
+		return;
+	}
 	loading.value = true;
-	inflight = (async () => {
-		try {
-			const [q, b, a] = await Promise.all([
-				// latest_only: superseded quote versions (rows another quote
-				// `replaces`) must never surface in the insert picker.
-				fetchQuotes({ limit: 500, latest_only: 1 }),
-				fetchBooks({ limit: 500 }),
-				fetchAuthors({ limit: 500 }),
-			]);
-			quotes.value = q;
-			books.value = b;
-			authors.value = a;
-			loaded.value = true;
-		} finally {
+	inflight = fetchCatalogue(force ? FORCED_MAX_AGE_MS : undefined).finally(
+		() => {
 			loading.value = false;
 			inflight = null;
 		}
-	})();
+	);
 	return inflight;
 }
 
@@ -90,6 +158,7 @@ function registerQuote(q: Quote) {
 	if (i >= 0) quotes.value = quotes.value.map((x, n) => (n === i ? q : x));
 	// Newest first, matching the order fetchQuotes returns.
 	else quotes.value = [q, ...quotes.value];
+	queryClient.setQueryData(quotesKey, quotes.value);
 }
 
 /** Register a resolvable image URL for an essay_images id. */

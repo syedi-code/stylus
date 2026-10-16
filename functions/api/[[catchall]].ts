@@ -2,6 +2,11 @@
 
 interface ProxyEnv {
 	WORKER_URL: string;
+	/**
+	 * alexandria, bound to this project. A request through it never leaves
+	 * Cloudflare: no second trip out to the public hostname and back.
+	 */
+	ALEXANDRIA?: Fetcher;
 }
 
 export const onRequest: PagesFunction<ProxyEnv> = async (context) => {
@@ -40,7 +45,7 @@ export const onRequest: PagesFunction<ProxyEnv> = async (context) => {
 	// Remove host header so it doesn't conflict with the worker's domain
 	headers.delete('host');
 
-	const response = await fetch(targetUrl, {
+	const init: RequestInit = {
 		method: context.request.method,
 		headers,
 		body:
@@ -48,7 +53,10 @@ export const onRequest: PagesFunction<ProxyEnv> = async (context) => {
 			context.request.method !== 'HEAD'
 				? context.request.body
 				: undefined,
-	});
+	};
+	const response = context.env.ALEXANDRIA
+		? await context.env.ALEXANDRIA.fetch(targetUrl, init)
+		: await fetch(targetUrl, init);
 
 	// Return the worker's response, stripping CORS headers (same-origin doesn't need them)
 	const responseHeaders = new Headers(response.headers);

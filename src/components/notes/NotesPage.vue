@@ -13,16 +13,14 @@ import {
     fetchNoteById,
     fetchNoteFacets,
     fetchBooks,
-    fetchBookById,
     deleteNote,
     createThought,
-    fetchConnectionsForEntities,
-    fetchAuthorById,
     type Note,
     type Book,
-    type Author,
 } from '../../lib/api';
 import { usePagination } from '../../composables/usePagination';
+import { apiErrorMessage } from '../../lib/http';
+import { keys, queryClient } from '../../lib/queryClient';
 import { keepingScroll } from '../../lib/scroll';
 import NoteCard from './NoteCard.vue';
 import EditNoteModal from './EditNoteModal.vue';
@@ -56,8 +54,16 @@ const mode = ref<'shuffle' | 'search'>('shuffle');
 // ============================================================================
 
 const DEAL_SIZE = 5;
-const dealNotes = ref<Note[]>([]);
-const dealTotal = ref(0);
+interface Deal {
+    notes: Note[];
+    total: number;
+}
+const keptDeal = queryClient.getQueryData<Deal>(keys.deal);
+const dealNotes = ref<Note[]>(keptDeal?.notes ?? []);
+const dealTotal = ref(keptDeal?.total ?? 0);
+watch([dealNotes, dealTotal], ([notes, total]) => {
+    queryClient.setQueryData<Deal>(keys.deal, { notes, total });
+});
 const dealLoading = ref(false);
 const dealError = ref<string | null>(null);
 /** Bumped per deal so the stagger animation re-runs on re-deal. */
@@ -73,7 +79,7 @@ const dealAgain = async () => {
         dealKey.value++;
     } catch (err) {
         console.error('Failed to deal notes:', err);
-        dealError.value = 'The deal failed. Check your connection.';
+        dealError.value = apiErrorMessage(err, 'The deal failed.');
     } finally {
         dealLoading.value = false;
     }
@@ -104,6 +110,8 @@ const searchInput = ref<HTMLInputElement | null>(null);
 const pagination = usePagination<Note, { search?: string; book_id?: string }>({
     fetchFn: (params) => fetchNotes({ ...params }),
     pageSize: 30,
+    key: (note) => note.id,
+    cacheAs: 'notes',
 });
 
 const runSearch = async () => {
@@ -111,7 +119,6 @@ const runSearch = async () => {
     if (searchQuery.value) params.search = searchQuery.value;
     if (bookFilter.value !== 'all') params.book_id = bookFilter.value;
 
-    enrichedNoteIds.clear();
     await pagination.reset(params);
 
     try {
@@ -228,14 +235,11 @@ const handleCaptureSaved = () => {
 };
 
 // ============================================================================
-// Note enrichment — shared books map + batched author lookups
+// Books — the picker's list, loaded when it is first opened
 // ============================================================================
 
 const filterBooks = ref<Book[]>([]);
 const booksById = computed(() => new Map(filterBooks.value.map((b) => [b.id, b])));
-const extraBooks = ref<Map<string, Book | null>>(new Map());
-const noteAuthors = ref<Map<string, Author>>(new Map());
-const enrichedNoteIds = new Set<string>();
 
 let filterBooksPromise: Promise<void> | null = null;
 const ensureFilterBooks = (): Promise<void> => {
@@ -251,80 +255,6 @@ const ensureFilterBooks = (): Promise<void> => {
     }
     return filterBooksPromise;
 };
-
-/** Resolved book for a note: undefined = still loading (skeleton), null = none. */
-const bookFor = (note: Note): Book | null | undefined => {
-    if (!note.book_id) return null;
-    const fromList = booksById.value.get(note.book_id);
-    if (fromList) return fromList;
-    if (extraBooks.value.has(note.book_id)) return extraBooks.value.get(note.book_id)!;
-    return undefined;
-};
-
-const enrichNotes = async (notes: Note[]) => {
-    const newIds = notes.map((n) => n.id).filter((id) => !enrichedNoteIds.has(id));
-    if (newIds.length === 0) return;
-    newIds.forEach((id) => enrichedNoteIds.add(id));
-
-    await ensureFilterBooks();
-
-    const noteMap = new Map(notes.map((n) => [n.id, n]));
-    const noBookIds = newIds.filter((id) => !noteMap.get(id)?.book_id);
-    const missingBookIds = [
-        ...new Set(
-            newIds
-                .map((id) => noteMap.get(id)?.book_id)
-                .filter(
-                    (bid): bid is string =>
-                        !!bid && !booksById.value.has(bid) && !extraBooks.value.has(bid)
-                )
-        ),
-    ];
-
-    await Promise.all([
-        (async () => {
-            if (noBookIds.length === 0) return;
-            try {
-                const conns = await fetchConnectionsForEntities('note', noBookIds, 'author');
-                const authorIdByNote = new Map<string, string>();
-                for (const conn of conns) {
-                    const noteId = conn.a_type === 'note' ? conn.a_id : conn.b_id;
-                    const authorId = conn.a_type === 'author' ? conn.a_id : conn.b_id;
-                    if (!authorIdByNote.has(noteId)) authorIdByNote.set(noteId, authorId);
-                }
-                const uniqueAuthorIds = [...new Set(authorIdByNote.values())];
-                const authors = await Promise.all(
-                    uniqueAuthorIds.map((id) => fetchAuthorById(id).catch(() => null))
-                );
-                const authorById = new Map(uniqueAuthorIds.map((id, i) => [id, authors[i]]));
-                const next = new Map(noteAuthors.value);
-                for (const [noteId, authorId] of authorIdByNote) {
-                    const author = authorById.get(authorId);
-                    if (author) next.set(noteId, author);
-                }
-                noteAuthors.value = next;
-            } catch {
-                // Connections may not exist yet (pre-migration data)
-            }
-        })(),
-        (async () => {
-            if (missingBookIds.length === 0) return;
-            const fetched = await Promise.all(
-                missingBookIds.map((id) => fetchBookById(id).catch(() => null))
-            );
-            const next = new Map(extraBooks.value);
-            missingBookIds.forEach((id, i) => next.set(id, fetched[i]));
-            extraBooks.value = next;
-        })(),
-    ]);
-};
-
-watch(dealNotes, (notes) => {
-    if (notes.length) enrichNotes(notes);
-});
-watch(pagination.items, (items) => {
-    if (items.length) enrichNotes(items);
-});
 
 // ============================================================================
 // Card actions
@@ -394,8 +324,7 @@ watch(scrollSentinel, (el, oldEl) => {
 // ============================================================================
 
 onMounted(() => {
-    dealAgain();
-    ensureFilterBooks();
+    if (!keptDeal) dealAgain();
 
     observer = new IntersectionObserver(
         (entries) => {
@@ -514,7 +443,7 @@ const handleSaved = (replaced?: { oldId: string; note: Note }) => {
 
                     <!-- Dealt cards -->
                     <template v-else>
-                        <NoteCard v-for="(note, i) in dealNotes" :key="`${dealKey}-${note.id}`" :note="note" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" variant="deal" class="deal-in" :class="{ 'convert-out': note.id === convertingId }" :style="{ animationDelay: `${i * 60}ms` }" @edit="editingNote = $event" @copy="handleCopy" @present="presentingNote = $event" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
+                        <NoteCard v-for="(note, i) in dealNotes" :key="`${dealKey}-${note.id}`" :note="note" :isAdmin="isAdmin" :book="note.book ?? null" :connectedAuthor="note.author ?? null" variant="deal" class="deal-in" :class="{ 'convert-out': note.id === convertingId }" :style="{ animationDelay: `${i * 60}ms` }" @edit="editingNote = $event" @copy="handleCopy" @present="presentingNote = $event" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
 
                         <!-- End of the deal — finite by design -->
                         <div class="flex flex-col items-center gap-3 pt-2 pb-4">
@@ -582,7 +511,7 @@ const handleSaved = (replaced?: { oldId: string; note: Note }) => {
                     </div>
 
                     <template v-else>
-                        <NoteCard v-for="note in searchNotes" :key="note.id" :note="note" :class="{ 'convert-out': note.id === convertingId }" :searchQuery="searchQuery" :isAdmin="isAdmin" :book="bookFor(note)" :connectedAuthor="noteAuthors.get(note.id) ?? null" clamp @edit="editingNote = $event" @copy="handleCopy" @present="presentingNote = $event" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
+                        <NoteCard v-for="note in searchNotes" :key="note.id" :note="note" :class="{ 'convert-out': note.id === convertingId }" :searchQuery="searchQuery" :isAdmin="isAdmin" :book="note.book ?? null" :connectedAuthor="note.author ?? null" clamp @edit="editingNote = $event" @copy="handleCopy" @present="presentingNote = $event" @delete="handleDelete" @viewInLibrary="emit('viewInLibrary', $event)" @convertToThought="handleConvertToThought" />
 
                         <!-- Infinite scroll sentinel -->
                         <div ref="scrollSentinel" class="h-1"></div>

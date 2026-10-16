@@ -1,4 +1,8 @@
-import axios from 'axios';
+import { apiClient } from './http';
+import { API_BASE } from './session';
+import { keys, queryClient } from './queryClient';
+
+export { apiClient };
 
 // ============================================================================
 // Shared Types
@@ -20,6 +24,9 @@ export interface Note {
 	updated_at: string;
 	/** When shuffle last dealt this note. null/undefined = never surfaced. */
 	last_surfaced_at?: string | null;
+	/** Resolved by the server when the request asked for sources. */
+	book?: Book | null;
+	author?: Author | null;
 	// Client-side computed (version chain)
 	version?: number;
 	originalCreatedAt?: string;
@@ -56,6 +63,9 @@ export interface Quote {
 	// Client-side computed (version chain)
 	version?: number;
 	originalCreatedAt?: string;
+	/** Resolved by the server when the request asked for sources. */
+	book?: Book | null;
+	author?: Author | null;
 }
 
 export interface QuoteInput {
@@ -227,63 +237,35 @@ export interface ConnectionInput {
 }
 
 // ============================================================================
-// API Client
+// Caching
 // ============================================================================
 
-export const apiClient = axios.create({
-	baseURL: import.meta.env.VITE_API_URL || '/api',
-	headers: {
-		'Content-Type': 'application/json',
-		'X-Requested-With': 'XMLHttpRequest',
-	},
-	withCredentials: true,
-});
+/** The catalogue changes rarely and only through this client. */
+const CATALOGUE_STALE_MS = 5 * 60_000;
 
-// 401 interceptor: detect session expiry and redirect to login
-apiClient.interceptors.response.use(
-	(response) => response,
-	async (error) => {
-		if (error.response?.status === 401) {
-			const code = error.response?.data?.code;
-			if (code === 'SESSION_EXPIRED' || code === 'SESSION_MISSING') {
-				const { setSessionExpired, isAuthInitializing } =
-					await import('./auth');
-
-				// Don't redirect during initial auth handshake — the session
-				// cookie may not be set yet (race on first page load).
-				if (isAuthInitializing()) {
-					console.warn(
-						`[API] Suppressed 401 redirect during auth init (${code})`
-					);
-					return Promise.reject(error);
-				}
-
-				setSessionExpired(
-					'Your session has expired. Please log in again.'
-				);
-				return Promise.reject(error);
-			}
-
-			// Non-session 401 — log for debugging
-			const { url, method } = error.config ?? {};
-			const { hint } = error.response?.data ?? {};
-			console.error(
-				`[API] 401 Unauthorized — ${method?.toUpperCase()} ${url}`,
-				{
-					code: code ?? 'UNKNOWN',
-					hint: hint ?? 'Check auth state',
-				}
-			);
-		}
-		return Promise.reject(error);
+/**
+ * Marks what a write may have changed, so the next read fetches it. Nothing
+ * waits on the refetch; the write has already landed.
+ */
+function invalidate(...prefixes: string[]): void {
+	for (const prefix of prefixes) {
+		void queryClient.invalidateQueries({ queryKey: [prefix] });
 	}
-);
+}
+
+/** A card's book and author, when the server sent them, answer later lookups too. */
+function primeSources(row: { book?: Book | null; author?: Author | null }) {
+	if (row.book) queryClient.setQueryData(keys.book(row.book.id), row.book);
+	if (row.author)
+		queryClient.setQueryData(keys.author(row.author.id), row.author);
+}
 
 // ============================================================================
 // Normalization Helpers
 // ============================================================================
 
 function normalizeNote(raw: any): Note {
+	primeSources(raw);
 	return {
 		...raw,
 		posted: !!raw.posted,
@@ -296,6 +278,7 @@ function normalizeNote(raw: any): Note {
 }
 
 function normalizeQuote(raw: any): Quote {
+	primeSources(raw);
 	return {
 		...raw,
 		posted: !!raw.posted,
@@ -381,6 +364,7 @@ export async function fetchNotes(
 		params: {
 			...rest,
 			...(tags && tags.length ? { tags: tags.join(',') } : {}),
+			include: 'sources',
 		},
 	});
 	if (response.data.error) {
@@ -407,7 +391,7 @@ export async function fetchShuffleNotes(
 		notes: unknown[];
 		total?: number;
 		error?: string;
-	}>('/notes/shuffle', { params: { count } });
+	}>('/notes/shuffle', { params: { count, include: 'sources' } });
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
@@ -460,6 +444,7 @@ export async function createNote(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('list', 'library');
 	return { ok: response.data.ok, note: normalizeNote(response.data.note) };
 }
 
@@ -475,6 +460,7 @@ export async function updateNote(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('list', 'library');
 	return response.data;
 }
 
@@ -483,6 +469,7 @@ export async function deleteNote(id: string): Promise<{ ok: boolean }> {
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('list', 'library');
 	return response.data;
 }
 
@@ -499,6 +486,8 @@ export async function fetchQuotes(
 		book_id?: string;
 		/** 1 = exclude superseded versions (rows another quote `replaces`). */
 		latest_only?: number;
+		/** Each quote's book and author along with it. */
+		include?: 'sources';
 	} = {}
 ): Promise<Quote[]> {
 	const response = await apiClient.get<{ quotes: any[]; error?: string }>(
@@ -521,6 +510,7 @@ export async function createQuote(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('quotes', 'library');
 	return { ok: response.data.ok, quote: normalizeQuote(response.data.quote) };
 }
 
@@ -536,6 +526,7 @@ export async function updateQuote(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('quotes', 'library');
 	return response.data;
 }
 
@@ -544,6 +535,7 @@ export async function deleteQuote(id: string): Promise<{ ok: boolean }> {
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('quotes', 'library');
 	return response.data;
 }
 
@@ -594,6 +586,7 @@ export async function createEssay(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('list', 'library');
 	return { ok: response.data.ok, essay: normalizeEssay(response.data.essay) };
 }
 
@@ -609,6 +602,7 @@ export async function updateEssay(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('list', 'library');
 	return { ok: response.data.ok, essay: normalizeEssay(response.data.essay) };
 }
 
@@ -617,6 +611,7 @@ export async function deleteEssay(id: string): Promise<{ ok: boolean }> {
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('list', 'library');
 	return response.data;
 }
 
@@ -635,33 +630,44 @@ export async function fetchEssayVersions(id: string): Promise<Essay[]> {
 // Books API
 // ============================================================================
 
-export async function fetchBooks(
+export function fetchBooks(
 	params: {
 		limit?: number;
 		offset?: number;
 		search?: string;
 	} = {}
 ): Promise<Book[]> {
-	const response = await apiClient.get<{ books: Book[]; error?: string }>(
-		'/books',
-		{
-			params,
-		}
-	);
-	if (response.data.error) {
-		throw new Error(response.data.error);
-	}
-	return response.data.books;
+	return queryClient.fetchQuery({
+		queryKey: keys.books(params),
+		staleTime: CATALOGUE_STALE_MS,
+		queryFn: async () => {
+			const response = await apiClient.get<{
+				books: Book[];
+				error?: string;
+			}>('/books', { params });
+			if (response.data.error) {
+				throw new Error(response.data.error);
+			}
+			return response.data.books;
+		},
+	});
 }
 
-export async function fetchBookById(id: string): Promise<Book> {
-	const response = await apiClient.get<{ book: Book; error?: string }>(
-		`/books/${id}`
-	);
-	if (response.data.error) {
-		throw new Error(response.data.error);
-	}
-	return response.data.book;
+export function fetchBookById(id: string): Promise<Book> {
+	return queryClient.fetchQuery({
+		queryKey: keys.book(id),
+		staleTime: CATALOGUE_STALE_MS,
+		queryFn: async () => {
+			const response = await apiClient.get<{
+				book: Book;
+				error?: string;
+			}>(`/books/${id}`);
+			if (response.data.error) {
+				throw new Error(response.data.error);
+			}
+			return response.data.book;
+		},
+	});
 }
 
 export async function createBook(
@@ -671,6 +677,7 @@ export async function createBook(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('books', 'library');
 	return response.data;
 }
 
@@ -682,6 +689,7 @@ export async function updateBook(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('books', 'library');
 	return response.data;
 }
 
@@ -690,6 +698,7 @@ export async function deleteBook(id: string): Promise<{ ok: boolean }> {
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('books', 'library');
 	return response.data;
 }
 
@@ -698,12 +707,7 @@ export async function deleteBook(id: string): Promise<{ ok: boolean }> {
 // ============================================================================
 
 export type LibraryDecade =
-	| 'pre-1900'
-	| '1900s'
-	| '2000s'
-	| '2010s'
-	| '2020s'
-	| 'unknown';
+	'pre-1900' | '1900s' | '2000s' | '2010s' | '2020s' | 'unknown';
 
 export interface LibraryBook extends Book {
 	quote_count: number;
@@ -879,6 +883,7 @@ export async function addBookMedia(
 		error?: string;
 	}>(`/books/${bookId}/media`, { kind: 'image', ...payload });
 	if (response.data.error) throw new Error(response.data.error);
+	invalidate('library');
 	return response.data.media;
 }
 
@@ -892,6 +897,7 @@ export async function updateBookMedia(
 		patch
 	);
 	if (response.data.error) throw new Error(response.data.error);
+	invalidate('library');
 	return response.data;
 }
 
@@ -903,6 +909,7 @@ export async function deleteBookMedia(
 		`/books/${bookId}/media/${mediaId}`
 	);
 	if (response.data.error) throw new Error(response.data.error);
+	invalidate('library');
 	return response.data;
 }
 
@@ -910,33 +917,44 @@ export async function deleteBookMedia(
 // Authors API
 // ============================================================================
 
-export async function fetchAuthors(
+export function fetchAuthors(
 	params: {
 		limit?: number;
 		offset?: number;
 		search?: string;
 	} = {}
 ): Promise<Author[]> {
-	const response = await apiClient.get<{ authors: Author[]; error?: string }>(
-		'/authors',
-		{
-			params,
-		}
-	);
-	if (response.data.error) {
-		throw new Error(response.data.error);
-	}
-	return response.data.authors;
+	return queryClient.fetchQuery({
+		queryKey: keys.authors(params),
+		staleTime: CATALOGUE_STALE_MS,
+		queryFn: async () => {
+			const response = await apiClient.get<{
+				authors: Author[];
+				error?: string;
+			}>('/authors', { params });
+			if (response.data.error) {
+				throw new Error(response.data.error);
+			}
+			return response.data.authors;
+		},
+	});
 }
 
-export async function fetchAuthorById(id: string): Promise<Author> {
-	const response = await apiClient.get<{ author: Author; error?: string }>(
-		`/authors/${id}`
-	);
-	if (response.data.error) {
-		throw new Error(response.data.error);
-	}
-	return response.data.author;
+export function fetchAuthorById(id: string): Promise<Author> {
+	return queryClient.fetchQuery({
+		queryKey: keys.author(id),
+		staleTime: CATALOGUE_STALE_MS,
+		queryFn: async () => {
+			const response = await apiClient.get<{
+				author: Author;
+				error?: string;
+			}>(`/authors/${id}`);
+			if (response.data.error) {
+				throw new Error(response.data.error);
+			}
+			return response.data.author;
+		},
+	});
 }
 
 export async function createAuthor(
@@ -946,6 +964,7 @@ export async function createAuthor(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('authors', 'books', 'library');
 	return response.data;
 }
 
@@ -957,6 +976,7 @@ export async function updateAuthor(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('authors', 'books', 'library');
 	return response.data;
 }
 
@@ -965,38 +985,51 @@ export async function deleteAuthor(id: string): Promise<{ ok: boolean }> {
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('authors', 'books', 'library');
 	return response.data;
 }
 
-export async function fetchBooksByAuthorId(authorId: string): Promise<Book[]> {
-	const response = await apiClient.get<{ books: Book[]; error?: string }>(
-		`/authors/${authorId}/books`
-	);
-	if (response.data.error) {
-		throw new Error(response.data.error);
-	}
-	return response.data.books;
+export function fetchBooksByAuthorId(authorId: string): Promise<Book[]> {
+	return queryClient.fetchQuery({
+		queryKey: keys.booksByAuthor(authorId),
+		staleTime: CATALOGUE_STALE_MS,
+		queryFn: async () => {
+			const response = await apiClient.get<{
+				books: Book[];
+				error?: string;
+			}>(`/authors/${authorId}/books`);
+			if (response.data.error) {
+				throw new Error(response.data.error);
+			}
+			return response.data.books;
+		},
+	});
 }
 
 // ============================================================================
 // Connections API
 // ============================================================================
 
-export async function fetchConnections(
+export function fetchConnections(
 	entityType: EntityType,
 	entityId: string,
 	connectedType?: EntityType
 ): Promise<Connection[]> {
 	const params: Record<string, string> = { type: entityType, id: entityId };
 	if (connectedType) params.connected_type = connectedType;
-	const response = await apiClient.get<{
-		connections: Connection[];
-		error?: string;
-	}>('/connections', { params });
-	if (response.data.error) {
-		throw new Error(response.data.error);
-	}
-	return response.data.connections;
+	return queryClient.fetchQuery({
+		queryKey: keys.connections(entityType, entityId, connectedType),
+		queryFn: async () => {
+			const response = await apiClient.get<{
+				connections: Connection[];
+				error?: string;
+			}>('/connections', { params });
+			if (response.data.error) {
+				throw new Error(response.data.error);
+			}
+			return response.data.connections;
+		},
+	});
 }
 
 /**
@@ -1032,6 +1065,7 @@ export async function createConnectionApi(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('connections', 'quotes', 'list');
 	return response.data;
 }
 
@@ -1042,6 +1076,7 @@ export async function deleteConnectionApi(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('connections', 'quotes', 'list');
 	return response.data;
 }
 
@@ -1083,6 +1118,7 @@ export async function uploadPdf(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('books', 'library');
 	return response.data;
 }
 
@@ -1105,12 +1141,12 @@ export async function uploadCover(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('books', 'library');
 	return response.data;
 }
 
 export function getFileUrl(path: string): string {
-	const baseUrl = import.meta.env.VITE_API_URL || '/api';
-	return `${baseUrl}/files/${path}`;
+	return `${API_BASE}/files/${path}`;
 }
 
 // Get a signed URL for secure file access
@@ -1122,34 +1158,19 @@ export async function getSignedFileUrl(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
-	const baseUrl = import.meta.env.VITE_API_URL || '/api';
-	return `${baseUrl}/files/${path}?token=${encodeURIComponent(response.data.token)}`;
+	return `${API_BASE}/files/${path}?token=${encodeURIComponent(response.data.token)}`;
 }
 
-// Signed-URL cache: many cards can reference the same book PDF, so share
-// one in-flight/settled promise per path. Entries expire before the signed
-// token does (45 min vs 60 min TTL).
-const signedUrlCache = new Map<
-	string,
-	{ promise: Promise<string>; expiresAt: number }
->();
-const SIGNED_URL_CACHE_MS = 45 * 60 * 1000;
+/** Shared by every card naming the same file; dropped before the token's hour is up. */
+const SIGNED_URL_STALE_MS = 45 * 60_000;
 
 export function getSignedFileUrlCached(path: string): Promise<string> {
-	const cached = signedUrlCache.get(path);
-	if (cached && cached.expiresAt > Date.now()) {
-		return cached.promise;
-	}
-	const promise = getSignedFileUrl(path).catch((err) => {
-		// Don't cache failures
-		signedUrlCache.delete(path);
-		throw err;
+	return queryClient.fetchQuery({
+		queryKey: keys.signedUrl(path),
+		queryFn: () => getSignedFileUrl(path),
+		staleTime: SIGNED_URL_STALE_MS,
+		gcTime: SIGNED_URL_STALE_MS,
 	});
-	signedUrlCache.set(path, {
-		promise,
-		expiresAt: Date.now() + SIGNED_URL_CACHE_MS,
-	});
-	return promise;
 }
 
 // ============================================================================
@@ -1209,6 +1230,7 @@ export async function createThought(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('list', 'moods');
 	return response.data;
 }
 
@@ -1217,6 +1239,7 @@ export async function deleteThought(id: string): Promise<{ ok: boolean }> {
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('list');
 	return response.data;
 }
 
@@ -1228,15 +1251,23 @@ export async function updateThought(
 	if (response.data.error) {
 		throw new Error(response.data.error);
 	}
+	invalidate('list', 'moods');
 	return response.data;
 }
 
-export async function fetchMoodSuggestions(): Promise<string[]> {
-	const response = await apiClient.get<GetMoodsResponse>('/thoughts/moods');
-	if (response.data.error) {
-		throw new Error(response.data.error);
-	}
-	return response.data.moods;
+export function fetchMoodSuggestions(): Promise<string[]> {
+	return queryClient.fetchQuery({
+		queryKey: ['moods'],
+		staleTime: CATALOGUE_STALE_MS,
+		queryFn: async () => {
+			const response =
+				await apiClient.get<GetMoodsResponse>('/thoughts/moods');
+			if (response.data.error) {
+				throw new Error(response.data.error);
+			}
+			return response.data.moods;
+		},
+	});
 }
 
 export interface GetMoodSuggestionsResponse {
@@ -1244,19 +1275,24 @@ export interface GetMoodSuggestionsResponse {
 	error?: string;
 }
 
-export async function fetchRandomMoodSuggestions(
+/** Every mood picker on screen shows the same draw; a minute later, a new one. */
+export function fetchRandomMoodSuggestions(
 	count: number = 6
 ): Promise<string[]> {
-	const response = await apiClient.get<GetMoodSuggestionsResponse>(
-		'/thoughts/moods/suggestions',
-		{
-			params: { count },
-		}
-	);
-	if (response.data.error) {
-		throw new Error(response.data.error);
-	}
-	return response.data.suggestions;
+	return queryClient.fetchQuery({
+		queryKey: ['moods', 'suggestions', count],
+		staleTime: 60_000,
+		queryFn: async () => {
+			const response = await apiClient.get<GetMoodSuggestionsResponse>(
+				'/thoughts/moods/suggestions',
+				{ params: { count } }
+			);
+			if (response.data.error) {
+				throw new Error(response.data.error);
+			}
+			return response.data.suggestions;
+		},
+	});
 }
 
 export async function updateThoughtPosition(
